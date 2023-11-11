@@ -3,6 +3,7 @@
 // Copyright (c) 2012 University of Pennsylvania
 
 #include <iostream>
+#include <sstream>
 #include <fstream>
 #include <string>
 #include <cstdlib>
@@ -13,26 +14,17 @@ using std::ios;
 
 namespace glslUtility {
 
-// embedded passthrough shaders so that default passthrough shaders don't need to be loaded
-static std::string passthroughVS =
-    "   #version 120 \n"
-    "   attribute vec4 Position; \n"
-    "   attribute vec2 Texcoords; \n"
-    "   varying vec2 v_Texcoords; \n"
-    "   \n"
-    "   void main(void){ \n"
-    "       v_Texcoords = Texcoords; \n"
-    "       gl_Position = Position; \n"
-    "   }";
-static std::string passthroughFS =
-    "   #version 120 \n"
-    "   varying vec2 v_Texcoords; \n"
-    "   \n"
-    "   uniform sampler2D u_image; \n"
-    "   \n"
-    "   void main(void){ \n"
-    "       gl_FragColor = texture2D(u_image, v_Texcoords); \n"
-    "   }";
+std::string readShaderSource(const char* filePath) {
+    std::ifstream file(filePath);
+    if (!file.good()) {
+        std::cerr << "Cannot open shader file: " << filePath << std::endl;
+        return "";
+    }
+
+    std::stringstream stream;
+    stream << file.rdbuf();
+    return stream.str();
+}
 
 typedef struct {
     GLuint vertex;
@@ -119,9 +111,11 @@ void compileShader(const char* shaderName, const char * shaderSource, GLenum sha
 
 shaders_t loadDefaultShaders() {
     shaders_t out;
+    std::string lambertVS = readShaderSource("../src/shaders/lambert.vert.glsl");
+    std::string lambertFS = readShaderSource("../src/shaders/lambert.frag.glsl");
 
-    compileShader("Passthrough Vertex", passthroughVS.c_str(), GL_VERTEX_SHADER, (GLint&)out.vertex);
-    compileShader("Passthrough Fragment", passthroughFS.c_str(), GL_FRAGMENT_SHADER, (GLint&)out.fragment);
+    compileShader("lambert Vertex", lambertVS.c_str(), GL_VERTEX_SHADER, (GLint&)out.vertex);
+    compileShader("lambert Fragment", lambertFS.c_str(), GL_FRAGMENT_SHADER, (GLint&)out.fragment);
 
     return out;
 }
@@ -169,9 +163,9 @@ GLuint createDefaultProgram(const char *attributeLocations[], GLuint numberOfLoc
 
     GLuint program = glCreateProgram();
 
-    for (GLuint i = 0; i < numberOfLocations; ++i) {
-        glBindAttribLocation(program, i, attributeLocations[i]);
-    }
+    //for (GLuint i = 0; i < numberOfLocations; ++i) {
+    //    glBindAttribLocation(program, i, attributeLocations[i]);
+    //}
 
     glslUtility::attachAndLinkProgram(program, shaders);
 

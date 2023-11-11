@@ -24,8 +24,8 @@ GuiDataContainer* guiData;
 RenderState* renderState;
 int iteration;
 
-int width;
-int height;
+int width=1024;
+int height = 1024;
 
 //-------------------------------
 //-------------MAIN--------------
@@ -34,41 +34,13 @@ int height;
 int main(int argc, char** argv) {
 	startTimeString = currentTimeString();
 
-	if (argc < 2) {
-		printf("Usage: %s SCENEFILE.txt\n", argv[0]);
-		return 1;
-	}
-
-	const char* sceneFile = argv[1];
-
 	// Load scene file
-	scene = new Scene(sceneFile);
+	//scene = new Scene(sceneFile);
 
 	//Create Instance for ImGUIData
 	guiData = new GuiDataContainer();
 
 	// Set up camera stuff from loaded path tracer settings
-	iteration = 0;
-	renderState = &scene->state;
-	Camera& cam = renderState->camera;
-	width = cam.resolution.x;
-	height = cam.resolution.y;
-
-	glm::vec3 view = cam.view;
-	glm::vec3 up = cam.up;
-	glm::vec3 right = glm::cross(view, up);
-	up = glm::cross(right, view);
-
-	cameraPosition = cam.position;
-
-	// compute phi (horizontal) and theta (vertical) relative 3D axis
-	// so, (0 0 1) is forward, (0 1 0) is up
-	glm::vec3 viewXZ = glm::vec3(view.x, 0.0f, view.z);
-	glm::vec3 viewZY = glm::vec3(0.0f, view.y, view.z);
-	phi = glm::acos(glm::dot(glm::normalize(viewXZ), glm::vec3(0, 0, -1)));
-	theta = glm::acos(glm::dot(glm::normalize(viewZY), glm::vec3(0, 1, 0)));
-	ogLookAt = cam.lookAt;
-	zoom = glm::length(cam.position - ogLookAt);
 
 	// Initialize CUDA and GL components
 	init();
@@ -76,7 +48,10 @@ int main(int argc, char** argv) {
 	// Initialize ImGui Data
 	InitImguiData(guiData);
 	InitDataContainer(guiData);
-
+	GLenum err;
+	while ((err = glGetError()) != GL_NO_ERROR) {
+        std::cerr << "OpenGL error: " << err << std::endl;
+	}
 	// GLFW main loop
 	mainLoop();
 

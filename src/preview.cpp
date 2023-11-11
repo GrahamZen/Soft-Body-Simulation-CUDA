@@ -36,42 +36,45 @@ void initTextures() {
 }
 
 void initVAO(void) {
-	GLfloat vertices[] = {
-		-1.0f, -1.0f,
-		1.0f, -1.0f,
-		1.0f,  1.0f,
-		-1.0f,  1.0f,
+	float vertices[] = {
+		0.5f, 0.5f, 0.0f,   // срио╫г
+		0.5f, -0.5f, 0.0f,  // сроб╫г
+		-0.5f, -0.5f, 0.0f, // вСоб╫г
+		-0.5f, 0.5f, 0.0f   // вСио╫г
 	};
-
-	GLfloat texcoords[] = {
-		1.0f, 1.0f,
-		0.0f, 1.0f,
-		0.0f, 0.0f,
-		1.0f, 0.0f
+	unsigned int indices[] = {  // note that we start from 0!
+		0, 1, 3,  // first Triangle
+		1, 2, 3   // second Triangle
 	};
+	//GLfloat texcoords[] = {
+	//	1.0f, 1.0f,
+	//	0.0f, 1.0f,
+	//	0.0f, 0.0f,
+	//	1.0f, 0.0f
+	//};
 
-	GLushort indices[] = { 0, 1, 3, 3, 1, 2 };
-
-	GLuint vertexBufferObjID[3];
+	GLuint vertexBufferObjID[3], VAO;
 	glGenBuffers(3, vertexBufferObjID);
+	glGenVertexArrays(1, &VAO);
+	glBindVertexArray(VAO);
 
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObjID[0]);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-	glVertexAttribPointer((GLuint)positionLocation, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	glVertexAttribPointer((GLuint)positionLocation, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
 	glEnableVertexAttribArray(positionLocation);
 
-	glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObjID[1]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(texcoords), texcoords, GL_STATIC_DRAW);
-	glVertexAttribPointer((GLuint)texcoordsLocation, 2, GL_FLOAT, GL_FALSE, 0, 0);
-	glEnableVertexAttribArray(texcoordsLocation);
+	//glBindBuffer(GL_ARRAY_BUFFER, vertexBufferObjID[1]);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(texcoords), texcoords, GL_STATIC_DRAW);
+	//glVertexAttribPointer((GLuint)texcoordsLocation, 2, GL_FLOAT, GL_FALSE, 0, 0);
+	//glEnableVertexAttribArray(texcoordsLocation);
 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertexBufferObjID[2]);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
 }
 
 GLuint initShader() {
-	const char* attribLocations[] = { "Position", "Texcoords" };
-	GLuint program = glslUtility::createDefaultProgram(attribLocations, 2);
+	const char* attribLocations[] = { "aPos" };
+	GLuint program = glslUtility::createDefaultProgram(attribLocations, 1);
 	GLint location;
 
 	//glUseProgram(program);
@@ -171,13 +174,13 @@ bool init() {
 
 	// Initialize other stuff
 	initVAO();
-	initTextures();
+	//initTextures();
 	initCuda();
-	initPBO();
+	//initPBO();
 	GLuint passthroughProgram = initShader();
 
 	glUseProgram(passthroughProgram);
-	glActiveTexture(GL_TEXTURE0);
+	//glActiveTexture(GL_TEXTURE0);
 
 	return true;
 }
@@ -237,20 +240,15 @@ void mainLoop() {
 		
 		glfwPollEvents();
 
-		runCuda();
+		//runCuda();
 
-		string title = "CIS565 Path Tracer | " + utilityCore::convertIntToString(iteration) + " Iterations";
+		string title = "CIS565 SoftBody Simulation | " + utilityCore::convertIntToString(iteration) + " Iterations";
 		glfwSetWindowTitle(window, title.c_str());
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, pbo);
-		glBindTexture(GL_TEXTURE_2D, displayImage);
-		glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+		glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT);
 
-		// Binding GL_PIXEL_UNPACK_BUFFER back to default
-		glBindBuffer(GL_PIXEL_UNPACK_BUFFER, 0);
-
 		// VAO, shader program, and texture already bound
-		glDrawElements(GL_TRIANGLES, 6,  GL_UNSIGNED_SHORT, 0);
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
 		// Render ImGui Stuff
 		RenderImGui();
