@@ -64,17 +64,22 @@ include_directories(${GLM_INCLUDE_DIRS})
 
 set(headers
     src/main.h
-    src/image.h
-    src/interactions.h
     src/intersections.h
     src/glslUtility.hpp
-    src/pathtrace.h
+    src/simulation.h
     src/scene.h
     src/sceneStructs.h
     src/preview.h
     src/utilities.h
+    src/surfaceshader.h
+    src/shaderprogram.h
+    src/drawable.h
+    src/texture.h
+    src/mesh.h
+	src/tinyobj/stb_image.h
+	src/tinyobj/stb_image_write.h
+
     src/ImGui/imconfig.h
-	
 	src/ImGui/imgui.h
     src/ImGui/imconfig.h
     src/ImGui/imgui_impl_glfw.h
@@ -89,13 +94,17 @@ set(headers
 set(sources
     src/main.cpp
     src/stb.cpp
-    src/image.cpp
     src/glslUtility.cpp
-    src/pathtrace.cu
+    src/simulation.cu
     src/scene.cpp
     src/preview.cpp
     src/utilities.cpp
-	
+    src/surfaceshader.cpp
+    src/shaderprogram.cpp
+    src/drawable.cpp
+    src/texture.cpp
+    src/mesh.cpp
+    
     src/ImGui/imgui.cpp 
       src/ImGui/imgui_demo.cpp 
       src/ImGui/imgui_draw.cpp 

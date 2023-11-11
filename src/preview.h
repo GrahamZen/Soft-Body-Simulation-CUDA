@@ -1,9 +1,10 @@
 #pragma once
 
-extern GLuint pbo;
+extern GLuint vbo;
 
 std::string currentTimeString();
-bool init();
+bool initOpenGL();
+void initCuda();
 void mainLoop();
 
 bool MouseOverImGuiWindow();
