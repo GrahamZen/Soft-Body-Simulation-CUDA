@@ -34,27 +34,31 @@ void checkCUDAErrorFn(const char* msg, const char* file, int line) {
 #endif
 }
 
-//Kernel that writes the image to the OpenGL VBO directly.
-__global__ void sendImageToVBO(uchar4* vbo, glm::ivec2 resolution,
-    int iter, glm::vec3* image) {
-    int x = (blockIdx.x * blockDim.x) + threadIdx.x;
-    int y = (blockIdx.y * blockDim.y) + threadIdx.y;
+template <typename T>
+void inspect(T* dev_ptr, int size) {
+    std::vector<T> host_ptr(size);
+    cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost);
+    std::cout << std::endl;
+}
 
-    if (x < resolution.x && y < resolution.y) {
-        int index = x + (y * resolution.x);
-        glm::vec3 pix = image[index];
+__device__ float trace(const glm::mat3& a)
+{
+    return a[0][0] + a[1][1] + a[2][2];
+}
 
-        glm::ivec3 color;
-        color.x = glm::clamp((int)(pix.x / iter * 255.0), 0, 255);
-        color.y = glm::clamp((int)(pix.y / iter * 255.0), 0, 255);
-        color.z = glm::clamp((int)(pix.z / iter * 255.0), 0, 255);
+__device__ float trace2(const glm::mat3& a)
+{
+    return (float)((a[0][0] * a[0][0]) + (a[1][1] * a[1][1]) + (a[2][2] * a[2][2]));
+}
 
-        // Each thread writes one pixel location in the texture (textel)
-        vbo[index].w = 0;
-        vbo[index].x = color.x;
-        vbo[index].y = color.y;
-        vbo[index].z = color.z;
-    }
+__device__ float trace4(const glm::mat3& a)
+{
+    return (float)(a[0][0] * a[0][0] * a[0][0] * a[0][0] + a[1][1] * a[1][1] * a[1][1] * a[1][1] + a[2][2] * a[2][2] * a[2][2] * a[2][2]);
+}
+
+__device__ float det2(const glm::mat3& a)
+{
+    return (float)(a[0][0] * a[0][0] * a[1][1] * a[1][1] * a[2][2] * a[2][2]);
 }
 
 static GuiDataContainer* guiData = NULL;
@@ -67,15 +71,58 @@ void InitDataContainer(GuiDataContainer* imGuiData)
 }
 
 // Add the current iteration's output to the overall image
-__global__ void Step(glm::vec3* X, int numVerts)
+__global__ void AddGravity(glm::vec3* Force, glm::vec3* V, float mass, int numVerts, bool jump)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
     if (index < numVerts)
     {
-        X[index].y += 0.001f;
+        if (jump)
+            V[index].y += 0.2f;
+        Force[index] = glm::vec3(0, -9.8f, 0) * mass;
     }
 }
+
+__device__ glm::mat3 Build_Edge_Matrix(const glm::vec3* X, const GLuint* Tet, int tet) {
+    glm::mat3 ret(0.0f);
+    ret[0] = X[Tet[tet * 4 + 1]] - X[Tet[tet * 4]];
+    ret[1] = X[Tet[tet * 4 + 2]] - X[Tet[tet * 4]];
+    ret[2] = X[Tet[tet * 4 + 3]] - X[Tet[tet * 4]];
+
+    return ret;
+}
+
+__global__ void computeInvDm(glm::mat3* inv_Dm, int tet_number, const glm::vec3* X, const GLuint* Tet)
+{
+    int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+    if (index < tet_number)
+    {
+        inv_Dm[index] = Build_Edge_Matrix(X, Tet, index);
+    }
+}
+
+__global__ void LaplacianGatherKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int tet_number, const GLuint* Tet) {
+    int tet = (blockIdx.x * blockDim.x) + threadIdx.x;
+    if (tet < tet_number) {
+        glm::vec3 sum = V[Tet[tet * 4]] + V[Tet[tet * 4 + 1]] + V[Tet[tet * 4 + 2]] + V[Tet[tet * 4 + 3]];
+
+        for (int i = 0; i < 4; ++i) {
+            int idx = Tet[tet * 4 + i];
+            atomicAdd(&(V_sum[idx].x), sum.x - V[idx].x);
+            atomicAdd(&(V_sum[idx].y), sum.y - V[idx].y);
+            atomicAdd(&(V_sum[idx].z), sum.z - V[idx].z);
+            atomicAdd(&(V_num[idx]), 3);
+        }
+    }
+}
+
+__global__ void LaplacianKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int number, const GLuint* Tet, float blendAlpha) {
+    int i = (blockIdx.x * blockDim.x) + threadIdx.x;
+    if (i < number) {
+        V[i] = blendAlpha * V[i] + (1 - blendAlpha) * V_sum[i] / float(V_num[i]);
+    }
+}
+
 
 __global__ void PopulatePos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int tet_number)
 {
@@ -104,12 +151,62 @@ __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* X, int number)
 
     if (index < number)
     {
-        glm::vec3 v0v1 = X[number * 3 + 2] - X[number * 3 + 1];
-        glm::vec3 v0v2 = X[number * 3 + 2] - X[number * 3 + 0];
+        glm::vec3 v0v1 = X[index * 3 + 2] - X[index * 3 + 1];
+        glm::vec3 v0v2 = X[index * 3 + 2] - X[index * 3 + 0];
         glm::vec3 nor = glm::cross(v0v1, v0v2);
-        norms[number * 3 + 0] = glm::vec4(nor, 1.f);
-        norms[number * 3 + 1] = glm::vec4(nor, 1.f);
-        norms[number * 3 + 2] = glm::vec4(nor, 1.f);
+        norms[index * 3 + 0] = glm::vec4(nor, 1.f);
+        norms[index * 3 + 1] = glm::vec4(nor, 1.f);
+        norms[index * 3 + 2] = glm::vec4(nor, 1.f);
+    }
+}
+
+__global__ void ComputeForces(glm::vec3* Force, const glm::vec3* X, const GLuint* Tet, int tet_number, const glm::mat3* inv_Dm, float stiffness_0, float stiffness_1) {
+    int tet = blockIdx.x * blockDim.x + threadIdx.x;
+    if (tet >= tet_number) return;
+
+    glm::mat3 F = Build_Edge_Matrix(X, Tet, tet) * inv_Dm[tet];
+    glm::mat3 FtF = glm::transpose(F) * F;
+    glm::mat3 G = (FtF - glm::mat3(1.0f)) * 0.5f;
+    glm::mat3 S = G * (2.0f * stiffness_1) + glm::mat3(1.0f) * (stiffness_0 * trace(G));
+    glm::mat3 forces = F * S * glm::transpose(inv_Dm[tet]) * (-1.0f / (6.0f * glm::determinant(inv_Dm[tet])));
+
+    glm::vec3 force_0 = -glm::vec3(forces[0] + forces[1] + forces[2]);
+    glm::vec3 force_1 = glm::vec3(forces[0]);
+    glm::vec3 force_2 = glm::vec3(forces[1]);
+    glm::vec3 force_3 = glm::vec3(forces[2]);
+
+    atomicAdd(&(Force[Tet[tet * 4 + 0]].x), force_0.x);
+    atomicAdd(&(Force[Tet[tet * 4 + 0]].y), force_0.y);
+    atomicAdd(&(Force[Tet[tet * 4 + 0]].z), force_0.z);
+    atomicAdd(&(Force[Tet[tet * 4 + 1]].x), force_0.x);
+    atomicAdd(&(Force[Tet[tet * 4 + 1]].y), force_0.y);
+    atomicAdd(&(Force[Tet[tet * 4 + 1]].z), force_0.z);
+    atomicAdd(&(Force[Tet[tet * 4 + 2]].x), force_0.x);
+    atomicAdd(&(Force[Tet[tet * 4 + 2]].y), force_0.y);
+    atomicAdd(&(Force[Tet[tet * 4 + 2]].z), force_0.z);
+    atomicAdd(&(Force[Tet[tet * 4 + 3]].x), force_0.x);
+    atomicAdd(&(Force[Tet[tet * 4 + 3]].y), force_0.y);
+    atomicAdd(&(Force[Tet[tet * 4 + 3]].z), force_0.z);
+}
+
+__global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* Force,
+    int number, float mass, float dt, float damp,
+    glm::vec3 floorPos, glm::vec3 floorUp, float muT, float muN) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= number) return;
+
+    V[i] += Force[i] / mass * dt;
+    V[i] *= damp;
+    X[i] += V[i] * dt;
+
+    float signedDis = glm::dot(X[i] - floorPos, floorUp);
+    if (signedDis < 0 && glm::dot(V[i], floorUp) < 0) {
+        X[i] -= signedDis * floorUp;
+        glm::vec3 vN = glm::dot(V[i], floorUp) * floorUp;
+        glm::vec3 vT = V[i] - vN;
+        float mag_vT = glm::length(vT);
+        float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, 0.0f);
+        V[i] = -muN * vN + a * vT;
     }
 }
 
@@ -163,7 +260,13 @@ SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName) :Mesh()
     cudaMemset(V, 0, sizeof(glm::vec3) * number);
     cudaMalloc((void**)&inv_Dm, sizeof(glm::mat4) * tet_number);
     cudaMalloc((void**)&V_sum, sizeof(glm::vec3) * number);
+    cudaMemset(V_sum, 0, sizeof(glm::vec3) * number);
     createTetrahedron();
+    cudaMalloc((void**)&V_num, sizeof(int) * number);
+    cudaMemset(V_num, 0, sizeof(int) * number);
+    int threadsPerBlock = 64;
+    int blocks = (tet_number + threadsPerBlock - 1) / threadsPerBlock;
+    computeInvDm << < blocks, threadsPerBlock >> > (inv_Dm, tet_number, X, Tet);
 }
 
 SoftBody::~SoftBody()
@@ -190,6 +293,16 @@ void SoftBody::unMapDevicePtr()
 {
     cudaGraphicsUnmapResources(1, &cuda_bufPos_resource, 0);
     cudaGraphicsUnmapResources(1, &cuda_bufNor_resource, 0);
+}
+
+void SoftBody::Laplacian_Smoothing(float blendAlpha)
+{
+    cudaMemset(V_sum, 0, sizeof(glm::vec3) * number);
+    cudaMemset(V_num, 0, sizeof(int) * number);
+    int threadsPerBlock = 64;
+    int blocks = (tet_number + threadsPerBlock - 1) / threadsPerBlock;
+    LaplacianGatherKern << < blocks, threadsPerBlock >> > (V, V_sum, V_num, tet_number, Tet);
+    LaplacianKern << < (number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (V, V_sum, V_num, number, Tet, blendAlpha);
 }
 
 std::vector<GLuint> SoftBody::loadEleFile(const std::string& EleFilename)
@@ -263,9 +376,18 @@ std::vector<glm::vec3> SoftBody::loadNodeFile(const std::string& nodeFilename) {
 
 void SoftBody::Update()
 {
-    Step << <number / 32 + 1, 32 >> > (X, number);
+    for (int l = 0; l < 10; l++)
+        _Update();
 }
 
 void SoftBody::_Update()
 {
+    int threadsPerBlock = 64;
+    inspect(inv_Dm, tet_number);
+    AddGravity << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, V, mass, number, jump);
+    Laplacian_Smoothing();
+    glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
+    glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
+    //ComputeForces << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, tet_number, inv_Dm, stiffness_0, stiffness_1);
+    UpdateParticles << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, Force, number, mass, dt, damp, floorPos, floorUp, muT, muN);
 }

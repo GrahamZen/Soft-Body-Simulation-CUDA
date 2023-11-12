@@ -16,18 +16,20 @@ public:
     glm::vec3* getX()const { return X; }
     glm::vec3* getV()const { return V; }
     glm::vec3* getForce()const { return Force; }
-    glm::mat4* getInvDm()const { return inv_Dm; }
+    glm::mat3* getInvDm()const { return inv_Dm; }
+    void setJump(bool jump) { this->jump = jump; }
     int getNumber()const { return number; }
     int getTetNumber()const { return tet_number; }
+    void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
-    float dt = 0.003f;
+    float dt = 0.001f;
     float mass = 1.0f;
     float stiffness_0 = 20000.0f;
     float stiffness_1 = 5000.0f;
     float damp = 0.999f;
     float muN = 0.5f;
     float muT = 0.5f;
-    bool neoHookean = false;
+    bool jump = false;
 
     GLuint* Tet;
     int tet_number; // The number of tetrahedra
@@ -37,7 +39,7 @@ private:
     glm::vec3* V;
     glm::vec3* X;
 
-    glm::mat4* inv_Dm;
+    glm::mat3* inv_Dm;
 
     // For Laplacian smoothing.
     glm::vec3* V_sum;
@@ -45,7 +47,6 @@ private:
 
     // Methods
     void _Update();
-    glm::mat4 Build_Edge_Matrix(int tet);
     std::vector<GLuint> loadEleFile(const std::string&);
     std::vector<glm::vec3> loadNodeFile(const std::string&);
 };

@@ -22,7 +22,6 @@ glm::vec3 ogLookAt; // for recentering the camera
 
 Scene* scene;
 GuiDataContainer* guiData;
-RenderState* renderState;
 Camera* camera;
 
 SurfaceShader* m_progLambert;
@@ -137,18 +136,19 @@ void runCuda() {
 }
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    simContext->softBodies.front()->setJump(false);
+    Camera& cam = *camera;
     if (action == GLFW_PRESS) {
         switch (key) {
         case GLFW_KEY_ESCAPE:
             glfwSetWindowShouldClose(window, GL_TRUE);
             break;
         case GLFW_KEY_S:
+            camchanged = true;
+            cam.lookAt = ogLookAt;
             break;
         case GLFW_KEY_SPACE:
-            camchanged = true;
-            renderState = &scene->state;
-            Camera& cam = renderState->camera;
-            cam.lookAt = ogLookAt;
+            simContext->softBodies.front()->setJump(true);
             break;
         }
     }
@@ -179,8 +179,7 @@ void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
         camchanged = true;
     }
     else if (middleMousePressed) {
-        renderState = &scene->state;
-        Camera& cam = renderState->camera;
+        Camera& cam = *camera;
         glm::vec3 forward = cam.view;
         forward.y = 0.0f;
         forward = glm::normalize(forward);
