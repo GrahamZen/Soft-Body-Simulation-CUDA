@@ -1,4 +1,4 @@
-#include "drawable.h"
+#include <drawable.h>
 
 Drawable::Drawable()
     : bufIdx(), bufPos(), bufNor(), bufUV(),

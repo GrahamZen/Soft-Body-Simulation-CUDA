@@ -1,8 +1,8 @@
 #pragma once
 
 #include <vector>
-#include "scene.h"
-#include "mesh.h"
+#include <mesh.h>
+#include <utilities.h>
 
 class SoftBody : public Mesh {
 public:
@@ -50,15 +50,3 @@ private:
     std::vector<GLuint> loadEleFile(const std::string&);
     std::vector<glm::vec3> loadNodeFile(const std::string&);
 };
-
-class SimulationCUDAContext {
-public:
-    SimulationCUDAContext();
-    ~SimulationCUDAContext();
-    void Update();
-    std::vector<SoftBody*> softBodies;
-};
-
-
-
-void InitDataContainer(GuiDataContainer* guiData);

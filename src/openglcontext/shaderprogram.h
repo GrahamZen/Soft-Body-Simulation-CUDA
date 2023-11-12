@@ -3,8 +3,8 @@
 
 #include <glm/glm.hpp>
 
-#include "drawable.h"
-#include "texture.h"
+#include <drawable.h>
+#include <texture.h>
 
 
 class ShaderProgram

@@ -8,8 +8,10 @@
 #include <glm/gtc/matrix_inverse.hpp>
 #include <iostream>
 #include <cstdio>
-
-#include "utilities.h"
+#include <vector>
+#include <sstream>
+#include <string>
+#include <utilities.h>
 
 float utilityCore::clamp(float f, float min, float max) {
     if (f < min) {

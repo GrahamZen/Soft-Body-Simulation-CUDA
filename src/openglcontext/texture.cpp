@@ -1,5 +1,5 @@
-#include "texture.h"
-#include "tinyobj/stb_image.h"
+#include <texture.h>
+#include "stb_image.h"
 #include <iostream>
 #include <string>
 

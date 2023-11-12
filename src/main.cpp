@@ -1,7 +1,11 @@
-#include "main.h"
-#include "preview.h"
+#include <glm/glm.hpp>
+#include <glm/gtx/transform.hpp>
+
+#include <main.h>
+#include <preview.h>
 #include <cstring>
-#include "surfaceshader.h"
+#include <surfaceshader.h>
+
 
 static std::string startTimeString;
 
@@ -20,7 +24,6 @@ float zoom, theta, phi;
 glm::vec3 cameraPosition;
 glm::vec3 ogLookAt; // for recentering the camera
 
-Scene* scene;
 GuiDataContainer* guiData;
 Camera* camera;
 
