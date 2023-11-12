@@ -33,8 +33,7 @@ void cleanupCuda() {
 }
 
 void initCuda() {
-    simContext = new SimulationCUDAContext();
-    simContext->addSoftBody(new SoftBody{ "../assets/house2.node", "../assets/house2.ele", simContext });
+    simContext = loadContext();
     cudaGLSetGLDevice(0);
 
     // Clean up on program exit

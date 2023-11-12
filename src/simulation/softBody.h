@@ -8,7 +8,8 @@ class SimulationCUDAContext;
 
 class SoftBody : public Mesh {
 public:
-    SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext*);
+    SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext*, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
+        float mass = 1.0f, float stiffness_0 = 20000.0f, float stiffness_1 = 5000.0f, float damp = 0.999f, float muN = 0.5f, float muT = 0.5f);
     ~SoftBody();
 
     void Update();

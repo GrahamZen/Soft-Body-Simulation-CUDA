@@ -55,9 +55,9 @@ std::vector<glm::vec3> SoftBody::loadNodeFile(const std::string& nodeFilename) {
         float x, y, z;
         lineStream >> index >> x >> y >> z;
 
-        X[i].x = x * 0.4f;
-        X[i].y = y * 0.4f;
-        X[i].z = z * 0.4f;
+        X[i].x = x;
+        X[i].y = y;
+        X[i].z = z;
 
         center += X[i];
     }

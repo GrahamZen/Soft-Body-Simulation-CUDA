@@ -33,3 +33,7 @@ namespace utilityCore {
 
 template <typename T>
 void inspectHost(T*, int);
+
+class SimulationCUDAContext;
+
+SimulationCUDAContext* loadContext();

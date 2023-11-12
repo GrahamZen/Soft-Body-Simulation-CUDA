@@ -3,11 +3,11 @@
 #include <sceneStructs.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
+#include <glm/gtc/matrix_transform.hpp> 
 #include <simulationContext.h>
 #include <utilities.h>
 #include <utilities.cuh>
 #include <iostream>
-
 #define ERRORCHECK 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -68,14 +68,28 @@ void SimulationCUDAContext::draw(ShaderProgram* shaderProgram)
         shaderProgram->draw(*softBody, 0);
 }
 
-SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext* _simContext) :Mesh(), simContext(_simContext)
+SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext* context, const glm::vec3& pos, const glm::vec3& scale,
+    const glm::vec3& rot, float mass, float stiffness_0, float stiffness_1, float damp, float muN, float muT)
+    : simContext(context), mass(mass), stiffness_0(stiffness_0), stiffness_1(stiffness_1), damp(damp), muN(muN), muT(muT)
 {
     std::vector<glm::vec3> vertices = loadNodeFile(nodeFileName);
     number = vertices.size();
     cudaMalloc((void**)&X, sizeof(glm::vec3) * number);
     cudaMemcpy(X, vertices.data(), sizeof(glm::vec3) * number, cudaMemcpyHostToDevice);
+
+    // transform
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, pos);
+    model = glm::scale(model, scale);
+    model = glm::rotate(model, glm::radians(rot.x), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rot.z), glm::vec3(0.0f, 0.0f, 1.0f));
+    int threadsPerBlock = 64;
+    int blocks = (number + threadsPerBlock - 1) / threadsPerBlock;
+    TransformVertices << < blocks, threadsPerBlock >> > (X, model, number);
+
     cudaMalloc((void**)&X0, sizeof(glm::vec3) * number);
-    cudaMemcpy(X0, vertices.data(), sizeof(glm::vec3) * number, cudaMemcpyHostToDevice);
+    cudaMemcpy(X0, X, sizeof(glm::vec3) * number, cudaMemcpyDeviceToDevice);
 
     std::vector<GLuint> idx = loadEleFile(eleFileName);
     tet_number = idx.size() / 4;
@@ -94,8 +108,7 @@ SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, Simulation
     createTetrahedron();
     cudaMalloc((void**)&V_num, sizeof(int) * number);
     cudaMemset(V_num, 0, sizeof(int) * number);
-    int threadsPerBlock = 64;
-    int blocks = (tet_number + threadsPerBlock - 1) / threadsPerBlock;
+    blocks = (tet_number + threadsPerBlock - 1) / threadsPerBlock;
     computeInvDm << < blocks, threadsPerBlock >> > (inv_Dm, tet_number, X, Tet);
 }
 

@@ -35,6 +35,7 @@ __inline__ __device__ float det2(const glm::mat3& a)
 
 __device__ glm::mat3 Build_Edge_Matrix(const glm::vec3* X, const GLuint* Tet, int tet);
 
+__global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int number);
 __global__ void AddGravity(glm::vec3* Force, glm::vec3* V, float mass, int numVerts, bool jump);
 __global__ void computeInvDm(glm::mat3* inv_Dm, int tet_number, const glm::vec3* X, const GLuint* Tet);
 __global__ void LaplacianGatherKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int tet_number, const GLuint* Tet);

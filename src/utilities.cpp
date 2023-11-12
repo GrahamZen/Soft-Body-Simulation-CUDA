@@ -12,7 +12,12 @@
 #include <vector>
 #include <sstream>
 #include <string>
+#include <fstream>
+#include <filesystem>
 #include <utilities.h>
+#include <simulationContext.h>
+#include <json.hpp>
+namespace fs = std::filesystem;
 
 float utilityCore::clamp(float f, float min, float max) {
     if (f < min) {
@@ -131,3 +136,62 @@ template void inspectHost<glm::vec3>(glm::vec3* dev_ptr, int size);
 template void inspectHost<glm::vec4>(glm::vec4* dev_ptr, int size);
 template void inspectHost<glm::mat3>(glm::mat3* dev_ptr, int size);
 template void inspectHost<glm::mat4>(glm::mat4* dev_ptr, int size);
+
+std::ifstream findFile(const std::string& fileName) {
+    fs::path currentPath = fs::current_path();
+    for (int i = 0; i < 5; ++i) {
+        fs::path filePath = currentPath / fileName;
+        if (fs::exists(filePath)) {
+            std::ifstream fileStream(filePath);
+            if (fileStream.is_open())
+                return fileStream;
+        }
+        currentPath = currentPath.parent_path();
+    }
+
+    std::cerr << "File not found: " << fileName << std::endl;
+    return std::ifstream();
+}
+
+SimulationCUDAContext* loadContext() {
+    SimulationCUDAContext* simContext = new SimulationCUDAContext();
+
+    std::string filename = "context.json";
+    std::ifstream fileStream = findFile(filename);
+    if (!fileStream.is_open()) {
+        std::cerr << "Failed to open JSON file: " << filename << std::endl;
+        return nullptr;
+    }
+    nlohmann::json json;
+    fileStream >> json;
+    fileStream.close();
+
+    if (json.contains("dt")) {
+        simContext->setDt(json["dt"].get<float>());
+    }
+
+    if (json.contains("softBodies")) {
+        for (const auto& sbJson : json["softBodies"]) {
+            std::string nodeFile = sbJson["nodeFile"];
+            std::string eleFile = sbJson["eleFile"];
+            glm::vec3 pos = glm::vec3(sbJson["pos"][0].get<float>(), sbJson["pos"][1].get<float>(), sbJson["pos"][2].get<float>());
+            glm::vec3 scale = glm::vec3(sbJson["scale"][0].get<float>(), sbJson["scale"][1].get<float>(), sbJson["scale"][2].get<float>());
+            glm::vec3 rot = glm::vec3(sbJson["rot"][0].get<float>(), sbJson["rot"][1].get<float>(), sbJson["rot"][2].get<float>());
+            bool jump = sbJson["jump"].get<bool>();
+            float mass = sbJson["mass"].get<float>();
+            float stiffness_0 = sbJson["stiffness_0"].get<float>();
+            float stiffness_1 = sbJson["stiffness_1"].get<float>();
+            float damp = sbJson["damp"].get<float>();
+            float muN = sbJson["muN"].get<float>();
+            float muT = sbJson["muT"].get<float>();
+
+            SoftBody* softBody = new SoftBody(nodeFile.c_str(), eleFile.c_str(), simContext,
+                pos, scale, rot,
+                mass, stiffness_0, stiffness_1, damp, muN, muT);
+
+            simContext->addSoftBody(softBody);
+        }
+    }
+
+    return simContext;
+}

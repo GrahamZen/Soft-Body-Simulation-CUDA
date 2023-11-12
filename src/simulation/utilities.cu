@@ -22,6 +22,16 @@ void checkCUDAErrorFn(const char* msg, const char* file, int line) {
 #endif
 }
 
+__global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int number)
+{
+    int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+
+    if (index < number)
+    {
+        X[index] = glm::vec3(transform * glm::vec4(X[index], 1.f));
+    }
+}
+
 // Add the current iteration's output to the overall image
 __global__ void AddGravity(glm::vec3* Force, glm::vec3* V, float mass, int numVerts, bool jump)
 {
