@@ -16,10 +16,10 @@ static bool middleMousePressed = false;
 static double lastX;
 static double lastY;
 
-static bool camchanged = true;
+bool camchanged = false;
 static float dtheta = 0, dphi = 0;
 static glm::vec3 cammove;
-
+bool panelModified = false;
 float zoom, theta, phi;
 glm::vec3 cameraPosition;
 glm::vec3 ogLookAt; // for recentering the camera
@@ -93,6 +93,11 @@ int main(int argc, char** argv) {
     // Initialize ImGui Data
     InitImguiData(guiData);
     InitDataContainer(guiData);
+    guiData->phi = phi;
+    guiData->theta = theta;
+    guiData->cameraLookAt = ogLookAt;
+    guiData->zoom = zoom;
+
     GLenum err;
     while ((err = glGetError()) != GL_NO_ERROR) {
         std::cerr << "OpenGL error: " << err << std::endl;
@@ -107,6 +112,14 @@ int main(int argc, char** argv) {
 }
 
 void runCuda() {
+    if (panelModified) {
+        simContext->setDt(guiData->Dt);
+        phi = guiData->phi;
+        theta = guiData->theta;
+        camera->lookAt = guiData->cameraLookAt;
+        zoom = guiData->zoom;
+        camchanged = true;
+    }
     if (camchanged) {
         Camera& cam = *camera;
         cameraPosition.x = zoom * sin(phi) * sin(theta);
@@ -123,11 +136,17 @@ void runCuda() {
         cam.position = cameraPosition;
         cameraPosition += cam.lookAt;
         cam.position = cameraPosition;
+        guiData->phi = phi;
+        guiData->theta = theta;
+        guiData->zoom = zoom;
         camchanged = false;
         m_progLambert->setCameraPos(cameraPosition);
         m_progLambert->setViewProjMatrix(camera->getView(), camera->getProj());
     }
 
+    if (guiData->Reset) {
+        simContext->Reset();
+    }
     // Map OpenGL buffer object for writing from CUDA on a single GPU
     // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use this buffer
 
@@ -139,7 +158,7 @@ void runCuda() {
 }
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    simContext->softBodies.front()->setJump(false);
+    simContext->setSoftBodyAttrJump(0, false);
     Camera& cam = *camera;
     if (action == GLFW_PRESS) {
         switch (key) {
@@ -151,7 +170,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             cam.lookAt = ogLookAt;
             break;
         case GLFW_KEY_SPACE:
-            simContext->softBodies.front()->setJump(true);
+            simContext->setSoftBodyAttrJump(0, true);
             break;
         }
     }

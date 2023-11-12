@@ -13,6 +13,8 @@ GLFWwindow* window;
 GuiDataContainer* imguiData = NULL;
 ImGuiIO* io = nullptr;
 bool mouseOverImGuiWinow = false;
+extern bool panelModified;
+extern bool camchanged;
 
 std::string currentTimeString() {
     time_t now;
@@ -32,7 +34,7 @@ void cleanupCuda() {
 
 void initCuda() {
     simContext = new SimulationCUDAContext();
-    simContext->softBodies.push_back(new SoftBody{ "../assets/house2.node", "../assets/house2.ele" });
+    simContext->addSoftBody(new SoftBody{ "../assets/house2.node", "../assets/house2.ele", simContext });
     cudaGLSetGLDevice(0);
 
     // Clean up on program exit
@@ -96,14 +98,26 @@ void RenderImGui()
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-
+    panelModified = false;
     bool show_demo_window = true;
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     static float f = 0.0f;
     static int counter = 0;
 
-    ImGui::Begin("Path Tracer Analytics");                  // Create a window called "Hello, world!" and append into it.
+    ImGui::Begin("Simulator Analytics");                  // Create a window called "Hello, world!" and append into it.
+    ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
+    imguiData->Reset = ImGui::Button("Reset");
+    bool dtChanged = ImGui::DragFloat("dt", &imguiData->Dt, 0.0001f, 0.0001f, 0.05f, "%.4f");
+    float availWidth = ImGui::GetContentRegionAvail().x;
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    bool cameraPhiChanged = ImGui::DragFloat("Camera Phi", &imguiData->phi, 0.1f, -PI, PI, "%.4f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    bool cameraThetaChanged = ImGui::DragFloat("Camera Theta", &imguiData->theta, 0.1f, 0.001f, PI - 0.001f, "%.4f");
+    bool cameraLookAtChanged = ImGui::DragFloat3("Camera Look At", &imguiData->cameraLookAt.x, 1.0f, -200.0f, 200.0f, "%.4f");
+    bool zoomChanged = ImGui::DragFloat("Zoom", &imguiData->zoom, 0.01f, 0.01f, 100.0f, "%.4f");
+
 
     // LOOK: Un-Comment to check the output window and usage
     //ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
@@ -117,11 +131,12 @@ void RenderImGui()
     //	counter++;
     //ImGui::SameLine();
     //ImGui::Text("counter = %d", counter);
-    ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
-    ImGui::Text("Traced Depth %d", imguiData->TracedDepth);
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
 
+    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged) {
+        panelModified = true;
+    }
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -145,14 +160,14 @@ void mainLoop() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
-        if(imguiData->WireFrame)
+        glEnable(GL_MULTISAMPLE);
+        if (imguiData->WireFrame)
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         else
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         // VAO, shader program, and texture already bound
-        m_progLambert->draw(*(simContext->softBodies.front()));
-
+        simContext->draw(m_progLambert);
         // Render ImGui Stuff
         RenderImGui();
 

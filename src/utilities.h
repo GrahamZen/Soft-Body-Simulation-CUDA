@@ -12,7 +12,12 @@ class GuiDataContainer
 public:
     GuiDataContainer() : TracedDepth(0) {}
     int TracedDepth;
+    float Dt = 0.001;
     bool WireFrame = false;
+    bool Reset = false;
+    float theta, phi;
+    glm::vec3 cameraLookAt;
+    float zoom;
 };
 
 namespace utilityCore {

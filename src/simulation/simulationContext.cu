@@ -50,13 +50,32 @@ void SimulationCUDAContext::Update()
     }
 }
 
-SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName) :Mesh()
+void SimulationCUDAContext::Reset()
+{
+    for (auto softbody : softBodies) {
+        softbody->Reset();
+    }
+}
+
+void SimulationCUDAContext::addSoftBody(SoftBody* softbody)
+{
+    softBodies.push_back(softbody);
+}
+
+void SimulationCUDAContext::draw(ShaderProgram* shaderProgram)
+{
+    for (auto softBody : softBodies)
+        shaderProgram->draw(*softBody, 0);
+}
+
+SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext* _simContext) :Mesh(), simContext(_simContext)
 {
     std::vector<glm::vec3> vertices = loadNodeFile(nodeFileName);
     number = vertices.size();
     cudaMalloc((void**)&X, sizeof(glm::vec3) * number);
     cudaMemcpy(X, vertices.data(), sizeof(glm::vec3) * number, cudaMemcpyHostToDevice);
-
+    cudaMalloc((void**)&X0, sizeof(glm::vec3) * number);
+    cudaMemcpy(X0, vertices.data(), sizeof(glm::vec3) * number, cudaMemcpyHostToDevice);
 
     std::vector<GLuint> idx = loadEleFile(eleFileName);
     tet_number = idx.size() / 4;
@@ -122,6 +141,13 @@ void SoftBody::Update()
         _Update();
 }
 
+void SoftBody::Reset()
+{
+    cudaMemset(Force, 0, sizeof(glm::vec3) * number);
+    cudaMemset(V, 0, sizeof(glm::vec3) * number);
+    cudaMemcpy(X, X0, sizeof(glm::vec3) * number, cudaMemcpyDeviceToDevice);
+}
+
 void SoftBody::_Update()
 {
     int threadsPerBlock = 64;
@@ -130,5 +156,5 @@ void SoftBody::_Update()
     glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
     glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     ComputeForces << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, tet_number, inv_Dm, stiffness_0, stiffness_1);
-    UpdateParticles << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, Force, number, mass, dt, damp, floorPos, floorUp, muT, muN);
+    UpdateParticles << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, Force, number, mass, simContext->getDt(), damp, floorPos, floorUp, muT, muN);
 }

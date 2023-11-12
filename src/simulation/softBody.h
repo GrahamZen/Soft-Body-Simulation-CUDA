@@ -4,12 +4,15 @@
 #include <mesh.h>
 #include <utilities.h>
 
+class SimulationCUDAContext;
+
 class SoftBody : public Mesh {
 public:
-    SoftBody(const char* nodeFileName, const char* eleFileName);
+    SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext*);
     ~SoftBody();
 
     void Update();
+    void Reset();
     void mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr);
     void unMapDevicePtr();
     GLuint* getTet()const { return Tet; }
@@ -22,7 +25,7 @@ public:
     int getTetNumber()const { return tet_number; }
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
-    float dt = 0.001f;
+    SimulationCUDAContext* simContext;
     float mass = 1.0f;
     float stiffness_0 = 20000.0f;
     float stiffness_1 = 5000.0f;
@@ -38,6 +41,7 @@ private:
     glm::vec3* Force;
     glm::vec3* V;
     glm::vec3* X;
+    glm::vec3* X0;
 
     glm::mat3* inv_Dm;
 
