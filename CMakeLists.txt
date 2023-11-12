@@ -148,8 +148,8 @@ include_directories(
 
 cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers})
 target_link_libraries(${CMAKE_PROJECT_NAME}
-    ${LIBRARIES}
-    OpenMP::OpenMP_CXX
-    Eigen3::Eigen
-    #stream_compaction  # TODO: uncomment if using your stream compaction
+${LIBRARIES}
+Eigen3::Eigen
+OpenMP::OpenMP_CXX
+#stream_compaction  # TODO: uncomment if using your stream compaction
 )
