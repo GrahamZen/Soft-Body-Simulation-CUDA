@@ -97,18 +97,18 @@ __global__ void PopulatePos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int 
     }
 }
 
-__global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* X, int number)
+__global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int number)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
     if (index < number)
     {
-        glm::vec3 v0v1 = X[index * 3 + 2] - X[index * 3 + 1];
-        glm::vec3 v0v2 = X[index * 3 + 2] - X[index * 3 + 0];
+        glm::vec3 v0v1 = vertices[index * 3 + 1] - vertices[index * 3 + 0];
+        glm::vec3 v0v2 = vertices[index * 3 + 2] - vertices[index * 3 + 0];
         glm::vec3 nor = glm::cross(v0v1, v0v2);
-        norms[index * 3 + 0] = glm::vec4(nor, 1.f);
-        norms[index * 3 + 1] = glm::vec4(nor, 1.f);
-        norms[index * 3 + 2] = glm::vec4(nor, 1.f);
+        norms[index * 3 + 0] = glm::vec4(glm::normalize(nor), 0.f);
+        norms[index * 3 + 1] = glm::vec4(glm::normalize(nor), 0.f);
+        norms[index * 3 + 2] = glm::vec4(glm::normalize(nor), 0.f);
     }
 }
 

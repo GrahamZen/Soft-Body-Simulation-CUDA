@@ -12,6 +12,7 @@ class GuiDataContainer
 public:
     GuiDataContainer() : TracedDepth(0) {}
     int TracedDepth;
+    bool WireFrame = false;
 };
 
 namespace utilityCore {

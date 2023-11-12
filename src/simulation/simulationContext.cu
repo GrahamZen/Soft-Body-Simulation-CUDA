@@ -44,7 +44,7 @@ void SimulationCUDAContext::Update()
         softbody->mapDevicePtr(&pos, &nor);
         dim3 numThreadsPerBlock(softbody->getTetNumber() / 32 + 1);
         PopulatePos << <numThreadsPerBlock, 32 >> > (pos, softbody->getX(), softbody->getTet(), softbody->getTetNumber());
-        RecalculateNormals << <softbody->getNumber() / 32 + 1, 32 >> > (nor, softbody->getX(), softbody->getNumber());
+        RecalculateNormals << <softbody->getTetNumber() * 4 / 32 + 1, 32 >> > (nor, pos, 4 * softbody->getTetNumber());
         softbody->unMapDevicePtr();
     }
 }
@@ -124,11 +124,10 @@ void SoftBody::Update()
 void SoftBody::_Update()
 {
     int threadsPerBlock = 64;
-    inspect(inv_Dm, tet_number);
     AddGravity << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, V, mass, number, jump);
     Laplacian_Smoothing();
     glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
     glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    //ComputeForces << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, tet_number, inv_Dm, stiffness_0, stiffness_1);
+    // ComputeForces << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, tet_number, inv_Dm, stiffness_0, stiffness_1);
     UpdateParticles << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, Force, number, mass, dt, damp, floorPos, floorUp, muT, muN);
 }

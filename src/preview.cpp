@@ -117,6 +117,7 @@ void RenderImGui()
     //	counter++;
     //ImGui::SameLine();
     //ImGui::Text("counter = %d", counter);
+    ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
     ImGui::Text("Traced Depth %d", imguiData->TracedDepth);
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
@@ -144,6 +145,10 @@ void mainLoop() {
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
+        if(imguiData->WireFrame)
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        else
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         // VAO, shader program, and texture already bound
         m_progLambert->draw(*(simContext->softBodies.front()));
