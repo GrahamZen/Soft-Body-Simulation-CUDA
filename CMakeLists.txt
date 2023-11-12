@@ -10,6 +10,20 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+include(FetchContent)
+FetchContent_Declare(
+  Eigen
+  GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+  GIT_TAG master
+  GIT_SHALLOW TRUE
+  GIT_PROGRESS TRUE)
+set(EIGEN_BUILD_DOC OFF)
+
+set(BUILD_TESTING OFF)
+set(EIGEN_BUILD_PKGCONFIG OFF)
+set( OFF)
+FetchContent_MakeAvailable(Eigen)
+
 # Enable C++11 for host code
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -122,5 +136,6 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui")
 target_link_libraries(${CMAKE_PROJECT_NAME}
     ${LIBRARIES}
     OpenMP::OpenMP_CXX
+    Eigen3::Eigen
     #stream_compaction  # TODO: uncomment if using your stream compaction
-    )
+)

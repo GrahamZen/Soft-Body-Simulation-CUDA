@@ -5,7 +5,7 @@
 #include <preview.h>
 #include <cstring>
 #include <surfaceshader.h>
-
+#include <Eigen/Dense>
 
 static std::string startTimeString;
 
