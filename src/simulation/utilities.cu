@@ -49,7 +49,7 @@ __global__ void computeInvDm(glm::mat3* inv_Dm, int tet_number, const glm::vec3*
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (index < tet_number)
     {
-        inv_Dm[index] = Build_Edge_Matrix(X, Tet, index);
+        inv_Dm[index] = glm::inverse(Build_Edge_Matrix(X, Tet, index));
     }
 }
 
@@ -130,15 +130,15 @@ __global__ void ComputeForces(glm::vec3* Force, const glm::vec3* X, const GLuint
     atomicAdd(&(Force[Tet[tet * 4 + 0]].x), force_0.x);
     atomicAdd(&(Force[Tet[tet * 4 + 0]].y), force_0.y);
     atomicAdd(&(Force[Tet[tet * 4 + 0]].z), force_0.z);
-    atomicAdd(&(Force[Tet[tet * 4 + 1]].x), force_0.x);
-    atomicAdd(&(Force[Tet[tet * 4 + 1]].y), force_0.y);
-    atomicAdd(&(Force[Tet[tet * 4 + 1]].z), force_0.z);
-    atomicAdd(&(Force[Tet[tet * 4 + 2]].x), force_0.x);
-    atomicAdd(&(Force[Tet[tet * 4 + 2]].y), force_0.y);
-    atomicAdd(&(Force[Tet[tet * 4 + 2]].z), force_0.z);
-    atomicAdd(&(Force[Tet[tet * 4 + 3]].x), force_0.x);
-    atomicAdd(&(Force[Tet[tet * 4 + 3]].y), force_0.y);
-    atomicAdd(&(Force[Tet[tet * 4 + 3]].z), force_0.z);
+    atomicAdd(&(Force[Tet[tet * 4 + 1]].x), force_1.x);
+    atomicAdd(&(Force[Tet[tet * 4 + 1]].y), force_1.y);
+    atomicAdd(&(Force[Tet[tet * 4 + 1]].z), force_1.z);
+    atomicAdd(&(Force[Tet[tet * 4 + 2]].x), force_2.x);
+    atomicAdd(&(Force[Tet[tet * 4 + 2]].y), force_2.y);
+    atomicAdd(&(Force[Tet[tet * 4 + 2]].z), force_2.z);
+    atomicAdd(&(Force[Tet[tet * 4 + 3]].x), force_3.x);
+    atomicAdd(&(Force[Tet[tet * 4 + 3]].y), force_3.y);
+    atomicAdd(&(Force[Tet[tet * 4 + 3]].z), force_3.z);
 }
 
 __global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* Force,

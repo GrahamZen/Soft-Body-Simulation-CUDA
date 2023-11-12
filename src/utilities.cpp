@@ -6,6 +6,7 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <iostream>
 #include <cstdio>
 #include <vector>
@@ -118,3 +119,15 @@ std::istream& utilityCore::safeGetline(std::istream& is, std::string& t) {
         }
     }
 }
+
+template <typename T>
+void inspectHost(T* host_ptr, int size) {
+    for (int i = 0; i < size; i++) {
+        std::cout << glm::to_string(host_ptr[i]) << std::endl;
+    }
+}
+
+template void inspectHost<glm::vec3>(glm::vec3* dev_ptr, int size);
+template void inspectHost<glm::vec4>(glm::vec4* dev_ptr, int size);
+template void inspectHost<glm::mat3>(glm::mat3* dev_ptr, int size);
+template void inspectHost<glm::mat4>(glm::mat4* dev_ptr, int size);

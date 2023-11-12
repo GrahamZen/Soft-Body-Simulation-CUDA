@@ -62,6 +62,8 @@ set(GLM_ROOT_DIR "external")
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
+find_package(OpenMP)
+
 set(headers
     src/main.h
     src/intersections.h
@@ -131,5 +133,6 @@ include_directories(
 cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers})
 target_link_libraries(${CMAKE_PROJECT_NAME}
     ${LIBRARIES}
+    OpenMP::OpenMP_CXX
     #stream_compaction  # TODO: uncomment if using your stream compaction
     )

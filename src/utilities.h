@@ -25,3 +25,6 @@ namespace utilityCore {
     extern std::string convertIntToString(int number);
     extern std::istream& safeGetline(std::istream& is, std::string& t); //Thanks to http://stackoverflow.com/a/6089413
 }
+
+template <typename T>
+void inspectHost(T*, int);

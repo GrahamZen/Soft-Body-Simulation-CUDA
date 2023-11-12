@@ -7,9 +7,10 @@
 void checkCUDAErrorFn(const char* msg, const char* file, int line);
 
 template <typename T>
-void inspect(T* dev_ptr, int size) {
+void inspectGLM(T* dev_ptr, int size) {
     std::vector<T> host_ptr(size);
     cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost);
+    inspectHost(host_ptr.data(), size);
 }
 
 __inline__ __device__ float trace(const glm::mat3& a)
