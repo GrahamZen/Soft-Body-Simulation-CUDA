@@ -5,9 +5,6 @@
 #include <ImGui/imgui.h>
 #include <ImGui/imgui_impl_glfw.h>
 #include <ImGui/imgui_impl_opengl3.h>
-GLuint positionLocation = 0;
-GLuint texcoordsLocation = 1;
-GLuint displayImage;
 
 GLFWwindow* window;
 GuiDataContainer* imguiData = NULL;
@@ -33,7 +30,7 @@ void cleanupCuda() {
 }
 
 void initCuda() {
-    simContext = loadContext();
+    simContext = loadSimContext();
     cudaGLSetGLDevice(0);
 
     // Clean up on program exit

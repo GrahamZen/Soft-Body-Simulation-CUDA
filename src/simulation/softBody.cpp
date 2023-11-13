@@ -5,7 +5,7 @@
 #include <string>
 #include <glm/glm.hpp>
 
-std::vector<GLuint> SoftBody::loadEleFile(const std::string& EleFilename)
+std::vector<GLuint> SoftBody::loadEleFile(const std::string& EleFilename, int startIndex)
 {
     std::string line;
     std::ifstream file(EleFilename);
@@ -25,17 +25,18 @@ std::vector<GLuint> SoftBody::loadEleFile(const std::string& EleFilename)
         std::istringstream iss(line);
         iss >> a >> b >> c >> d >> e;
 
-        Tet[tet * 4 + 0] = b - 1;
-        Tet[tet * 4 + 1] = c - 1;
-        Tet[tet * 4 + 2] = d - 1;
-        Tet[tet * 4 + 3] = e - 1;
+        Tet[tet * 4 + 0] = b - startIndex;
+        Tet[tet * 4 + 1] = c - startIndex;
+        Tet[tet * 4 + 2] = d - startIndex;
+        Tet[tet * 4 + 3] = e - startIndex;
     }
+    std::cout << "number of tetrahedrons: " << tet_number << std::endl;
 
     file.close();
     return Tet;
 }
 
-std::vector<glm::vec3> SoftBody::loadNodeFile(const std::string& nodeFilename) {
+std::vector<glm::vec3> SoftBody::loadNodeFile(const std::string& nodeFilename, bool centralize) {
     std::ifstream file(nodeFilename);
     if (!file.is_open()) {
         std::cerr << "Unable to open file: " << nodeFilename << std::endl;
@@ -63,13 +64,16 @@ std::vector<glm::vec3> SoftBody::loadNodeFile(const std::string& nodeFilename) {
     }
 
     // Centralize the model
-    center /= static_cast<float>(number);
-    for (int i = 0; i < number; ++i) {
-        X[i] -= center;
-        float temp = X[i].y;
-        X[i].y = X[i].z;
-        X[i].z = temp;
+    if (centralize) {
+        center /= static_cast<float>(number);
+        for (int i = 0; i < number; ++i) {
+            X[i] -= center;
+            float temp = X[i].y;
+            X[i].y = X[i].z;
+            X[i].z = temp;
+        }
     }
+    std::cout << "number of nodes: " << number << std::endl;
 
     return X;
 }

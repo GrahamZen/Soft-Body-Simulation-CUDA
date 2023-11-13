@@ -17,6 +17,8 @@
 #include <utilities.h>
 #include <simulationContext.h>
 #include <json.hpp>
+#include <sceneStructs.h>
+
 namespace fs = std::filesystem;
 
 float utilityCore::clamp(float f, float min, float max) {
@@ -136,6 +138,11 @@ template void inspectHost<glm::vec3>(glm::vec3* dev_ptr, int size);
 template void inspectHost<glm::vec4>(glm::vec4* dev_ptr, int size);
 template void inspectHost<glm::mat3>(glm::mat3* dev_ptr, int size);
 template void inspectHost<glm::mat4>(glm::mat4* dev_ptr, int size);
+void inspectHost(unsigned int* host_ptr, int size) {
+    for (int i = 0; i < size / 4; i++) {
+        std::cout << host_ptr[i * 4] << " " << host_ptr[i * 4 + 1] << " " << host_ptr[i * 4 + 2] << " " << host_ptr[i * 4 + 3] << std::endl;
+    }
+}
 
 std::ifstream findFile(const std::string& fileName) {
     fs::path currentPath = fs::current_path();
@@ -153,7 +160,7 @@ std::ifstream findFile(const std::string& fileName) {
     return std::ifstream();
 }
 
-SimulationCUDAContext* loadContext() {
+SimulationCUDAContext* loadSimContext() {
     SimulationCUDAContext* simContext = new SimulationCUDAContext();
 
     std::string filename = "context.json";
@@ -184,14 +191,65 @@ SimulationCUDAContext* loadContext() {
             float damp = sbJson["damp"].get<float>();
             float muN = sbJson["muN"].get<float>();
             float muT = sbJson["muT"].get<float>();
+            bool centralize = sbJson["centralize"].get<bool>();
+            int startIndex = sbJson["start index"].get<int>();
 
             SoftBody* softBody = new SoftBody(nodeFile.c_str(), eleFile.c_str(), simContext,
                 pos, scale, rot,
-                mass, stiffness_0, stiffness_1, damp, muN, muT);
+                mass, stiffness_0, stiffness_1, damp, muN, muT, centralize, startIndex);
 
             simContext->addSoftBody(softBody);
         }
     }
 
     return simContext;
+}
+
+Camera& computeCameraParams(Camera& camera)
+{
+    // assuming resolution, position, lookAt, view, up, fovy are already set
+    float yscaled = tan(camera.fov.y * (PI / 180));
+    float xscaled = (yscaled * camera.resolution.x) / camera.resolution.y;
+    float fovx = (atan(xscaled) * 180) / PI;
+    camera.fov.x = fovx;
+
+    camera.right = glm::normalize(glm::cross(camera.view, camera.up));
+    camera.pixelLength = glm::vec2(2 * xscaled / (float)camera.resolution.x, 2 * yscaled / (float)camera.resolution.y);
+    return camera;
+}
+
+bool loadContext(Camera& camera) {
+    SimulationCUDAContext* simContext = new SimulationCUDAContext();
+
+    std::string filename = "context.json";
+    std::ifstream fileStream = findFile(filename);
+    if (!fileStream.is_open()) {
+        std::cerr << "Failed to open JSON file: " << filename << std::endl;
+        return false;
+    }
+    nlohmann::json json;
+    fileStream >> json;
+    fileStream.close();
+
+    if (json.contains("camera")) {
+        camera.resolution.y = json["camera"]["screen height"];
+        float aspectRatio = json["camera"]["aspect ratio"];
+        camera.resolution.x = aspectRatio * camera.resolution.y;
+        camera.position = glm::vec3(json["camera"]["position"][0],
+            json["camera"]["position"][1],
+            json["camera"]["position"][2]);
+        camera.lookAt = glm::vec3(json["camera"]["lookAt"][0],
+            json["camera"]["lookAt"][1],
+            json["camera"]["lookAt"][2]);
+        camera.view = glm::vec3(json["camera"]["view"][0],
+            json["camera"]["view"][1],
+            json["camera"]["view"][2]);
+        camera.up = glm::vec3(json["camera"]["up"][0],
+            json["camera"]["up"][1],
+            json["camera"]["up"][2]);
+        camera.fov.y = json["camera"]["fovy"];
+        computeCameraParams(camera);
+    }
+
+    return true;
 }

@@ -51,11 +51,8 @@ glm::mat4 Camera::getProj()const
 int main(int argc, char** argv) {
     startTimeString = currentTimeString();
     // Load scene file
-
-    camera = new Camera{ glm::ivec2(width, height),
-        glm::vec3(0, 0, 10), glm::vec3(0, 0, 0),
-        glm::vec3(0, 0, -1), glm::vec3(0, 1, 0), glm::vec3(1, 0, 0),
-        glm::vec2(45, 45), glm::vec2(0.001f, 0.001f) };
+    camera = new Camera();
+    loadContext(*camera);
     Camera& cam = *camera;
     width = cam.resolution.x;
     height = cam.resolution.y;
@@ -108,6 +105,7 @@ int main(int argc, char** argv) {
 
     delete m_progLambert;
     delete simContext;
+    delete camera;
     return 0;
 }
 

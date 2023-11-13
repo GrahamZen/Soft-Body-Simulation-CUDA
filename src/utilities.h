@@ -7,6 +7,7 @@
 #define SQRT_OF_ONE_THIRD 0.5773502691896257645091487805019574556476f
 #define EPSILON           0.00001f
 
+class Camera;
 class GuiDataContainer
 {
 public:
@@ -33,7 +34,9 @@ namespace utilityCore {
 
 template <typename T>
 void inspectHost(T*, int);
+void inspectHost(unsigned int*, int);
 
 class SimulationCUDAContext;
 
-SimulationCUDAContext* loadContext();
+SimulationCUDAContext* loadSimContext();
+bool loadContext(Camera& camera);

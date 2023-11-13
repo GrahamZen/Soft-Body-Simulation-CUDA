@@ -69,10 +69,10 @@ void SimulationCUDAContext::draw(ShaderProgram* shaderProgram)
 }
 
 SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext* context, const glm::vec3& pos, const glm::vec3& scale,
-    const glm::vec3& rot, float mass, float stiffness_0, float stiffness_1, float damp, float muN, float muT)
+    const glm::vec3& rot, float mass, float stiffness_0, float stiffness_1, float damp, float muN, float muT, bool centralize, int startIndex)
     : simContext(context), mass(mass), stiffness_0(stiffness_0), stiffness_1(stiffness_1), damp(damp), muN(muN), muT(muT)
 {
-    std::vector<glm::vec3> vertices = loadNodeFile(nodeFileName);
+    std::vector<glm::vec3> vertices = loadNodeFile(nodeFileName, centralize);
     number = vertices.size();
     cudaMalloc((void**)&X, sizeof(glm::vec3) * number);
     cudaMemcpy(X, vertices.data(), sizeof(glm::vec3) * number, cudaMemcpyHostToDevice);
@@ -91,7 +91,7 @@ SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, Simulation
     cudaMalloc((void**)&X0, sizeof(glm::vec3) * number);
     cudaMemcpy(X0, X, sizeof(glm::vec3) * number, cudaMemcpyDeviceToDevice);
 
-    std::vector<GLuint> idx = loadEleFile(eleFileName);
+    std::vector<GLuint> idx = loadEleFile(eleFileName, startIndex);
     tet_number = idx.size() / 4;
     cudaMalloc((void**)&Tet, sizeof(GLuint) * idx.size());
     cudaMemcpy(Tet, idx.data(), sizeof(GLuint) * idx.size(), cudaMemcpyHostToDevice);
