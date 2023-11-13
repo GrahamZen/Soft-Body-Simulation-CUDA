@@ -10,8 +10,6 @@ GLFWwindow* window;
 GuiDataContainer* imguiData = NULL;
 ImGuiIO* io = nullptr;
 bool mouseOverImGuiWinow = false;
-extern bool panelModified;
-extern bool camchanged;
 
 std::string currentTimeString() {
     time_t now;
@@ -25,18 +23,6 @@ std::string currentTimeString() {
 //----------SETUP STUFF----------
 //-------------------------------
 
-void cleanupCuda() {
-
-}
-
-void initCuda() {
-    simContext = loadSimContext();
-    cudaGLSetGLDevice(0);
-
-    // Clean up on program exit
-    atexit(cleanupCuda);
-}
-
 void errorCallback(int error, const char* description) {
     fprintf(stderr, "%s\n", description);
 }
@@ -48,7 +34,7 @@ bool initOpenGL() {
         exit(EXIT_FAILURE);
     }
 
-    window = glfwCreateWindow(width, height, "CIS 565 Path Tracer", NULL, NULL);
+    window = glfwCreateWindow(context->width, context->height, "CIS 565 Path Tracer", NULL, NULL);
     if (!window) {
         glfwTerminate();
         return false;
@@ -94,7 +80,7 @@ void RenderImGui()
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
-    panelModified = false;
+    context->panelModified = false;
     bool show_demo_window = true;
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -131,7 +117,7 @@ void RenderImGui()
     ImGui::End();
 
     if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged) {
-        panelModified = true;
+        context->panelModified = true;
     }
 
     ImGui::Render();
@@ -149,9 +135,9 @@ void mainLoop() {
 
         glfwPollEvents();
 
-        runCuda();
+        context->Update();
 
-        string title = "CIS565 SoftBody Simulation | " + utilityCore::convertIntToString(iteration) + " Iterations";
+        string title = "CIS565 SoftBody Simulation | " + utilityCore::convertIntToString(context->GetIteration()) + " Iterations";
         glfwSetWindowTitle(window, title.c_str());
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -163,7 +149,7 @@ void mainLoop() {
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         // VAO, shader program, and texture already bound
-        simContext->draw(m_progLambert);
+        context->Draw();
         // Render ImGui Stuff
         RenderImGui();
 

@@ -9,7 +9,7 @@ class SimulationCUDAContext;
 class SoftBody : public Mesh {
 public:
     SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext*, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
-        float mass = 1.0f, float stiffness_0 = 20000.0f, float stiffness_1 = 5000.0f, float damp = 0.999f, float muN = 0.5f, float muT = 0.5f, 
+        float mass = 1.0f, float stiffness_0 = 20000.0f, float stiffness_1 = 5000.0f, float damp = 0.999f, float muN = 0.5f, float muT = 0.5f,
         bool centralize = false, int startIndex = 0);
     ~SoftBody();
 
@@ -27,7 +27,7 @@ public:
     int getTetNumber()const { return tet_number; }
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
-    SimulationCUDAContext* simContext;
+    SimulationCUDAContext* mpSimContext;
     float mass = 1.0f;
     float stiffness_0 = 20000.0f;
     float stiffness_1 = 5000.0f;

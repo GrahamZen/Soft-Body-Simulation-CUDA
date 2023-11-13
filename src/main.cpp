@@ -16,24 +16,10 @@ static bool middleMousePressed = false;
 static double lastX;
 static double lastY;
 
-bool camchanged = false;
 static float dtheta = 0, dphi = 0;
 static glm::vec3 cammove;
-bool panelModified = false;
-float zoom, theta, phi;
-glm::vec3 cameraPosition;
-glm::vec3 ogLookAt; // for recentering the camera
 
-GuiDataContainer* guiData;
-Camera* camera;
-
-SurfaceShader* m_progLambert;
-SimulationCUDAContext* simContext;
-
-int iteration;
-
-int width = 1024;
-int height = 1024;
+Context* context;
 
 glm::mat4 Camera::getView()const
 {
@@ -51,50 +37,15 @@ glm::mat4 Camera::getProj()const
 int main(int argc, char** argv) {
     startTimeString = currentTimeString();
     // Load scene file
-    camera = new Camera();
-    loadContext(*camera);
-    Camera& cam = *camera;
-    width = cam.resolution.x;
-    height = cam.resolution.y;
-
-    glm::vec3 view = cam.view;
-    glm::vec3 up = cam.up;
-    glm::vec3 right = glm::cross(view, up);
-    up = glm::cross(right, view);
-
-    cameraPosition = cam.position;
-
-    // compute phi (horizontal) and theta (vertical) relative 3D axis
-    // so, (0 0 1) is forward, (0 1 0) is up
-    glm::vec3 viewXZ = glm::vec3(view.x, 0.0f, view.z);
-    glm::vec3 viewZY = glm::vec3(0.0f, view.y, view.z);
-    phi = glm::acos(glm::dot(glm::normalize(viewXZ), glm::vec3(0, 0, -1)));
-    theta = glm::acos(glm::dot(glm::normalize(viewZY), glm::vec3(0, 1, 0)));
-    ogLookAt = cam.lookAt;
-    zoom = glm::length(cam.position - ogLookAt);
-
-    //Create Instance for ImGUIData
-    guiData = new GuiDataContainer();
-
-
+    context = new Context("context.json");
     // Initialize CUDA and GL components
     initOpenGL();
-    m_progLambert = new SurfaceShader();
-    m_progLambert->create("../src/shaders/lambert.vert.glsl", "../src/shaders/lambert.frag.glsl");
-    m_progLambert->setViewProjMatrix(cam.getView(), cam.getProj());
-    m_progLambert->setCameraPos(cameraPosition);
-    m_progLambert->setModelMatrix(glm::mat4(1.f));
 
-    initCuda();
-
+    context->InitCuda();
+    context->LoadShaders();
     // Initialize ImGui Data
-    InitImguiData(guiData);
-    InitDataContainer(guiData);
-    guiData->phi = phi;
-    guiData->theta = theta;
-    guiData->cameraLookAt = ogLookAt;
-    guiData->zoom = zoom;
-
+    InitImguiData(context->guiData);
+    context->InitDataContainer();
     GLenum err;
     while ((err = glGetError()) != GL_NO_ERROR) {
         std::cerr << "OpenGL error: " << err << std::endl;
@@ -103,72 +54,23 @@ int main(int argc, char** argv) {
     mainLoop();
     cudaDeviceReset();
 
-    delete m_progLambert;
-    delete simContext;
-    delete camera;
+    delete context;
     return 0;
 }
 
-void runCuda() {
-    if (panelModified) {
-        simContext->setDt(guiData->Dt);
-        phi = guiData->phi;
-        theta = guiData->theta;
-        camera->lookAt = guiData->cameraLookAt;
-        zoom = guiData->zoom;
-        camchanged = true;
-    }
-    if (camchanged) {
-        Camera& cam = *camera;
-        cameraPosition.x = zoom * sin(phi) * sin(theta);
-        cameraPosition.y = zoom * cos(theta);
-        cameraPosition.z = zoom * cos(phi) * sin(theta);
-
-        cam.view = -glm::normalize(cameraPosition);
-        glm::vec3 v = cam.view;
-        glm::vec3 u = glm::vec3(0, 1, 0);//glm::normalize(cam.up);
-        glm::vec3 r = glm::cross(v, u);
-        cam.up = glm::cross(r, v);
-        cam.right = r;
-
-        cam.position = cameraPosition;
-        cameraPosition += cam.lookAt;
-        cam.position = cameraPosition;
-        guiData->phi = phi;
-        guiData->theta = theta;
-        guiData->zoom = zoom;
-        camchanged = false;
-        m_progLambert->setCameraPos(cameraPosition);
-        m_progLambert->setViewProjMatrix(camera->getView(), camera->getProj());
-    }
-
-    if (guiData->Reset) {
-        simContext->Reset();
-    }
-    // Map OpenGL buffer object for writing from CUDA on a single GPU
-    // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use this buffer
-
-    iteration++;
-    // execute the kernel
-    simContext->Update();
-    // unmap buffer object
-
-}
-
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    simContext->setSoftBodyAttrJump(0, false);
-    Camera& cam = *camera;
+    context->mpSimContext->setSoftBodyAttrJump(0, false);
+    Camera& cam = *context->mpCamera;
     if (action == GLFW_PRESS) {
         switch (key) {
         case GLFW_KEY_ESCAPE:
             glfwSetWindowShouldClose(window, GL_TRUE);
             break;
         case GLFW_KEY_S:
-            camchanged = true;
-            cam.lookAt = ogLookAt;
+            context->ResetCamera();
             break;
         case GLFW_KEY_SPACE:
-            simContext->setSoftBodyAttrJump(0, true);
+            context->mpSimContext->setSoftBodyAttrJump(0, true);
             break;
         }
     }
@@ -188,18 +90,18 @@ void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
     if (xpos == lastX || ypos == lastY) return; // otherwise, clicking back into window causes re-start
     if (leftMousePressed) {
         // compute new camera parameters
-        phi -= (xpos - lastX) / width * 3.f;
-        theta -= (ypos - lastY) / height * 3.f;
-        theta = std::fmax(0.001f, std::fmin(theta, PI));
-        camchanged = true;
+        context->phi -= (xpos - lastX) / context->width * 3.f;
+        context->theta -= (ypos - lastY) / context->height * 3.f;
+        context->theta = std::fmax(0.001f, std::fmin(context->theta, PI));
+        context->camchanged = true;
     }
     else if (rightMousePressed) {
-        zoom += (ypos - lastY) / height * 5.f;
-        zoom = std::fmax(0.1f, zoom);
-        camchanged = true;
+        context->zoom += (ypos - lastY) / context->height * 5.f;
+        context->zoom = std::fmax(0.1f, context->zoom);
+        context->camchanged = true;
     }
     else if (middleMousePressed) {
-        Camera& cam = *camera;
+        Camera& cam = *context->mpCamera;
         glm::vec3 forward = cam.view;
         forward.y = 0.0f;
         forward = glm::normalize(forward);
@@ -209,7 +111,7 @@ void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
 
         cam.lookAt -= (float)(xpos - lastX) * right * 0.01f;
         cam.lookAt += (float)(ypos - lastY) * forward * 0.01f;
-        camchanged = true;
+        context->camchanged = true;
     }
     lastX = xpos;
     lastY = ypos;

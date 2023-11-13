@@ -16,7 +16,3 @@ private:
     std::vector<SoftBody*> softBodies;
     float dt = 0.001f;
 };
-
-
-
-void InitDataContainer(GuiDataContainer* guiData);

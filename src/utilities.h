@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <string>
 
 #define PI                3.1415926535897932384626422832795028841971f
 #define TWO_PI            6.2831853071795864769252867665590057683943f
@@ -8,6 +9,7 @@
 #define EPSILON           0.00001f
 
 class Camera;
+class SoftBody;
 class GuiDataContainer
 {
 public:
@@ -19,6 +21,7 @@ public:
     float theta, phi;
     glm::vec3 cameraLookAt;
     float zoom;
+    SoftBody* currSoftBody = nullptr;
 };
 
 namespace utilityCore {
@@ -37,6 +40,36 @@ void inspectHost(T*, int);
 void inspectHost(unsigned int*, int);
 
 class SimulationCUDAContext;
+class SurfaceShader;
 
-SimulationCUDAContext* loadSimContext();
-bool loadContext(Camera& camera);
+void cleanupCuda();
+
+class Context {
+public:
+    Context(const std::string& _filename);
+    ~Context();
+    void LoadShaders(const std::string& vertShaderFilename = "../src/shaders/lambert.vert.glsl", const std::string& fragShaderFilename = "../src/shaders/lambert.frag.glsl");
+    void InitDataContainer();
+    void InitCuda();
+    void Update();
+    void ResetCamera();
+    void Draw();
+    int GetIteration() const { return iteration; }
+    Camera* mpCamera = nullptr;
+    const int width = 1024;
+    const int height = 1024;
+    bool panelModified = false;
+    bool camchanged = false;
+
+    float zoom, theta, phi;
+    glm::vec3 cameraPosition;
+    GuiDataContainer* guiData;
+    SimulationCUDAContext* mpSimContext;
+private:
+    std::string filename = "context.json";
+    SimulationCUDAContext* LoadSimContext();
+    glm::vec3 ogLookAt; // for recentering the camera
+    Camera* loadCamera(const std::string& _filename);
+    SurfaceShader* mpProgLambert;
+    int iteration = 0;
+};

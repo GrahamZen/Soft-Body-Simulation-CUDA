@@ -4,7 +4,6 @@ extern GLuint vbo;
 
 std::string currentTimeString();
 bool initOpenGL();
-void initCuda();
 void mainLoop();
 
 bool MouseOverImGuiWindow();

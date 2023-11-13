@@ -16,17 +16,8 @@ using namespace std;
 //----------PATH TRACER----------
 //-------------------------------
 
-extern Camera* camera;
-extern int iteration;
+extern Context* context;
 
-extern int width;
-extern int height;
-
-extern SurfaceShader* m_progLambert;
-extern Mesh* m_mesh;
-extern SimulationCUDAContext* simContext;
-
-void runCuda();
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods);
 void mousePositionCallback(GLFWwindow* window, double xpos, double ypos);
 void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods);

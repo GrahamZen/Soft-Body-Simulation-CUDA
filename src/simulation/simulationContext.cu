@@ -12,14 +12,8 @@
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-static GuiDataContainer* guiData = NULL;
 // TODO: static variables for device memory, any extra info you need, etc
 // ...
-
-void InitDataContainer(GuiDataContainer* imGuiData)
-{
-    guiData = imGuiData;
-}
 
 /**
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
@@ -70,7 +64,7 @@ void SimulationCUDAContext::draw(ShaderProgram* shaderProgram)
 
 SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext* context, const glm::vec3& pos, const glm::vec3& scale,
     const glm::vec3& rot, float mass, float stiffness_0, float stiffness_1, float damp, float muN, float muT, bool centralize, int startIndex)
-    : simContext(context), mass(mass), stiffness_0(stiffness_0), stiffness_1(stiffness_1), damp(damp), muN(muN), muT(muT)
+    : mpSimContext(context), mass(mass), stiffness_0(stiffness_0), stiffness_1(stiffness_1), damp(damp), muN(muN), muT(muT)
 {
     std::vector<glm::vec3> vertices = loadNodeFile(nodeFileName, centralize);
     number = vertices.size();
@@ -169,5 +163,5 @@ void SoftBody::_Update()
     glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
     glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     ComputeForces << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, tet_number, inv_Dm, stiffness_0, stiffness_1);
-    UpdateParticles << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, Force, number, mass, simContext->getDt(), damp, floorPos, floorUp, muT, muN);
+    UpdateParticles << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, Force, number, mass, mpSimContext->getDt(), damp, floorPos, floorUp, muT, muN);
 }
