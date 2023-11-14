@@ -10,6 +10,20 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+include(FetchContent)
+FetchContent_Declare(
+  Eigen
+  GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+  GIT_TAG 3.4
+  GIT_SHALLOW TRUE
+  GIT_PROGRESS TRUE)
+set(EIGEN_BUILD_DOC OFF)
+
+set(BUILD_TESTING OFF)
+set(EIGEN_BUILD_PKGCONFIG OFF)
+set( OFF)
+FetchContent_MakeAvailable(Eigen)
+
 # Enable C++11 for host code
 set(CMAKE_CXX_STANDARD 11)
 
@@ -79,6 +93,12 @@ set(headers
 	src/tinyobj/stb_image.h
 	src/tinyobj/stb_image_write.h
 
+    src/constraint.h
+    src/solver.h
+    src/deformable_mesh.h
+    src/deformation_gradient_constraint.h
+    src/positional_constraint.h
+
     src/ImGui/imconfig.h
 	src/ImGui/imgui.h
     src/ImGui/imconfig.h
@@ -104,6 +124,11 @@ set(sources
     src/drawable.cpp
     src/texture.cpp
     src/mesh.cpp
+
+    src/solver.cpp
+    src/deformable_mesh.cpp
+    src/deformation_gradient_constraint.cpp
+    src/positional_constraint.cpp
     
     src/ImGui/imgui.cpp 
       src/ImGui/imgui_demo.cpp 
@@ -126,5 +151,6 @@ source_group(Sources FILES ${sources})
 cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers})
 target_link_libraries(${CMAKE_PROJECT_NAME}
     ${LIBRARIES}
+    Eigen3::Eigen
     #stream_compaction  # TODO: uncomment if using your stream compaction
     )
