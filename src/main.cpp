@@ -59,8 +59,9 @@ int main(int argc, char** argv) {
 }
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
-    context->mpSimContext->setSoftBodyAttrJump(0, false);
     Camera& cam = *context->mpCamera;
+    if (context->guiData->softBodyAttr.jump.first == true)
+        context->guiData->softBodyAttr.jump = { false, true };
     if (action == GLFW_PRESS) {
         switch (key) {
         case GLFW_KEY_ESCAPE:
@@ -70,7 +71,8 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             context->ResetCamera();
             break;
         case GLFW_KEY_SPACE:
-            context->mpSimContext->setSoftBodyAttrJump(0, true);
+            if (context->guiData->softBodyAttr.currSoftBodyId != -1)
+                context->guiData->softBodyAttr.jump = { true, true };
             break;
         }
     }

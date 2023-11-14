@@ -7,11 +7,11 @@ public:
     ~SimulationCUDAContext();
     void Update();
     void Reset();
-    float getDt() { return dt; }
-    void setSoftBodyAttrJump(int index, bool jump) { softBodies[index]->setJump(jump); }
-    void setDt(float dt) { this->dt = dt; }
-    void addSoftBody(SoftBody*);
-    void draw(ShaderProgram*);
+    float GetDt() { return dt; }
+    void UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr);
+    void SetDt(float dt) { this->dt = dt; }
+    void AddSoftBody(SoftBody*);
+    void Draw(ShaderProgram*);
 private:
     std::vector<SoftBody*> softBodies;
     float dt = 0.001f;

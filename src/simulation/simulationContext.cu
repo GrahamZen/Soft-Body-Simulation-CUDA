@@ -19,16 +19,6 @@
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
  * of memory management
  */
-SimulationCUDAContext::SimulationCUDAContext()
-{
-}
-
-SimulationCUDAContext::~SimulationCUDAContext()
-{
-    for (auto softbody : softBodies) {
-        delete softbody;
-    }
-}
 
 void SimulationCUDAContext::Update()
 {
@@ -42,24 +32,6 @@ void SimulationCUDAContext::Update()
         RecalculateNormals << <softbody->getTetNumber() * 4 / 32 + 1, 32 >> > (nor, pos, 4 * softbody->getTetNumber());
         softbody->unMapDevicePtr();
     }
-}
-
-void SimulationCUDAContext::Reset()
-{
-    for (auto softbody : softBodies) {
-        softbody->Reset();
-    }
-}
-
-void SimulationCUDAContext::addSoftBody(SoftBody* softbody)
-{
-    softBodies.push_back(softbody);
-}
-
-void SimulationCUDAContext::draw(ShaderProgram* shaderProgram)
-{
-    for (auto softBody : softBodies)
-        shaderProgram->draw(*softBody, 0);
 }
 
 SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext* context, const glm::vec3& pos, const glm::vec3& scale,
@@ -163,5 +135,5 @@ void SoftBody::_Update()
     glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
     glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     ComputeForces << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, tet_number, inv_Dm, stiffness_0, stiffness_1);
-    UpdateParticles << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, Force, number, mass, mpSimContext->getDt(), damp, floorPos, floorUp, muT, muN);
+    UpdateParticles << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, Force, number, mass, mpSimContext->GetDt(), damp, floorPos, floorUp, muT, muN);
 }

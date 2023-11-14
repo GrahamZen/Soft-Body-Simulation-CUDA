@@ -2,9 +2,9 @@
 #include <ctime>
 #include <main.h>
 #include <preview.h>
-#include <ImGui/imgui.h>
-#include <ImGui/imgui_impl_glfw.h>
-#include <ImGui/imgui_impl_opengl3.h>
+#include <imgui.h>
+#include <imgui_impl_glfw.h>
+#include <imgui_impl_opengl3.h>
 
 GLFWwindow* window;
 GuiDataContainer* imguiData = NULL;
@@ -71,7 +71,6 @@ void InitImguiData(GuiDataContainer* guiData)
     imguiData = guiData;
 }
 
-
 // LOOK: Un-Comment to check ImGui Usage
 void RenderImGui()
 {
@@ -98,8 +97,19 @@ void RenderImGui()
     ImGui::SetNextItemWidth(availWidth * 0.25f);
     bool cameraThetaChanged = ImGui::DragFloat("Camera Theta", &imguiData->theta, 0.1f, 0.001f, PI - 0.001f, "%.4f");
     bool cameraLookAtChanged = ImGui::DragFloat3("Camera Look At", &imguiData->cameraLookAt.x, 1.0f, -200.0f, 200.0f, "%.4f");
-    bool zoomChanged = ImGui::DragFloat("Zoom", &imguiData->zoom, 0.01f, 0.01f, 100.0f, "%.4f");
-
+    bool zoomChanged = ImGui::DragFloat("Zoom", &imguiData->zoom, 10.f, 0.01f, 10000.0f, "%.4f");
+    ImGui::Text("Soft Body Attributes");
+    ImGui::Separator();
+    imguiData->softBodyAttr.stiffness_0.second = ImGui::DragFloat("Stiffness 0", &imguiData->softBodyAttr.stiffness_0.first, 100.f, 0.0f, 100000.0f, "%.2f");
+    imguiData->softBodyAttr.stiffness_1.second = ImGui::DragFloat("Stiffness 1", &imguiData->softBodyAttr.stiffness_1.first, 100.f, 0.0f, 100000.0f, "%.2f");
+    imguiData->softBodyAttr.damp.second = ImGui::DragFloat("Damp", &imguiData->softBodyAttr.damp.first, 0.01f, 0.0f, 1.0f, "%.4f");
+    imguiData->softBodyAttr.muN.second = ImGui::DragFloat("muN", &imguiData->softBodyAttr.muN.first, 0.01f, 0.0f, 100.0f, "%.4f");
+    imguiData->softBodyAttr.muT.second = ImGui::DragFloat("muT", &imguiData->softBodyAttr.muT.first, 0.01f, 0.0f, 100.0f, "%.4f");
+    ImGui::Separator();
+    const auto& nameItems = context->GetnamesSoftBodies();
+    if (ImGui::Combo("label", &imguiData->softBodyAttr.currSoftBodyId, nameItems.data(), nameItems.size()))
+    {
+    }
 
     // LOOK: Un-Comment to check the output window and usage
     //ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
@@ -134,7 +144,6 @@ void mainLoop() {
     while (!glfwWindowShouldClose(window)) {
 
         glfwPollEvents();
-
         context->Update();
 
         string title = "CIS565 SoftBody Simulation | " + utilityCore::convertIntToString(context->GetIteration()) + " Iterations";

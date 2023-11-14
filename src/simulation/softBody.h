@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <mesh.h>
-#include <utilities.h>
+#include <context.h>
 
 class SimulationCUDAContext;
 
@@ -22,7 +22,7 @@ public:
     glm::vec3* getV()const { return V; }
     glm::vec3* getForce()const { return Force; }
     glm::mat3* getInvDm()const { return inv_Dm; }
-    void setJump(bool jump) { this->jump = jump; }
+    void setAttributes(const GuiDataContainer::SoftBodyAttr& softBodyAttr);
     int getNumber()const { return number; }
     int getTetNumber()const { return tet_number; }
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
