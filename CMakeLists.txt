@@ -25,7 +25,8 @@ set( OFF)
 FetchContent_MakeAvailable(Eigen)
 
 # Enable C++11 for host code
-set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -76,19 +77,25 @@ set(GLM_ROOT_DIR "external")
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
+file(GLOB IMGUI_SOURCES "external/ImGui/*.cpp")
+include_directories(${EXTERNAL}/include)
+
+find_package(OpenMP)
+
 set(headers
     src/main.h
     src/intersections.h
-    src/glslUtility.hpp
-    src/simulation.h
-    src/scene.h
+    src/simulation/simulationContext.h
+    src/simulation/softBody.h
+    src/simulation/utilities.cuh
     src/sceneStructs.h
     src/preview.h
     src/utilities.h
-    src/surfaceshader.h
-    src/shaderprogram.h
-    src/drawable.h
-    src/texture.h
+    src/context.h
+    src/openglcontext/surfaceshader.h
+    src/openglcontext/shaderprogram.h
+    src/openglcontext/drawable.h
+    src/openglcontext/texture.h
     src/mesh.h
 	src/tinyobj/stb_image.h
 	src/tinyobj/stb_image_write.h
@@ -98,46 +105,29 @@ set(headers
     src/deformable_mesh.h
     src/deformation_gradient_constraint.h
     src/positional_constraint.h
-
-    src/ImGui/imconfig.h
-	src/ImGui/imgui.h
-    src/ImGui/imconfig.h
-    src/ImGui/imgui_impl_glfw.h
-     src/ImGui/imgui_impl_opengl3.h 
-     src/ImGui/imgui_impl_opengl3_loader.h 
-     src/ImGui/imgui_internal.h 
-     src/ImGui/imstb_rectpack.h 
-     src/ImGui/imstb_textedit.h 
-     src/ImGui/imstb_truetype.h 
-    )
+)
 
 set(sources
     src/main.cpp
     src/stb.cpp
-    src/glslUtility.cpp
-    src/simulation.cu
-    src/scene.cpp
+    src/simulation/softBody.cpp
+    src/simulation/utilities.cu
+    src/simulation/simulationContext.cu
+    src/simulation/simulationContext.cpp
     src/preview.cpp
     src/utilities.cpp
-    src/surfaceshader.cpp
-    src/shaderprogram.cpp
-    src/drawable.cpp
-    src/texture.cpp
+    src/context.cpp
+    src/openglcontext/surfaceshader.cpp
+    src/openglcontext/shaderprogram.cpp
+    src/openglcontext/drawable.cpp
+    src/openglcontext/texture.cpp
     src/mesh.cpp
 
     src/solver.cpp
     src/deformable_mesh.cpp
     src/deformation_gradient_constraint.cpp
     src/positional_constraint.cpp
-    
-    src/ImGui/imgui.cpp 
-      src/ImGui/imgui_demo.cpp 
-      src/ImGui/imgui_draw.cpp 
-     src/ImGui/imgui_impl_glfw.cpp 
-     src/ImGui/imgui_impl_opengl3.cpp 
-     src/ImGui/imgui_tables.cpp 
-     src/ImGui/imgui_widgets.cpp 
-    )
+)
 
 list(SORT headers)
 list(SORT sources)
@@ -146,11 +136,19 @@ source_group(Headers FILES ${headers})
 source_group(Sources FILES ${sources})
 
 #add_subdirectory(src/ImGui)
-#add_subdirectory(stream_compaction)  # TODO: uncomment if using your stream compaction
+set(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/ImGui ${PROJECT_SOURCE_DIR}/src/openglcontext ${PROJECT_SOURCE_DIR}/src/simulation ${PROJECT_SOURCE_DIR}/src/utilities ${PROJECT_SOURCE_DIR}/src/sceneStructs ${PROJECT_SOURCE_DIR}/src/openglcontext ${PROJECT_SOURCE_DIR}/src/simulation)
+include_directories(
+    ${PROJECT_INCLUDE_DIR} 
+    ${GLM_INCLUDE_DIRS} 
+    ${GLEW_INCLUDE_DIR} 
+    ${GLFW_INCLUDE_DIR})
 
-cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers})
+
+cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers} ${IMGUI_SOURCES})
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui")
 target_link_libraries(${CMAKE_PROJECT_NAME}
-    ${LIBRARIES}
-    Eigen3::Eigen
-    #stream_compaction  # TODO: uncomment if using your stream compaction
-    )
+${LIBRARIES}
+Eigen3::Eigen
+OpenMP::OpenMP_CXX
+#stream_compaction  # TODO: uncomment if using your stream compaction
+)

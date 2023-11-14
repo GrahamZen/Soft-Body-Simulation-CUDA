@@ -1,8 +1,7 @@
-#include "mesh.h"
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <cuda_gl_interop.h>
+#include <mesh.h>
 
 Mesh::Mesh()
     : Drawable(),

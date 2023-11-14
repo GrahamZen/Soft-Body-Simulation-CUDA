@@ -1,6 +1,6 @@
 #pragma once
 
-#include "shaderprogram.h"
+#include <shaderprogram.h>
 
 class SurfaceShader : public ShaderProgram
 {

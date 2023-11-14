@@ -6,10 +6,17 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/matrix_inverse.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <iostream>
 #include <cstdio>
+#include <vector>
+#include <sstream>
+#include <string>
+#include <fstream>
+#include <filesystem>
+#include <utilities.h>
 
-#include "utilities.h"
+namespace fs = std::filesystem;
 
 float utilityCore::clamp(float f, float min, float max) {
     if (f < min) {
@@ -115,4 +122,37 @@ std::istream& utilityCore::safeGetline(std::istream& is, std::string& t) {
             t += (char)c;
         }
     }
+}
+
+template <typename T>
+void inspectHost(T* host_ptr, int size) {
+    for (int i = 0; i < size; i++) {
+        std::cout << glm::to_string(host_ptr[i]) << std::endl;
+    }
+}
+
+template void inspectHost<glm::vec3>(glm::vec3* dev_ptr, int size);
+template void inspectHost<glm::vec4>(glm::vec4* dev_ptr, int size);
+template void inspectHost<glm::mat3>(glm::mat3* dev_ptr, int size);
+template void inspectHost<glm::mat4>(glm::mat4* dev_ptr, int size);
+void inspectHost(unsigned int* host_ptr, int size) {
+    for (int i = 0; i < size / 4; i++) {
+        std::cout << host_ptr[i * 4] << " " << host_ptr[i * 4 + 1] << " " << host_ptr[i * 4 + 2] << " " << host_ptr[i * 4 + 3] << std::endl;
+    }
+}
+
+std::ifstream findFile(const std::string& fileName) {
+    fs::path currentPath = fs::current_path();
+    for (int i = 0; i < 5; ++i) {
+        fs::path filePath = currentPath / fileName;
+        if (fs::exists(filePath)) {
+            std::ifstream fileStream(filePath);
+            if (fileStream.is_open())
+                return fileStream;
+        }
+        currentPath = currentPath.parent_path();
+    }
+
+    std::cerr << "File not found: " << fileName << std::endl;
+    return std::ifstream();
 }

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "drawable.h"
-#include "texture.h"
-#include <memory>
+#include <drawable.h>
+#include <texture.h>
 #include <string>
 #include <glm/glm.hpp>
 #include <cuda_gl_interop.h>
+
 class Mesh : public Drawable
 {
     friend class SoftBody;

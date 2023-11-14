@@ -1,15 +1,20 @@
 #pragma once
 
 #include <vector>
-#include "scene.h"
-#include "mesh.h"
+#include <mesh.h>
+#include <context.h>
+
+class SimulationCUDAContext;
 
 class SoftBody : public Mesh {
 public:
-    SoftBody(const char* nodeFileName, const char* eleFileName);
+    SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext*, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
+        float mass = 1.0f, float stiffness_0 = 20000.0f, float stiffness_1 = 5000.0f, float damp = 0.999f, float muN = 0.5f, float muT = 0.5f,
+        bool centralize = false, int startIndex = 0);
     ~SoftBody();
 
     void Update();
+    void Reset();
     void mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr);
     void unMapDevicePtr();
     GLuint* getTet()const { return Tet; }
@@ -17,12 +22,12 @@ public:
     glm::vec3* getV()const { return V; }
     glm::vec3* getForce()const { return Force; }
     glm::mat3* getInvDm()const { return inv_Dm; }
-    void setJump(bool jump) { this->jump = jump; }
+    void setAttributes(const GuiDataContainer::SoftBodyAttr& softBodyAttr);
     int getNumber()const { return number; }
     int getTetNumber()const { return tet_number; }
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
-    float dt = 0.001f;
+    SimulationCUDAContext* mpSimContext;
     float mass = 1.0f;
     float stiffness_0 = 20000.0f;
     float stiffness_1 = 5000.0f;
@@ -38,6 +43,7 @@ private:
     glm::vec3* Force;
     glm::vec3* V;
     glm::vec3* X;
+    glm::vec3* X0;
 
     glm::mat3* inv_Dm;
 
@@ -47,18 +53,6 @@ private:
 
     // Methods
     void _Update();
-    std::vector<GLuint> loadEleFile(const std::string&);
-    std::vector<glm::vec3> loadNodeFile(const std::string&);
+    std::vector<GLuint> loadEleFile(const std::string&, int startIndex = 0);
+    std::vector<glm::vec3> loadNodeFile(const std::string&, bool centralize = false);
 };
-
-class SimulationCUDAContext {
-public:
-    SimulationCUDAContext();
-    ~SimulationCUDAContext();
-    void Update();
-    std::vector<SoftBody*> softBodies;
-};
-
-
-
-void InitDataContainer(GuiDataContainer* guiData);
