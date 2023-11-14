@@ -130,11 +130,22 @@ void inspectHost(T* host_ptr, int size) {
         std::cout << glm::to_string(host_ptr[i]) << std::endl;
     }
 }
-
 template void inspectHost<glm::vec3>(glm::vec3* dev_ptr, int size);
 template void inspectHost<glm::vec4>(glm::vec4* dev_ptr, int size);
 template void inspectHost<glm::mat3>(glm::mat3* dev_ptr, int size);
 template void inspectHost<glm::mat4>(glm::mat4* dev_ptr, int size);
+
+template <typename T>
+void compareHostVSHost(T* host_ptr1, T* host_ptr2, int size) {
+    for (int i = 0; i < size; i++) {
+        if (host_ptr1[i] != host_ptr2[i]) {
+            std::cout << "host_ptr1[" << i << "] = " << glm::to_string(host_ptr1[i]) << std::endl;
+            std::cout << "host_ptr2[" << i << "] = " << glm::to_string(host_ptr2[i]) << std::endl;
+        }
+    }
+}
+template void compareHostVSHost<glm::vec3>(glm::vec3*, glm::vec3*, int size);
+
 void inspectHost(unsigned int* host_ptr, int size) {
     for (int i = 0; i < size / 4; i++) {
         std::cout << host_ptr[i * 4] << " " << host_ptr[i * 4 + 1] << " " << host_ptr[i * 4 + 2] << " " << host_ptr[i * 4 + 3] << std::endl;

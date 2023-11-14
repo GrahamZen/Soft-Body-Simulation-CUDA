@@ -97,8 +97,6 @@ set(headers
     src/openglcontext/drawable.h
     src/openglcontext/texture.h
     src/mesh.h
-	src/tinyobj/stb_image.h
-	src/tinyobj/stb_image_write.h
 
     src/constraint.h
     src/solver.h

@@ -2,6 +2,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <GL/glew.h>
+#include <utilities.h>
 
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
 void checkCUDAErrorFn(const char* msg, const char* file, int line);
@@ -11,6 +12,13 @@ void inspectGLM(T* dev_ptr, int size) {
     std::vector<T> host_ptr(size);
     cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost);
     inspectHost(host_ptr.data(), size);
+}
+
+template <typename T>
+void compareDevVSHost(T* dev_ptr, T* host_ptr2, int size) {
+    std::vector<T> host_ptr(size);
+    cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost);
+    compareHostVSHost(host_ptr.data(), host_ptr2, size);
 }
 
 __inline__ __device__ float trace(const glm::mat3& a)

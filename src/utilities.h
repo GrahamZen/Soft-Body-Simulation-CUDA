@@ -22,4 +22,7 @@ namespace utilityCore
 template <typename T>
 void inspectHost(T*, int);
 void inspectHost(unsigned int*, int);
+
+template <typename T>
+void compareHostVSHost(T* host_ptr1, T* host_ptr2, int size);
 std::ifstream findFile(const std::string& fileName);

@@ -8,6 +8,9 @@
 #include <utilities.h>
 #include <utilities.cuh>
 #include <iostream>
+#include <deformable_mesh.h>
+#include <solver.h>
+
 #define ERRORCHECK 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -19,6 +22,116 @@
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
  * of memory management
  */
+pd::deformable_mesh_t model{};
+pd::solver_t solver;
+
+std::vector<glm::vec3> vertices;
+std::vector<GLuint> idx;
+
+void updateVertices(Eigen::MatrixXd positions, int number)
+{
+    for (int i = 0; i < number; i++)
+    {
+        vertices[i] = glm::vec3(positions(i, 0), positions(i, 1), positions(i, 2));
+    }
+}
+
+void SoftBody::InitModel()
+{
+    Eigen::MatrixXd V;
+    Eigen::MatrixXi T, F;
+    V.resize(number, 3);
+    for (int i = 0; i < number; i++)
+    {
+        V.row(i) = Eigen::Vector3d(
+            vertices[i].x,
+            vertices[i].y,
+            vertices[i].z);
+        /**
+        V(i, 0) = vertices[i].x;
+        V(i, 1) = vertices[i].y;
+        V(i, 2) = vertices[i].z;*/
+    }
+
+    // allocate space for triangles
+    F.resize(tet_number * 4, 3);
+    // triangle indices
+    for (int tet = 0; tet < tet_number; tet++)
+    {
+        F(4 * tet, 0) = idx[tet * 4 + 0];
+        F(4 * tet, 1) = idx[tet * 4 + 2];
+        F(4 * tet, 2) = idx[tet * 4 + 1];
+        F(4 * tet + 1, 0) = idx[tet * 4 + 0];
+        F(4 * tet + 1, 1) = idx[tet * 4 + 3];
+        F(4 * tet + 1, 2) = idx[tet * 4 + 2];
+        F(4 * tet + 2, 0) = idx[tet * 4 + 0];
+        F(4 * tet + 2, 1) = idx[tet * 4 + 1];
+        F(4 * tet + 2, 2) = idx[tet * 4 + 3];
+        F(4 * tet + 3, 0) = idx[tet * 4 + 1];
+        F(4 * tet + 3, 1) = idx[tet * 4 + 2];
+        F(4 * tet + 3, 2) = idx[tet * 4 + 3];
+    }
+
+    // allocate space for tetrahedra
+    T.resize(tet_number, 4);
+    // tet indices
+    int a, b, c, d;
+    for (int i = 0; i < tet_number; i++)
+    {
+        T(i, 0) = idx[i * 4 + 0];
+        T(i, 1) = idx[i * 4 + 1];
+        T(i, 2) = idx[i * 4 + 2];
+        T(i, 3) = idx[i * 4 + 3];
+    }
+    for (int i = 0; i < tet_number; i++)
+    {
+        //std::cout << T(i, 0) << ", " << T(i, 1) << ", " << T(i, 2) << ", " << T(i, 3) << std::endl;
+        //cout << model.positions()(i, 0) << ", " << model.positions()(i, 1) << ", " << model.positions()(i, 2) << endl;
+        //cout << model.mass()(i) << endl;
+    }
+    Eigen::VectorXd masses(V.rows());
+    masses.setConstant(10.);
+    model = pd::deformable_mesh_t{ V, F, T, masses };
+    model.constrain_deformation_gradient(10000.0f);
+    //model.velocity().rowwise() += Eigen::RowVector3d{ 0, 0, 0. };
+    double const deformation_gradient_wi = 100'000'000.;
+    double const positional_wi = 1'000'000'000.;
+    model.constrain_deformation_gradient(deformation_gradient_wi);
+
+    for (std::size_t i = 0u; i < 10; ++i)
+    {
+        model.add_positional_constraint(i, positional_wi);
+        model.fix(i);
+    }
+    solver.set_model(&model);
+}
+
+void SoftBody::SetForce(Eigen::MatrixX3d* fext)
+{
+    for (std::size_t i = 0; i < number; ++i)
+    {
+        double const force = -10000.; // 10 kN
+        fext->row(i) += Eigen::RowVector3d{ 0., force, 0. };
+    }
+}
+
+void SoftBody::PdSolver()
+{
+    Eigen::MatrixX3d fext;
+    fext.resizeLike(model.positions());
+    fext.setZero();
+    // set gravity force
+    fext.col(1).array() -= 900000.0f;
+    //SetForce(&fext);
+    if (!solver.ready())
+    {
+        solver.prepare(mpSimContext->GetDt());
+    }
+
+    solver.step(fext, 10);
+    updateVertices(model.positions(), number);
+    //fext.setZero();
+}
 
 void SimulationCUDAContext::Update()
 {
@@ -28,6 +141,17 @@ void SimulationCUDAContext::Update()
         glm::vec4* nor;
         softbody->mapDevicePtr(&pos, &nor);
         dim3 numThreadsPerBlock(softbody->getTetNumber() / 32 + 1);
+        /**
+        glm::vec3* t = (glm::vec3*)malloc(sizeof(glm::vec3) * number);
+        cudaMemcpy(t, softbody->getX(), sizeof(glm::vec3) * number, cudaMemcpyDeviceToHost);
+        for (int i = 0; i < number; i++)
+        {
+            cout << t[i].x << "," << t[i].y << "," << t[i].z << endl;
+            //cout << model.positions()(i, 0) << ", " << model.positions()(i, 1) << ", " << model.positions()(i, 2) << endl;
+            //cout << model.mass()(i) << endl;
+        }
+        cout << ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,," << endl;*/
+
         PopulatePos << <numThreadsPerBlock, 32 >> > (pos, softbody->getX(), softbody->getTet(), softbody->getTetNumber());
         RecalculateNormals << <softbody->getTetNumber() * 4 / 32 + 1, 32 >> > (nor, pos, 4 * softbody->getTetNumber());
         softbody->unMapDevicePtr();
@@ -38,7 +162,7 @@ SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, Simulation
     const glm::vec3& rot, float mass, float stiffness_0, float stiffness_1, float damp, float muN, float muT, bool centralize, int startIndex)
     : mpSimContext(context), mass(mass), stiffness_0(stiffness_0), stiffness_1(stiffness_1), damp(damp), muN(muN), muT(muT)
 {
-    std::vector<glm::vec3> vertices = loadNodeFile(nodeFileName, centralize);
+    vertices = loadNodeFile(nodeFileName, centralize);
     number = vertices.size();
     cudaMalloc((void**)&X, sizeof(glm::vec3) * number);
     cudaMemcpy(X, vertices.data(), sizeof(glm::vec3) * number, cudaMemcpyHostToDevice);
@@ -53,16 +177,19 @@ SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, Simulation
     int threadsPerBlock = 64;
     int blocks = (number + threadsPerBlock - 1) / threadsPerBlock;
     TransformVertices << < blocks, threadsPerBlock >> > (X, model, number);
+    cudaMemcpy(vertices.data(), X, sizeof(glm::vec3) * number, cudaMemcpyDeviceToHost);
 
     cudaMalloc((void**)&X0, sizeof(glm::vec3) * number);
     cudaMemcpy(X0, X, sizeof(glm::vec3) * number, cudaMemcpyDeviceToDevice);
 
-    std::vector<GLuint> idx = loadEleFile(eleFileName, startIndex);
+    idx = loadEleFile(eleFileName, startIndex);
     tet_number = idx.size() / 4;
     cudaMalloc((void**)&Tet, sizeof(GLuint) * idx.size());
     cudaMemcpy(Tet, idx.data(), sizeof(GLuint) * idx.size(), cudaMemcpyHostToDevice);
 
     Mesh::tet_number = tet_number;
+
+    InitModel();
 
     cudaMalloc((void**)&Force, sizeof(glm::vec3) * number);
     cudaMemset(Force, 0, sizeof(glm::vec3) * number);
@@ -116,8 +243,18 @@ void SoftBody::Laplacian_Smoothing(float blendAlpha)
 
 void SoftBody::Update()
 {
-    for (int l = 0; l < 10; l++)
-        _Update();
+    //cout << tetNumber << ", " << tet_number << endl;
+    /*
+    for (int i = 0; i < number; i++)
+    {
+        //cout << idx[i] << endl;
+        //cout << vertices[i].x << ", " << vertices[i].y << ", " << vertices[i].z << endl;
+        cout << model.positions()(i, 0) << ", " << model.positions()(i, 1) << ", " << model.positions()(i, 2) << endl;
+        //cout << model.mass()(i) << endl;
+    }
+    cout <<",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,," << endl;*/
+    PdSolver();
+    cudaMemcpy(X, vertices.data(), sizeof(glm::vec3) * number, cudaMemcpyHostToDevice);
 }
 
 void SoftBody::Reset()
@@ -129,11 +266,11 @@ void SoftBody::Reset()
 
 void SoftBody::_Update()
 {
-    int threadsPerBlock = 64;
-    AddGravity << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, V, mass, number, jump);
-    Laplacian_Smoothing();
-    glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
-    glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    ComputeForces << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, tet_number, inv_Dm, stiffness_0, stiffness_1);
-    UpdateParticles << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, Force, number, mass, mpSimContext->GetDt(), damp, floorPos, floorUp, muT, muN);
+    // int threadsPerBlock = 64;
+    // AddGravity << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, V, mass, number, jump);
+    // Laplacian_Smoothing();
+    // glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
+    // glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
+    // ComputeForces << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, tet_number, inv_Dm, stiffness_0, stiffness_1);
+    // UpdateParticles << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, Force, number, mass, mpSimContext->GetDt(), damp, floorPos, floorUp, muT, muN);
 }

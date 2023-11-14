@@ -3,6 +3,9 @@
 #include <vector>
 #include <mesh.h>
 #include <context.h>
+#include <Eigen/Dense>
+#include <Eigen/SparseCholesky>
+#include <Eigen/SparseCore>
 
 class SimulationCUDAContext;
 
@@ -13,6 +16,8 @@ public:
         bool centralize = false, int startIndex = 0);
     ~SoftBody();
 
+    void InitModel();
+    void PdSolver();
     void Update();
     void Reset();
     void mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr);
@@ -53,6 +58,7 @@ private:
 
     // Methods
     void _Update();
+    void SetForce(Eigen::MatrixX3d* fext);
     std::vector<GLuint> loadEleFile(const std::string&, int startIndex = 0);
     std::vector<glm::vec3> loadNodeFile(const std::string&, bool centralize = false);
 };
