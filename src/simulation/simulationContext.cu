@@ -79,9 +79,9 @@ void SoftBody::InitModel()
     Eigen::VectorXd masses(V.rows());
     masses.setConstant(mass);
     model = pd::deformable_mesh_t{ V, F, T, masses };
-    model.constrain_deformation_gradient(10000.0f);
+    model.constrain_deformation_gradient(1000000.0f);
     //model.velocity().rowwise() += Eigen::RowVector3d{ 0, 0, 0. };
-    double const deformation_gradient_wi = 100'000'000.;
+    double const deformation_gradient_wi = 1000.;
     double const positional_wi = 1'000'000'000.;
     model.constrain_deformation_gradient(deformation_gradient_wi);
 

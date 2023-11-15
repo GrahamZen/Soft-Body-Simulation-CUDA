@@ -50,6 +50,8 @@ private:
     glm::vec3* V;
     glm::vec3* X;
     glm::vec3* X0;
+    glm::vec3* Velocity;
+    float* Mass;
 
     glm::mat3* inv_Dm;
 

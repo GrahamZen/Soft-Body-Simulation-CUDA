@@ -32,6 +32,40 @@ __global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int number)
     }
 }
 
+__device__ void svd(glm::mat3& A, glm::mat3& U, glm::mat3& S, glm::mat3& V)
+{
+    // normal equations matrix
+    float ATA11, ATA12, ATA13;
+    float ATA21, ATA22, ATA23;
+    float ATA31, ATA32, ATA33;
+
+    multAtB(A[0][0], A[1][0], A[2][0], A[0][1], A[1][1], A[2][1], A[0][2], A[1][2], A[2][2],
+        A[0][0], A[1][0], A[2][0], A[0][1], A[1][1], A[2][1], A[0][2], A[1][2], A[2][2],
+        ATA11, ATA12, ATA13, ATA21, ATA22, ATA23, ATA31, ATA32, ATA33);
+
+    // symmetric eigenalysis
+    float qV[4];
+    jacobiEigenanlysis(ATA11, ATA21, ATA22, ATA31, ATA32, ATA33, qV);
+    quatToMat3(qV, V[0][0], V[1][0], V[2][0], V[0][1], V[1][1], V[2][1], V[0][2], V[1][2], V[2][2]);
+
+    float b11, b12, b13;
+    float b21, b22, b23;
+    float b31, b32, b33;
+    multAB(A[0][0], A[1][0], A[2][0], A[0][1], A[1][1], A[2][1], A[0][2], A[1][2], A[2][2],
+        V[0][0], V[1][0], V[2][0], V[0][1], V[1][1], V[2][1], V[0][2], V[1][2], V[2][2],
+        b11, b12, b13, b21, b22, b23, b31, b32, b33);
+
+    // sort singular values and find V
+    sortSingularValues(b11, b12, b13, b21, b22, b23, b31, b32, b33,
+        V[0][0], V[1][0], V[2][0], V[0][1], V[1][1], V[2][1], V[0][2], V[1][2], V[2][2]);
+
+    // QR decomposition
+    QRDecomposition(b11, b12, b13, b21, b22, b23, b31, b32, b33,
+        U[0][0], U[1][0], U[2][0], U[0][1], U[1][1], U[2][1], U[0][2], U[1][2], U[2][2],
+        S[0][0], S[1][0], S[2][0], S[0][1], S[1][1], S[2][1], S[0][2], S[1][2], S[2][2]
+    );
+}
+
 // Add the current iteration's output to the overall image
 __global__ void AddGravity(glm::vec3* Force, glm::vec3* V, float mass, int numVerts, bool jump)
 {
