@@ -28,14 +28,6 @@ pd::solver_t solver;
 std::vector<glm::vec3> vertices;
 std::vector<GLuint> idx;
 
-void updateVertices(Eigen::MatrixXd positions, int number)
-{
-    for (int i = 0; i < number; i++)
-    {
-        vertices[i] = glm::vec3(positions(i, 0), positions(i, 1), positions(i, 2));
-    }
-}
-
 void SoftBody::InitModel()
 {
     Eigen::MatrixXd V;
@@ -83,14 +75,9 @@ void SoftBody::InitModel()
         T(i, 2) = idx[i * 4 + 2];
         T(i, 3) = idx[i * 4 + 3];
     }
-    for (int i = 0; i < tet_number; i++)
-    {
-        //std::cout << T(i, 0) << ", " << T(i, 1) << ", " << T(i, 2) << ", " << T(i, 3) << std::endl;
-        //cout << model.positions()(i, 0) << ", " << model.positions()(i, 1) << ", " << model.positions()(i, 2) << endl;
-        //cout << model.mass()(i) << endl;
-    }
+
     Eigen::VectorXd masses(V.rows());
-    masses.setConstant(10.);
+    masses.setConstant(mass);
     model = pd::deformable_mesh_t{ V, F, T, masses };
     model.constrain_deformation_gradient(10000.0f);
     //model.velocity().rowwise() += Eigen::RowVector3d{ 0, 0, 0. };
@@ -98,21 +85,12 @@ void SoftBody::InitModel()
     double const positional_wi = 1'000'000'000.;
     model.constrain_deformation_gradient(deformation_gradient_wi);
 
-    for (std::size_t i = 0u; i < 10; ++i)
+    for (std::size_t i = 0u; i < numConstraints; ++i)
     {
         model.add_positional_constraint(i, positional_wi);
         model.fix(i);
     }
     solver.set_model(&model);
-}
-
-void SoftBody::SetForce(Eigen::MatrixX3d* fext)
-{
-    for (std::size_t i = 0; i < number; ++i)
-    {
-        double const force = -10000.; // 10 kN
-        fext->row(i) += Eigen::RowVector3d{ 0., force, 0. };
-    }
 }
 
 void SoftBody::PdSolver()
@@ -121,7 +99,7 @@ void SoftBody::PdSolver()
     fext.resizeLike(model.positions());
     fext.setZero();
     // set gravity force
-    fext.col(1).array() -= 900000.0f;
+    fext.col(1).array() -= mpSimContext->GetGravity() * mass;
     //SetForce(&fext);
     if (!solver.ready())
     {
@@ -129,7 +107,6 @@ void SoftBody::PdSolver()
     }
 
     solver.step(fext, 10);
-    updateVertices(model.positions(), number);
     //fext.setZero();
 }
 
@@ -141,16 +118,6 @@ void SimulationCUDAContext::Update()
         glm::vec4* nor;
         softbody->mapDevicePtr(&pos, &nor);
         dim3 numThreadsPerBlock(softbody->getTetNumber() / 32 + 1);
-        /**
-        glm::vec3* t = (glm::vec3*)malloc(sizeof(glm::vec3) * number);
-        cudaMemcpy(t, softbody->getX(), sizeof(glm::vec3) * number, cudaMemcpyDeviceToHost);
-        for (int i = 0; i < number; i++)
-        {
-            cout << t[i].x << "," << t[i].y << "," << t[i].z << endl;
-            //cout << model.positions()(i, 0) << ", " << model.positions()(i, 1) << ", " << model.positions()(i, 2) << endl;
-            //cout << model.mass()(i) << endl;
-        }
-        cout << ",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,," << endl;*/
 
         PopulatePos << <numThreadsPerBlock, 32 >> > (pos, softbody->getX(), softbody->getTet(), softbody->getTetNumber());
         RecalculateNormals << <softbody->getTetNumber() * 4 / 32 + 1, 32 >> > (nor, pos, 4 * softbody->getTetNumber());
@@ -159,8 +126,8 @@ void SimulationCUDAContext::Update()
 }
 
 SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext* context, const glm::vec3& pos, const glm::vec3& scale,
-    const glm::vec3& rot, float mass, float stiffness_0, float stiffness_1, float damp, float muN, float muT, bool centralize, int startIndex)
-    : mpSimContext(context), mass(mass), stiffness_0(stiffness_0), stiffness_1(stiffness_1), damp(damp), muN(muN), muT(muT)
+    const glm::vec3& rot, float mass, float stiffness_0, float stiffness_1, float damp, float muN, float muT, int constraints, bool centralize, int startIndex)
+    : mpSimContext(context), mass(mass), stiffness_0(stiffness_0), stiffness_1(stiffness_1), damp(damp), muN(muN), muT(muT), numConstraints(constraints)
 {
     vertices = loadNodeFile(nodeFileName, centralize);
     number = vertices.size();
@@ -243,18 +210,7 @@ void SoftBody::Laplacian_Smoothing(float blendAlpha)
 
 void SoftBody::Update()
 {
-    //cout << tetNumber << ", " << tet_number << endl;
-    /*
-    for (int i = 0; i < number; i++)
-    {
-        //cout << idx[i] << endl;
-        //cout << vertices[i].x << ", " << vertices[i].y << ", " << vertices[i].z << endl;
-        cout << model.positions()(i, 0) << ", " << model.positions()(i, 1) << ", " << model.positions()(i, 2) << endl;
-        //cout << model.mass()(i) << endl;
-    }
-    cout <<",,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,," << endl;*/
-    PdSolver();
-    cudaMemcpy(X, vertices.data(), sizeof(glm::vec3) * number, cudaMemcpyHostToDevice);
+    _Update();
 }
 
 void SoftBody::Reset()
@@ -262,15 +218,29 @@ void SoftBody::Reset()
     cudaMemset(Force, 0, sizeof(glm::vec3) * number);
     cudaMemset(V, 0, sizeof(glm::vec3) * number);
     cudaMemcpy(X, X0, sizeof(glm::vec3) * number, cudaMemcpyDeviceToDevice);
+    InitModel();
 }
 
 void SoftBody::_Update()
 {
-    // int threadsPerBlock = 64;
-    // AddGravity << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, V, mass, number, jump);
+    int threadsPerBlock = 64;
+    AddGravity << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, V, mass, number, jump);
+    Eigen::MatrixXf positionsFloat;
+    using RowMajorMatrixX3f = Eigen::Matrix<float, Eigen::Dynamic, 3, Eigen::RowMajor>;
+    RowMajorMatrixX3f velocitiesFloat(number, 3);
+    positionsFloat.resizeLike(model.positions().transpose());
+    cudaMemcpy(positionsFloat.data(), X, number * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+    cudaMemcpy(velocitiesFloat.data(), V, number * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+    model.positions() = positionsFloat.transpose().cast<double>();
+    model.velocity() = velocitiesFloat.cast<double>();
     // Laplacian_Smoothing();
-    // glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
-    // glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
+    glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
+    glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     // ComputeForces << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, tet_number, inv_Dm, stiffness_0, stiffness_1);
-    // UpdateParticles << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, Force, number, mass, mpSimContext->GetDt(), damp, floorPos, floorUp, muT, muN);
+    PdSolver();
+    positionsFloat = model.positions().cast<float>().transpose();
+    cudaMemcpy(X, positionsFloat.data(), number * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+    velocitiesFloat = model.velocity().cast<float>();
+    cudaMemcpy(V, velocitiesFloat.data(), number * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+    HandleFloorCollision << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, number, floorPos, floorUp, muT, muN);
 }

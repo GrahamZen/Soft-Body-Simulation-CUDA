@@ -40,8 +40,7 @@ __global__ void AddGravity(glm::vec3* Force, glm::vec3* V, float mass, int numVe
     if (index < numVerts)
     {
         if (jump)
-            V[index].y += 0.2f;
-        Force[index] = glm::vec3(0, -9.8f, 0) * mass;
+            V[index].y += 20.f;
     }
 }
 
@@ -160,6 +159,22 @@ __global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* For
     V[i] += Force[i] / mass * dt;
     V[i] *= damp;
     X[i] += V[i] * dt;
+
+    float signedDis = glm::dot(X[i] - floorPos, floorUp);
+    if (signedDis < 0 && glm::dot(V[i], floorUp) < 0) {
+        X[i] -= signedDis * floorUp;
+        glm::vec3 vN = glm::dot(V[i], floorUp) * floorUp;
+        glm::vec3 vT = V[i] - vN;
+        float mag_vT = glm::length(vT);
+        float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, 0.0f);
+        V[i] = -muN * vN + a * vT;
+    }
+}
+
+__global__ void HandleFloorCollision(glm::vec3* X, glm::vec3* V,
+    int number, glm::vec3 floorPos, glm::vec3 floorUp, float muT, float muN) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= number) return;
 
     float signedDis = glm::dot(X[i] - floorPos, floorUp);
     if (signedDis < 0 && glm::dot(V[i], floorUp) < 0) {

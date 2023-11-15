@@ -60,8 +60,6 @@ int main(int argc, char** argv) {
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     Camera& cam = *context->mpCamera;
-    if (context->guiData->softBodyAttr.jump.first == true)
-        context->guiData->softBodyAttr.jump = { false, true };
     if (action == GLFW_PRESS) {
         switch (key) {
         case GLFW_KEY_ESCAPE:
@@ -72,7 +70,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
             break;
         case GLFW_KEY_SPACE:
             if (context->guiData->softBodyAttr.currSoftBodyId != -1)
-                context->guiData->softBodyAttr.jump = { true, true };
+                context->guiData->softBodyAttr.setJump(true);
             break;
         }
     }

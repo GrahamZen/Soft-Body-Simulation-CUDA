@@ -136,15 +136,18 @@ template void inspectHost<glm::mat3>(glm::mat3* dev_ptr, int size);
 template void inspectHost<glm::mat4>(glm::mat4* dev_ptr, int size);
 
 template <typename T>
-void compareHostVSHost(T* host_ptr1, T* host_ptr2, int size) {
+bool compareHostVSHost(T* host_ptr1, T* host_ptr2, int size) {
     for (int i = 0; i < size; i++) {
         if (host_ptr1[i] != host_ptr2[i]) {
-            std::cout << "host_ptr1[" << i << "] = " << glm::to_string(host_ptr1[i]) << std::endl;
-            std::cout << "host_ptr2[" << i << "] = " << glm::to_string(host_ptr2[i]) << std::endl;
+            std::cout << "Failed:" << std::endl
+                << "host_ptr1[" << i << "] = " << glm::to_string(host_ptr1[i]) << ", "
+                << "host_ptr2[" << i << "] = " << glm::to_string(host_ptr2[i]) << std::endl;
+            return false;
         }
     }
+    return true;
 }
-template void compareHostVSHost<glm::vec3>(glm::vec3*, glm::vec3*, int size);
+template bool compareHostVSHost<glm::vec3>(glm::vec3*, glm::vec3*, int size);
 
 void inspectHost(unsigned int* host_ptr, int size) {
     for (int i = 0; i < size / 4; i++) {

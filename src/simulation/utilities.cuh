@@ -14,11 +14,11 @@ void inspectGLM(T* dev_ptr, int size) {
     inspectHost(host_ptr.data(), size);
 }
 
-template <typename T>
-void compareDevVSHost(T* dev_ptr, T* host_ptr2, int size) {
-    std::vector<T> host_ptr(size);
-    cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost);
-    compareHostVSHost(host_ptr.data(), host_ptr2, size);
+template <typename T1, typename T2>
+bool compareDevVSHost(T1* dev_ptr, T2* host_ptr2, int size) {
+    std::vector<T1> host_ptr(size);
+    cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T1) * size, cudaMemcpyDeviceToHost);
+    return compareHostVSHost(host_ptr.data(), reinterpret_cast<T1*>(host_ptr2), size);
 }
 
 __inline__ __device__ float trace(const glm::mat3& a)
@@ -54,3 +54,6 @@ __global__ void ComputeForces(glm::vec3* Force, const glm::vec3* X, const GLuint
 __global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* Force,
     int number, float mass, float dt, float damp,
     glm::vec3 floorPos, glm::vec3 floorUp, float muT, float muN);
+
+__global__ void HandleFloorCollision(glm::vec3* X, glm::vec3* V,
+    int number, glm::vec3 floorPos, glm::vec3 floorUp, float muT, float muN);

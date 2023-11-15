@@ -52,7 +52,7 @@ Context::~Context()
 void Context::PollEvents() {
     auto& attrs = guiData->softBodyAttr;
     if (attrs.currSoftBodyId == -1) return;
-    bool result = attrs.stiffness_0.second || attrs.stiffness_1.second || attrs.damp.second || attrs.muN.second || attrs.muT.second || attrs.jump.second;
+    bool result = attrs.stiffness_0.second || attrs.stiffness_1.second || attrs.damp.second || attrs.muN.second || attrs.muT.second || attrs.getJumpDirty();
     if (result)
         mpSimContext->UpdateSingleSBAttr(guiData->softBodyAttr.currSoftBodyId, guiData->softBodyAttr);
     else
@@ -62,7 +62,7 @@ void Context::PollEvents() {
     attrs.damp.second = false;
     attrs.muN.second = false;
     attrs.muT.second = false;
-    attrs.jump.second = false;
+    attrs.cleanJump();
 }
 
 void Context::LoadShaders(const std::string& vertShaderFilename, const std::string& fragShaderFilename)
@@ -122,6 +122,9 @@ SimulationCUDAContext* Context::LoadSimContext() {
     if (json.contains("dt")) {
         mpSimContext->SetDt(json["dt"].get<float>());
     }
+    if (json.contains("gravity")) {
+        mpSimContext->SetGravity(json["gravity"].get<float>());
+    }
 
     if (json.contains("softBodies")) {
         for (const auto& sbJson : json["softBodies"]) {
@@ -137,6 +140,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
             float damp = sbJson["damp"].get<float>();
             float muN = sbJson["muN"].get<float>();
             float muT = sbJson["muT"].get<float>();
+            int constraints = sbJson["constraints"].get<int>();
             bool centralize = sbJson["centralize"].get<bool>();
             int startIndex = sbJson["start index"].get<int>();
             std::string baseName = nodeFile.substr(nodeFile.find_last_of('/') + 1);
@@ -145,7 +149,8 @@ SimulationCUDAContext* Context::LoadSimContext() {
             namesSoftBodies.push_back(name);
             SoftBody* softBody = new SoftBody(nodeFile.c_str(), eleFile.c_str(), mpSimContext,
                 pos, scale, rot,
-                mass, stiffness_0, stiffness_1, damp, muN, muT, centralize, startIndex);
+                mass, stiffness_0, stiffness_1, damp, muN, muT, constraints,
+                centralize, startIndex);
 
             mpSimContext->AddSoftBody(softBody);
         }
