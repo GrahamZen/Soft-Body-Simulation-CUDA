@@ -80,11 +80,7 @@ std::vector<glm::vec3> SoftBody::loadNodeFile(const std::string& nodeFilename, b
 
 void SoftBody::setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)
 {
-    if (softBodyAttr.getJumpDirty()) {
-        jump = softBodyAttr.getJumpState();
-        if (jump)
-            softBodyAttr.setJump(false);
-    }
+    softBodyAttr.setJumpClean(jump);
     if (softBodyAttr.stiffness_0.second)
         stiffness_0 = softBodyAttr.stiffness_0.first;
     if (softBodyAttr.stiffness_1.second)

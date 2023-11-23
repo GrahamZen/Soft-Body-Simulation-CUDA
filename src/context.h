@@ -25,10 +25,9 @@ public:
         std::pair<float, bool> damp;
         std::pair<float, bool> muN;
         std::pair<float, bool> muT;
-        void setJump(bool val) { jump = { val,true }; }
-        bool getJumpDirty()const { return jump.second; }
-        bool getJumpState()const { return jump.first; }
-        void cleanJump() { jump.second = false; }
+        void setJumpClean(bool& val);
+        void setJump(bool val);
+        bool getJumpDirty()const;
     private:
         std::pair<bool, bool> jump;
     }softBodyAttr;

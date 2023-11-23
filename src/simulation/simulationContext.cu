@@ -8,8 +8,14 @@
 #include <utilities.h>
 #include <utilities.cuh>
 #include <iostream>
-#include <deformable_mesh.h>
-#include <solver.h>
+#include <cusolverSp.h>
+#include <cusparse.h>
+#include <Eigen/Dense>
+#include <Eigen/SparseCholesky>
+
+#include <thrust/sort.h>
+#include <thrust/reduce.h>
+#include <thrust/execution_policy.h>
 
 #define ERRORCHECK 1
 
@@ -22,11 +28,8 @@
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
  * of memory management
  */
-pd::deformable_mesh_t model{};
-pd::solver_t solver;
 
-std::vector<glm::vec3> vertices;
-std::vector<GLuint> idx;
+std::vector<Eigen::Triplet<float>> A_triplets;
 
 void SoftBody::InitModel()
 {
@@ -79,11 +82,10 @@ void SoftBody::InitModel()
     Eigen::VectorXd masses(V.rows());
     masses.setConstant(mass);
     model = pd::deformable_mesh_t{ V, F, T, masses };
-    model.constrain_deformation_gradient(1000000.0f);
+    model.constrain_deformation_gradient(wi);
     //model.velocity().rowwise() += Eigen::RowVector3d{ 0, 0, 0. };
-    double const deformation_gradient_wi = 1000.;
     double const positional_wi = 1'000'000'000.;
-    model.constrain_deformation_gradient(deformation_gradient_wi);
+    //model.constrain_deformation_gradient(deformation_gradient_wi);
 
     for (std::size_t i = 0u; i < numConstraints; ++i)
     {
@@ -100,14 +102,176 @@ void SoftBody::PdSolver()
     fext.setZero();
     // set gravity force
     fext.col(1).array() -= mpSimContext->GetGravity() * mass;
-    //SetForce(&fext);
     if (!solver.ready())
     {
         solver.prepare(mpSimContext->GetDt());
     }
-
     solver.step(fext, 10);
     //fext.setZero();
+}
+
+void SoftBody::solverPrepare()
+{
+    int threadsPerBlock = 64;
+    int vertBlocks = (number + threadsPerBlock - 1) / threadsPerBlock;
+    int tetBlocks = (tet_number + threadsPerBlock - 1) / threadsPerBlock;
+    float dt = mpSimContext->GetDt();
+    float const m_1_dt2 = mass / (dt * dt);
+    int len = number * 3 + 48 * tet_number;
+    int ASize = 3 * number;
+
+    cudaMalloc((void**)&sn, sizeof(float) * ASize);
+    cudaMalloc((void**)&b, sizeof(float) * ASize);
+    cudaMalloc((void**)&masses, sizeof(float) * ASize);
+
+    int* AIdx;
+    cudaMalloc((void**)&AIdx, sizeof(int) * len);
+    cudaMemset(AIdx, 0, sizeof(int) * len);
+
+    float* tmpVal;
+    cudaMalloc((void**)&tmpVal, sizeof(int) * len);
+    cudaMemset(tmpVal, 0, sizeof(int) * len);
+
+    cudaMalloc((void**)&ExtForce, sizeof(glm::vec3) * number);
+    cudaMemset(ExtForce, 0, sizeof(float) * number);
+
+    computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, inv_Dm, Tet, wi, tet_number, number);
+    setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * tet_number, m_1_dt2, number);
+
+    
+    if (useEigen)
+    {
+        bHost = (float*)malloc(sizeof(float) * ASize);
+
+        int* AIdxHost = (int*)malloc(sizeof(int) * len);
+        float* tmpValHost = (float*)malloc(sizeof(float) * len);
+
+        cudaMemcpy(AIdxHost, AIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
+        cudaMemcpy(tmpValHost, tmpVal, sizeof(float) * len, cudaMemcpyDeviceToHost);
+
+        std::vector<Eigen::Triplet<float>> A_triplets;
+
+        for (auto i = 0; i < len; ++i)
+        {
+            A_triplets.push_back({ AIdxHost[i] / ASize, AIdxHost[i] % ASize, tmpValHost[i] });
+        }
+        Eigen::SparseMatrix<float> A(ASize, ASize);
+
+        A.setFromTriplets(A_triplets.begin(), A_triplets.end());
+        cholesky_decomposition_.compute(A);
+
+        free(AIdxHost);
+        free(tmpValHost);
+    }
+    else
+    {
+        int* newIdx;
+        float* newVal;
+
+        cudaMalloc((void**)&newIdx, sizeof(int) * len);
+        cudaMalloc((void**)&newVal, sizeof(float) * len);
+
+        thrust::sort_by_key(thrust::device, AIdx, AIdx + len, tmpVal);
+
+
+        thrust::pair<int*, float*> newEnd = thrust::reduce_by_key(thrust::device, AIdx, AIdx + len, tmpVal, newIdx, newVal);
+
+        nnzNumber = newEnd.first - newIdx;
+        std::cout << nnzNumber << std::endl;
+
+        cudaMalloc((void**)&ARow, sizeof(int) * nnzNumber);
+        cudaMemset(ARow, 0, sizeof(int) * nnzNumber);
+
+        cudaMalloc((void**)&ACol, sizeof(int) * nnzNumber);
+        cudaMemset(ACol, 0, sizeof(int) * nnzNumber);
+
+        cudaMalloc((void**)&AVal, sizeof(float) * nnzNumber);
+        cudaMemcpy(AVal, newVal, sizeof(float) * nnzNumber, cudaMemcpyDeviceToDevice);
+
+        int* ARowTmp;
+        cudaMalloc((void**)&ARowTmp, sizeof(int) * nnzNumber);
+        cudaMemset(ARowTmp, 0, sizeof(int) * nnzNumber);
+
+        //int threadsPerBlock = 64;
+        int blocks = (nnzNumber + threadsPerBlock - 1) / threadsPerBlock;
+
+        initAMatrix << < blocks, threadsPerBlock >> > (newIdx, ARowTmp, ACol, ASize, nnzNumber);
+
+        // transform ARow into csr format
+        cusparseHandle_t handle;
+        cusparseCreate(&handle);
+        cusparseXcoo2csr(handle, ARowTmp, nnzNumber, ASize, ARow, CUSPARSE_INDEX_BASE_ZERO);
+
+        cudaFree(newIdx);
+        cudaFree(newVal);
+        cudaFree(ARowTmp);
+    }
+    cudaFree(AIdx);
+    cudaFree(tmpVal);
+}
+
+void SoftBody::PDSolver()
+{
+    if (!solverReady)
+    {
+        solverPrepare();
+        solverReady = true;
+    }
+    PDSolverStep();
+}
+
+bool trigger = true;
+
+void SoftBody::PDSolverStep()
+{
+    
+    float dt = mpSimContext->GetDt();
+    float const dtInv = 1.0f / dt;
+    float const dt2 = dt * dt;
+    float const dt2_m_1 = dt2 / mass;
+    float const m_1_dt2 = mass / dt2;
+
+
+    int threadsPerBlock = 64;
+    int vertBlocks = (number + threadsPerBlock - 1) / threadsPerBlock;
+    int tetBlocks = (tet_number + threadsPerBlock - 1) / threadsPerBlock;
+
+    glm::vec3 gravity = glm::vec3(0.0f, -mpSimContext->GetGravity(), 0.0f);
+    setExtForce << < vertBlocks, threadsPerBlock >> > (ExtForce, gravity, number);
+    computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, X, V, ExtForce, number);
+    computeM_h2Sn << < vertBlocks, threadsPerBlock >> > (masses, sn, m_1_dt2, number);
+    cusolverSpHandle_t cusolverHandle;
+    int singularity = 0;
+    cusparseMatDescr_t descrA;
+    if (!useEigen)
+    {
+        cusolverSpCreate(&cusolverHandle);
+        cusparseCreateMatDescr(&descrA);
+        cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
+        cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
+    }
+
+    // 10 is the number of iterations
+    for (int i = 0; i < 10; i++)
+    {
+        cudaMemset(b, 0, sizeof(float) * number * 3);
+        computeLocal << < tetBlocks, threadsPerBlock >> >(V0, wi, b, inv_Dm, sn, Tet, tet_number);
+        addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, number);
+        
+        if (useEigen)
+        {
+            cudaMemcpy(bHost, b, sizeof(float) * (number * 3), cudaMemcpyDeviceToHost);
+            Eigen::VectorXf bh = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(bHost, number * 3);
+            Eigen::VectorXf res = cholesky_decomposition_.solve(bh);
+            cudaMemcpy(sn, res.data(), sizeof(float) * (number * 3), cudaMemcpyHostToDevice);
+        }
+        else
+        {
+            cusolverSpScsrlsvchol(cusolverHandle, number * 3, nnzNumber, descrA, AVal, ARow, ACol, b, 0.0001f, 0, sn, &singularity);
+        }
+    }
+
+    updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, X, V, number);
 }
 
 void SimulationCUDAContext::Update()
@@ -168,8 +332,10 @@ SoftBody::SoftBody(const char* nodeFileName, const char* eleFileName, Simulation
     createTetrahedron();
     cudaMalloc((void**)&V_num, sizeof(int) * number);
     cudaMemset(V_num, 0, sizeof(int) * number);
+    cudaMalloc((void**)&V0, sizeof(float) * tet_number);
+    cudaMemset(V0, 0, sizeof(float) * tet_number);
     blocks = (tet_number + threadsPerBlock - 1) / threadsPerBlock;
-    computeInvDm << < blocks, threadsPerBlock >> > (inv_Dm, tet_number, X, Tet);
+    computeInvDmV0 << < blocks, threadsPerBlock >> > (V0, inv_Dm, tet_number, X, Tet);
 }
 
 SoftBody::~SoftBody()
@@ -180,6 +346,21 @@ SoftBody::~SoftBody()
     cudaFree(V);
     cudaFree(inv_Dm);
     cudaFree(V_sum);
+
+    cudaFree(sn);
+    cudaFree(b);
+    cudaFree(masses);
+
+    if (useEigen)
+    {
+        free(bHost);
+    }
+    else
+    {
+        cudaFree(ARow);
+        cudaFree(ACol);
+        cudaFree(AVal);
+    }
 }
 
 void SoftBody::mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr)
@@ -236,11 +417,18 @@ void SoftBody::_Update()
     // Laplacian_Smoothing();
     glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
     glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    // ComputeForces << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, tet_number, inv_Dm, stiffness_0, stiffness_1);
-    PdSolver();
-    positionsFloat = model.positions().cast<float>().transpose();
-    cudaMemcpy(X, positionsFloat.data(), number * sizeof(glm::vec3), cudaMemcpyHostToDevice);
-    velocitiesFloat = model.velocity().cast<float>();
-    cudaMemcpy(V, velocitiesFloat.data(), number * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+    //ComputeForces << <(tet_number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, tet_number, inv_Dm, stiffness_0, stiffness_1);
+    if (useGPUSolver)
+    {
+        PDSolver();
+    }
+    else
+    {
+        PdSolver();
+        positionsFloat = model.positions().cast<float>().transpose();
+        cudaMemcpy(X, positionsFloat.data(), number * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+        velocitiesFloat = model.velocity().cast<float>();
+        cudaMemcpy(V, velocitiesFloat.data(), number * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+    }
     HandleFloorCollision << <(number + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, number, floorPos, floorUp, muT, muN);
 }

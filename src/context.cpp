@@ -62,7 +62,6 @@ void Context::PollEvents() {
     attrs.damp.second = false;
     attrs.muN.second = false;
     attrs.muT.second = false;
-    attrs.cleanJump();
 }
 
 void Context::LoadShaders(const std::string& vertShaderFilename, const std::string& fragShaderFilename)
@@ -232,4 +231,25 @@ void Context::ResetCamera() {
 
 void cleanupCuda() {
 
+}
+
+void GuiDataContainer::SoftBodyAttr::setJump(bool val) {
+    jump = { true, true };
+}
+
+void GuiDataContainer::SoftBodyAttr::setJumpClean(bool& val)
+{
+    if (jump.second) {
+        val = jump.first;
+        if (val) {
+            jump = { false, true };
+        }
+        else {
+            jump.second = false;
+        }
+    }
+}
+
+bool GuiDataContainer::SoftBodyAttr::getJumpDirty()const {
+    return jump.second;
 }

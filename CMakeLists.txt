@@ -51,6 +51,8 @@ if(WIN32)
 endif(WIN32)
 ########################################
 
+find_package(CUDAToolkit)
+
 find_package(OpenGL REQUIRED)
 
 if(UNIX)
@@ -98,13 +100,14 @@ set(headers
     src/openglcontext/texture.h
     src/mesh.h
 
+    src/svd3_cuda.h
+    src/svd3.h
+
     src/constraint.h
     src/solver.h
     src/deformable_mesh.h
     src/deformation_gradient_constraint.h
     src/positional_constraint.h
-
-    src/svd3.h
 )
 
 set(sources
@@ -147,9 +150,11 @@ include_directories(
 
 cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers} ${IMGUI_SOURCES})
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui")
+#"${EXTERNAL}/svd3_cuda"
 target_link_libraries(${CMAKE_PROJECT_NAME}
 ${LIBRARIES}
 Eigen3::Eigen
 OpenMP::OpenMP_CXX
+CUDA::cusolver
 #stream_compaction  # TODO: uncomment if using your stream compaction
 )

@@ -7,6 +7,9 @@
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
 
+#include <deformable_mesh.h>
+#include <solver.h>
+
 class SimulationCUDAContext;
 
 class SoftBody : public Mesh {
@@ -18,6 +21,9 @@ public:
 
     void InitModel();
     void PdSolver();
+    void solverPrepare();
+    void PDSolverStep();
+    void PDSolver();
     void Update();
     void Reset();
     void mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr);
@@ -33,6 +39,11 @@ public:
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
     SimulationCUDAContext* mpSimContext;
+    pd::deformable_mesh_t model{};
+    pd::solver_t solver;
+
+    std::vector<glm::vec3> vertices;
+    std::vector<GLuint> idx;
     float mass = 1.0f;
     int numConstraints = 0;
     float stiffness_0 = 20000.0f;
@@ -40,24 +51,43 @@ private:
     float damp = 0.999f;
     float muN = 0.5f;
     float muT = 0.5f;
+    float wi = 1000000.0f; // is the deformation gradient coefficient
     bool jump = false;
 
     GLuint* Tet;
     int tet_number; // The number of tetrahedra
     int number; // The number of vertices
+    int nnzNumber;
 
+    bool solverReady = false;
+    bool useGPUSolver = true;
+    bool useEigen = true;
+
+    glm::vec3* ExtForce;
     glm::vec3* Force;
     glm::vec3* V;
     glm::vec3* X;
     glm::vec3* X0;
     glm::vec3* Velocity;
     float* Mass;
+    float* V0;
+
+    int* ARow;
+    int* ACol;
+    float* AVal;
+
+    float* masses;
+    float* sn;
+    float* b;
 
     glm::mat3* inv_Dm;
 
     // For Laplacian smoothing.
     glm::vec3* V_sum;
     int* V_num;
+
+    float* bHost;
+    Eigen::SimplicialCholesky<Eigen::SparseMatrix<float>> cholesky_decomposition_;
 
     // Methods
     void _Update();

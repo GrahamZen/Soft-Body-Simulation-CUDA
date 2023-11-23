@@ -52,6 +52,7 @@ class solver_t
     void set_dirty() { dirty_ = true; }
     void set_clean() { dirty_ = false; }
     bool ready() const { return !dirty_; }
+    bool first = true;
     
     void prepare(scalar_type dt)
     {
@@ -73,18 +74,15 @@ class solver_t
             auto const SiT_AiT_Ai_Si = constraint->get_wi_SiT_AiT_Ai_Si(positions, mass);
             A_triplets.insert(A_triplets.end(), SiT_AiT_Ai_Si.begin(), SiT_AiT_Ai_Si.end());
         }
-
         for (auto i = 0; i < N; ++i)
         {
             A_triplets.push_back({3 * i + 0, 3 * i + 0, mass(i) * dt2_inv});
             A_triplets.push_back({3 * i + 1, 3 * i + 1, mass(i) * dt2_inv});
             A_triplets.push_back({3 * i + 2, 3 * i + 2, mass(i) * dt2_inv});
         }
-
         Eigen::SparseMatrix<scalar_type> A(3 * N, 3 * N);
 
         A.setFromTriplets(A_triplets.begin(), A_triplets.end());
-        
         cholesky_decomposition_.compute(A);
         
         set_clean();
@@ -126,7 +124,7 @@ class solver_t
         }
 
         // initial q(t+1)
-        Eigen::VectorXd q = sn;
+        //Eigen::VectorXd q = sn;
 
         Eigen::VectorXd b;
         b.resize(3 * N);
@@ -137,15 +135,15 @@ class solver_t
             b.setZero();
             for (auto const& constraint : constraints)
             {
-                constraint->project_wi_SiT_AiT_Bi_pi(q, b);
+                constraint->project_wi_SiT_AiT_Bi_pi(sn, b);
             }
             b += masses;
 
             // Ax = b
-            q = cholesky_decomposition_.solve(b);
+            sn = cholesky_decomposition_.solve(b);
         }
 
-        Eigen::MatrixXd const qn_plus_1 = detail::unflatten(q);
+        Eigen::MatrixXd const qn_plus_1 = detail::unflatten(sn);
         velocities                      = (qn_plus_1 - positions) * dt_inv;
         positions                       = qn_plus_1;
     }
