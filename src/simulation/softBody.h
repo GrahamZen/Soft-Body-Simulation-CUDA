@@ -9,6 +9,7 @@
 
 #include <deformable_mesh.h>
 #include <solver.h>
+#include <bvh.h>
 
 class SimulationCUDAContext;
 
@@ -33,6 +34,7 @@ public:
     glm::vec3* getV()const { return V; }
     glm::vec3* getForce()const { return Force; }
     glm::mat3* getInvDm()const { return inv_Dm; }
+    AABB GetAABB();
     void setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr);
     int getNumber()const { return number; }
     int getTetNumber()const { return tet_number; }
@@ -92,6 +94,7 @@ private:
     // Methods
     void _Update();
     void SetForce(Eigen::MatrixX3d* fext);
+    void HandleCollision(BVH* bvh);
     std::vector<GLuint> loadEleFile(const std::string&, int startIndex = 0);
     std::vector<glm::vec3> loadNodeFile(const std::string&, bool centralize = false);
 };

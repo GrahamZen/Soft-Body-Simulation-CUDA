@@ -41,8 +41,8 @@ endif()
 find_package(CUDA 10 REQUIRED)
 include(${CMAKE_MODULE_PATH}/CUDAComputesList.cmake)
 
-list(APPEND CUDA_NVCC_FLAGS ${CUDA_GENERATE_CODE})
-list(APPEND CUDA_NVCC_FLAGS_DEBUG "-g -G")
+list(APPEND CUDA_NVCC_FLAGS ${CUDA_GENERATE_CODE} "--extended-lambda")
+list(APPEND CUDA_NVCC_FLAGS_DEBUG "-g -G --extended-lambda")
 set(CUDA_VERBOSE_BUILD ON)
 
 if(WIN32)
@@ -86,10 +86,12 @@ find_package(OpenMP)
 
 set(headers
     src/main.h
-    src/intersections.h
     src/simulation/simulationContext.h
     src/simulation/softBody.h
     src/simulation/utilities.cuh
+    src/collision/intersections.h
+    src/collision/bvh.cuh
+    src/collision/bvh.h
     src/sceneStructs.h
     src/preview.h
     src/utilities.h
@@ -117,6 +119,7 @@ set(sources
     src/simulation/utilities.cu
     src/simulation/simulationContext.cu
     src/simulation/simulationContext.cpp
+    src/collision/bvh.cu
     src/preview.cpp
     src/utilities.cpp
     src/context.cpp
@@ -139,7 +142,17 @@ source_group(Headers FILES ${headers})
 source_group(Sources FILES ${sources})
 
 #add_subdirectory(src/ImGui)
-set(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/ImGui ${PROJECT_SOURCE_DIR}/src/openglcontext ${PROJECT_SOURCE_DIR}/src/simulation ${PROJECT_SOURCE_DIR}/src/utilities ${PROJECT_SOURCE_DIR}/src/sceneStructs ${PROJECT_SOURCE_DIR}/src/openglcontext ${PROJECT_SOURCE_DIR}/src/simulation)
+set(PROJECT_INCLUDE_DIR 
+${PROJECT_SOURCE_DIR}/src 
+${PROJECT_SOURCE_DIR}/src/ImGui 
+${PROJECT_SOURCE_DIR}/src/openglcontext 
+${PROJECT_SOURCE_DIR}/src/simulation 
+${PROJECT_SOURCE_DIR}/src/utilities 
+${PROJECT_SOURCE_DIR}/src/sceneStructs 
+${PROJECT_SOURCE_DIR}/src/openglcontext 
+${PROJECT_SOURCE_DIR}/src/collision 
+${PROJECT_SOURCE_DIR}/src/simulation)
+
 include_directories(
     ${PROJECT_INCLUDE_DIR} 
     ${GLM_INCLUDE_DIRS} 

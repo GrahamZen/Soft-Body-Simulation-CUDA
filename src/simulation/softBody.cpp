@@ -4,6 +4,12 @@
 #include <sstream>
 #include <string>
 #include <glm/glm.hpp>
+#include <bvh.cuh>
+
+void SoftBody::HandleCollision(BVH* bvh)
+{
+    auto pairCollision = bvh->detectCollisionCandidates(Tet, tet_number, X, number);
+}
 
 std::vector<GLuint> SoftBody::loadEleFile(const std::string& EleFilename, int startIndex)
 {
@@ -76,6 +82,12 @@ std::vector<glm::vec3> SoftBody::loadNodeFile(const std::string& nodeFilename, b
     std::cout << "number of nodes: " << number << std::endl;
 
     return X;
+}
+
+AABB SoftBody::GetAABB()
+{
+    thrust::device_ptr<glm::vec3> dev_ptr(X);
+    return computeBoundingBox(dev_ptr, dev_ptr + number);
 }
 
 void SoftBody::setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)

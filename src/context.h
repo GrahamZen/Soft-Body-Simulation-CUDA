@@ -1,5 +1,6 @@
 #pragma once
 #include <utilities.h>
+#include <vector>
 
 class Camera;
 class SoftBody;
@@ -38,6 +39,7 @@ void cleanupCuda();
 
 class Context
 {
+    friend class SimulationCUDAContext;
 public:
     Context(const std::string& _filename);
     ~Context();
@@ -48,7 +50,7 @@ public:
     void ResetCamera();
     void Draw();
     int GetIteration() const { return iteration; }
-    const std::vector<const char*>& GetnamesSoftBodies() const { return namesSoftBodies; }
+    const std::vector<const char*>& GetNamesSoftBodies() const { return namesSoftBodies; }
     Camera* mpCamera = nullptr;
     const int width = 1024;
     const int height = 1024;

@@ -107,8 +107,6 @@ Camera* Context::loadCamera(const std::string& _filename) {
 }
 
 SimulationCUDAContext* Context::LoadSimContext() {
-    SimulationCUDAContext* mpSimContext = new SimulationCUDAContext();
-
     std::ifstream fileStream = findFile(filename);
     if (!fileStream.is_open()) {
         std::cerr << "Failed to open JSON file: " << filename << std::endl;
@@ -117,43 +115,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
     nlohmann::json json;
     fileStream >> json;
     fileStream.close();
-
-    if (json.contains("dt")) {
-        mpSimContext->SetDt(json["dt"].get<float>());
-    }
-    if (json.contains("gravity")) {
-        mpSimContext->SetGravity(json["gravity"].get<float>());
-    }
-
-    if (json.contains("softBodies")) {
-        for (const auto& sbJson : json["softBodies"]) {
-            std::string nodeFile = sbJson["nodeFile"];
-            std::string eleFile = sbJson["eleFile"];
-            glm::vec3 pos = glm::vec3(sbJson["pos"][0].get<float>(), sbJson["pos"][1].get<float>(), sbJson["pos"][2].get<float>());
-            glm::vec3 scale = glm::vec3(sbJson["scale"][0].get<float>(), sbJson["scale"][1].get<float>(), sbJson["scale"][2].get<float>());
-            glm::vec3 rot = glm::vec3(sbJson["rot"][0].get<float>(), sbJson["rot"][1].get<float>(), sbJson["rot"][2].get<float>());
-            bool jump = sbJson["jump"].get<bool>();
-            float mass = sbJson["mass"].get<float>();
-            float stiffness_0 = sbJson["stiffness_0"].get<float>();
-            float stiffness_1 = sbJson["stiffness_1"].get<float>();
-            float damp = sbJson["damp"].get<float>();
-            float muN = sbJson["muN"].get<float>();
-            float muT = sbJson["muT"].get<float>();
-            int constraints = sbJson["constraints"].get<int>();
-            bool centralize = sbJson["centralize"].get<bool>();
-            int startIndex = sbJson["start index"].get<int>();
-            std::string baseName = nodeFile.substr(nodeFile.find_last_of('/') + 1);
-            char* name = new char[baseName.size()];
-            strcpy(name, baseName.c_str());
-            namesSoftBodies.push_back(name);
-            SoftBody* softBody = new SoftBody(nodeFile.c_str(), eleFile.c_str(), mpSimContext,
-                pos, scale, rot,
-                mass, stiffness_0, stiffness_1, damp, muN, muT, constraints,
-                centralize, startIndex);
-
-            mpSimContext->AddSoftBody(softBody);
-        }
-    }
+    mpSimContext = new SimulationCUDAContext(this, json);
 
     return mpSimContext;
 }
@@ -167,7 +129,7 @@ void Context::InitDataContainer() {
 }
 
 void Context::InitCuda() {
-    mpSimContext = LoadSimContext();
+    LoadSimContext();
     cudaGLSetGLDevice(0);
 
     // Clean up on program exit

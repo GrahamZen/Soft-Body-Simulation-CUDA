@@ -3,8 +3,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/intersect.hpp>
 
-#include <sceneStructs.h>
-#include <utilities.h>
+#include "sceneStructs.h"
+#include "utilities.h"
 
 /**
  * Handy-dandy hash function that provides seeds for random number generation.
@@ -35,6 +35,32 @@ __host__ __device__ glm::vec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
     return glm::vec3(m * v);
 }
 
+__host__ __device__ bool bboxIntersectionTest(const glm::vec3& X0, const glm::vec3& dX, const AABB& bbox) {
+    glm::vec3 X1 = X0 + dX;
+
+    for (int i = 0; i < 3; i++) {
+        float min = fminf(X0[i], X1[i]);
+        float max = fmaxf(X0[i], X1[i]);
+
+        if (max < bbox.min[i] || min > bbox.max[i]) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
+__host__ __device__ float tetrahedronVolume(const glm::vec3& A, const glm::vec3& B, const glm::vec3& C, const glm::vec3& D) {
+    return glm::abs(glm::dot(glm::cross(B - A, C - A), D - A)) / 6.0f;
+}
+
+__host__ __device__ bool tetrahedronIntersectionTest(const glm::vec3& X0, const glm::vec3& dX, const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3) {
+    // unimplemented!
+    return true;
+}
+
+
 // CHECKITOUT
 /**
  * Test intersection between a ray and a transformed cube. Untransformed,
@@ -46,9 +72,9 @@ __host__ __device__ glm::vec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
  * @return                   Ray parameter `t` value. -1 if no intersection.
  */
 __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
-        glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+    glm::vec3& intersectionPoint, glm::vec3& normal, bool& outside) {
     Ray q;
-    q.origin    =                multiplyMV(box.inverseTransform, glm::vec4(r.origin   , 1.0f));
+    q.origin = multiplyMV(box.inverseTransform, glm::vec4(r.origin, 1.0f));
     q.direction = glm::normalize(multiplyMV(box.inverseTransform, glm::vec4(r.direction, 0.0f)));
 
     float tmin = -1e38f;
@@ -100,7 +126,7 @@ __host__ __device__ float boxIntersectionTest(Geom box, Ray r,
  * @return                   Ray parameter `t` value. -1 if no intersection.
  */
 __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
-        glm::vec3 &intersectionPoint, glm::vec3 &normal, bool &outside) {
+    glm::vec3& intersectionPoint, glm::vec3& normal, bool& outside) {
     float radius = .5;
 
     glm::vec3 ro = multiplyMV(sphere.inverseTransform, glm::vec4(r.origin, 1.0f));
@@ -124,11 +150,13 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
     float t = 0;
     if (t1 < 0 && t2 < 0) {
         return -1;
-    } else if (t1 > 0 && t2 > 0) {
-        t = min(t1, t2);
+    }
+    else if (t1 > 0 && t2 > 0) {
+        t = glm::min(t1, t2);
         outside = true;
-    } else {
-        t = max(t1, t2);
+    }
+    else {
+        t = glm::max(t1, t2);
         outside = false;
     }
 
@@ -136,9 +164,11 @@ __host__ __device__ float sphereIntersectionTest(Geom sphere, Ray r,
 
     intersectionPoint = multiplyMV(sphere.transform, glm::vec4(objspaceIntersection, 1.f));
     normal = glm::normalize(multiplyMV(sphere.invTranspose, glm::vec4(objspaceIntersection, 0.f)));
+
     if (!outside) {
         normal = -normal;
     }
 
     return glm::length(r.origin - intersectionPoint);
 }
+

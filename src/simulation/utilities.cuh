@@ -88,3 +88,6 @@ __global__ void updateVelPos(float* newPos, float dt_1, glm::vec3* pos, glm::vec
 __global__ void initAMatrix(int* idx, int* row, int* col, int rowLen, int totalNumber);
 __global__ void setExtForce(glm::vec3* ExtForce, glm::vec3 gravity, int numVerts);
 
+
+__global__ void HandleCollision(glm::vec3* X, glm::vec3* V,
+    int number, glm::vec3 floorPos, glm::vec3 floorUp, float muT, float muN);

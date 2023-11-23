@@ -2,13 +2,7 @@
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-
-#include <iostream>
-
-#include <sceneStructs.h>
-#include <simulationContext.h>
-#include <surfaceshader.h>
-#include <mesh.h>
+#include <context.h>
 
 using namespace std;
 

@@ -3,7 +3,7 @@
 #include <sceneStructs.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
-#include <glm/gtc/matrix_transform.hpp> 
+#include <glm/gtc/matrix_transform.hpp>
 #include <simulationContext.h>
 #include <utilities.h>
 #include <utilities.cuh>
@@ -138,7 +138,7 @@ void SoftBody::solverPrepare()
     computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, inv_Dm, Tet, wi, tet_number, number);
     setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * tet_number, m_1_dt2, number);
 
-    
+
     if (useEigen)
     {
         bHost = (float*)malloc(sizeof(float) * ASize);
@@ -220,11 +220,9 @@ void SoftBody::PDSolver()
     PDSolverStep();
 }
 
-bool trigger = true;
-
 void SoftBody::PDSolverStep()
 {
-    
+
     float dt = mpSimContext->GetDt();
     float const dtInv = 1.0f / dt;
     float const dt2 = dt * dt;
@@ -255,9 +253,9 @@ void SoftBody::PDSolverStep()
     for (int i = 0; i < 10; i++)
     {
         cudaMemset(b, 0, sizeof(float) * number * 3);
-        computeLocal << < tetBlocks, threadsPerBlock >> >(V0, wi, b, inv_Dm, sn, Tet, tet_number);
+        computeLocal << < tetBlocks, threadsPerBlock >> > (V0, wi, b, inv_Dm, sn, Tet, tet_number);
         addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, number);
-        
+
         if (useEigen)
         {
             cudaMemcpy(bHost, b, sizeof(float) * (number * 3), cudaMemcpyDeviceToHost);
@@ -276,6 +274,7 @@ void SoftBody::PDSolverStep()
 
 void SimulationCUDAContext::Update()
 {
+    //m_bvh.BuildBVHTree(0, GetAABB(), GetTetCnt(), softBodies);
     for (auto softbody : softBodies) {
         softbody->Update();
         glm::vec3* pos;
