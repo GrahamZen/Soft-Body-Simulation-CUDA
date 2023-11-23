@@ -331,7 +331,7 @@ inline void QRDecomposition(// matrix that we want to decompose
     q33=(-1+2*sh22)*(-1+2*sh32);
 }
 
-void svd1(// input A
+void svd_cpu(// input A
 		float a11, float a12, float a13,
 		float a21, float a22, float a23,
 		float a31, float a32, float a33,

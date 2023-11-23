@@ -57,11 +57,6 @@ deformation_gradient_constraint_t::evaluate(positions_type const& p, masses_type
 
     scalar_type const Vsigned = (1. / 6.) * Ds.determinant();
 
-    //if (Vsigned == 0.)
-    //{
-    //    return scalar_type{0.};
-    //}
-
     bool const is_V_positive  = Vsigned >= 0.;
     bool const is_V0_positive = V0_ >= 0.;
     bool const is_tet_inverted =
@@ -142,12 +137,6 @@ void deformation_gradient_constraint_t::project_wi_SiT_AiT_Bi_pi(
     Dss[1] = o2;
     Dss[2] = o3;
     Dss = glm::transpose(Dss);
-    /*
-    for (int i = 0; i < 3; i++)
-    {
-        std::cout << Dss[i][0] << ", " << Dss[i][1] << ", " << Dss[i][2] << std::endl;
-    }
-    std::cout << std::endl;*/
 
     glm::mat3x3 Dm_1;
     Dm_1[0] = glm::vec3(DmInv_(0, 0), DmInv_(0, 1), DmInv_(0, 2));
@@ -160,7 +149,7 @@ void deformation_gradient_constraint_t::project_wi_SiT_AiT_Bi_pi(
     glm::mat3x3 vy;
     glm::mat3x3 ss;
     
-    svd1(f[0][0], f[1][0], f[2][0], f[0][1], f[1][1], f[2][1], f[0][2], f[1][2], f[2][2],
+    svd_cpu(f[0][0], f[1][0], f[2][0], f[0][1], f[1][1], f[2][1], f[0][2], f[1][2], f[2][2],
         uy[0][0], uy[1][0], uy[2][0], uy[0][1], uy[1][1], uy[2][1], uy[0][2], uy[1][2], uy[2][2],
         ss[0][0], ss[1][0], ss[2][0], ss[0][1], ss[1][1], ss[2][1], ss[0][2], ss[1][2], ss[2][2],
         vy[0][0], vy[1][0], vy[2][0], vy[0][1], vy[1][1], vy[2][1], vy[0][2], vy[1][2], vy[2][2]);

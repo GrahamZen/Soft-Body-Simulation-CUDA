@@ -115,7 +115,6 @@ set(sources
     src/stb.cpp
     src/simulation/softBody.cpp
     src/simulation/utilities.cu
-    src/pdController.cu
     src/simulation/simulationContext.cu
     src/simulation/simulationContext.cpp
     src/preview.cpp
