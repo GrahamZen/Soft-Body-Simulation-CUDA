@@ -148,9 +148,9 @@ void Mesh::createCube(const char* textureFile, const char* bgTextureFile)
 void Mesh::createTetrahedron()
 {
     // TODO: Create VBO data for positions, normals, UVs, and indices
-    count = tet_number * 12; // TODO: Set "count" to the number of indices in your index VBO
+    count = numTets * 12; // TODO: Set "count" to the number of indices in your index VBO
     std::vector<GLuint> triangles(count);
-    for (int t = 0; t < tet_number * 4; t++)
+    for (int t = 0; t < numTets * 4; t++)
     {
         triangles[t * 3 + 0] = t * 3 + 0;
         triangles[t * 3 + 1] = t * 3 + 1;
@@ -162,12 +162,12 @@ void Mesh::createTetrahedron()
 
     generatePos();
     glBindBuffer(GL_ARRAY_BUFFER, bufPos);
-    glBufferData(GL_ARRAY_BUFFER, tet_number * 12 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, numTets * 12 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
     cudaGraphicsGLRegisterBuffer(&cuda_bufPos_resource, bufPos, cudaGraphicsMapFlagsWriteDiscard);
 
     generateNor();
     glBindBuffer(GL_ARRAY_BUFFER, bufNor);
-    glBufferData(GL_ARRAY_BUFFER, tet_number * 12 * sizeof(glm::vec4), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, numTets * 12 * sizeof(glm::vec4), nullptr, GL_DYNAMIC_DRAW);
     cudaGraphicsGLRegisterBuffer(&cuda_bufNor_resource, bufNor, cudaGraphicsMapFlagsWriteDiscard);
 }
 

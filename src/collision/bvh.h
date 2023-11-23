@@ -23,11 +23,15 @@ class BVH {
 public:
     BVH() = default;
     ~BVH();
-    void Init(int, int);
+    void Init(int numTets, int numSoftBodies, int numVerts);
     void BuildBVHTree(int startIndexBVH, const AABB& ctxAABB, int triCount, const std::vector<SoftBody*>& softBodies);
-    std::vector<std::pair<int, int>> detectCollisionCandidates(GLuint* Tet, int numTet, glm::vec3* X, int number);
+    float* detectCollisionCandidates(GLuint* Tet, glm::vec3* X, glm::vec3* XTilt) const;
 private:
     BVHNode* dev_BVHNodes = nullptr;
     AABB* dev_bboxes = nullptr;
     int numNodes;
+    int numTets;
+    int numVerts;
+    float* dev_tI;
+    int* dev_indicesToReport;
 };

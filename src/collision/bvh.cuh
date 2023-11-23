@@ -1,5 +1,5 @@
 #pragma once
-#include <crt/host_defines.h>
+#include <cuda_runtime_api.h>
 #include <thrust/device_vector.h>
 #include <glm/glm.hpp>
 #include <vector>
@@ -71,5 +71,5 @@ __global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNod
 // very naive implementation
 __global__ void buildBBoxes(int leafCount, BVHNode* nodes, unsigned char* ready);
 
-__device__ int traverseTree(const BVHNode* nodes, glm::vec3* X,
-    int start, int end, AABB bbox, glm::vec3 X0, glm::vec3 dX0, int meshInd, int* indicesToReport);
+__device__ float traverseTree(const BVHNode* nodes, glm::vec3* X,
+    int start, int end, AABB bbox, glm::vec3 X0, glm::vec3 XTilt, int& hitTetId);

@@ -37,6 +37,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json)
                 centralize, startIndex));
         }
     }
+    m_bvh.Init(GetTetCnt(), softBodies.size(), GetVertCnt());
 }
 
 SimulationCUDAContext::~SimulationCUDAContext()
@@ -76,4 +77,17 @@ int SimulationCUDAContext::GetTetCnt() const
     for (auto softBody : softBodies)
         result += softBody->getTetNumber();
     return result;
+}
+
+int SimulationCUDAContext::GetVertCnt() const
+{
+    int result = 0;
+    for (auto softBody : softBodies)
+        result += softBody->getNumber();
+    return result;
+}
+
+void SimulationCUDAContext::CCD()
+{
+    //auto pairCollision = m_bvh.detectCollisionCandidates(Tet, numTets, X, numVerts);
 }

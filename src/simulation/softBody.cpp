@@ -27,8 +27,8 @@ void SoftBody::InitModel()
 {
     Eigen::MatrixXd V;
     Eigen::MatrixXi T, F;
-    V.resize(number, 3);
-    for (int i = 0; i < number; i++)
+    V.resize(numVerts, 3);
+    for (int i = 0; i < numVerts; i++)
     {
         V.row(i) = Eigen::Vector3d(
             vertices[i].x,
@@ -41,9 +41,9 @@ void SoftBody::InitModel()
     }
 
     // allocate space for triangles
-    F.resize(tet_number * 4, 3);
+    F.resize(numTets * 4, 3);
     // triangle indices
-    for (int tet = 0; tet < tet_number; tet++)
+    for (int tet = 0; tet < numTets; tet++)
     {
         F(4 * tet, 0) = idx[tet * 4 + 0];
         F(4 * tet, 1) = idx[tet * 4 + 2];
@@ -60,10 +60,10 @@ void SoftBody::InitModel()
     }
 
     // allocate space for tetrahedra
-    T.resize(tet_number, 4);
+    T.resize(numTets, 4);
     // tet indices
     int a, b, c, d;
-    for (int i = 0; i < tet_number; i++)
+    for (int i = 0; i < numTets; i++)
     {
         T(i, 0) = idx[i * 4 + 0];
         T(i, 1) = idx[i * 4 + 1];
@@ -87,11 +87,6 @@ void SoftBody::InitModel()
     solver.set_model(&model);
 }
 
-void SoftBody::HandleCollision(BVH* bvh)
-{
-    auto pairCollision = bvh->detectCollisionCandidates(Tet, tet_number, X, number);
-}
-
 std::vector<GLuint> SoftBody::loadEleFile(const std::string& EleFilename, int startIndex)
 {
     std::string line;
@@ -103,12 +98,12 @@ std::vector<GLuint> SoftBody::loadEleFile(const std::string& EleFilename, int st
 
     std::getline(file, line);
     std::istringstream iss(line);
-    iss >> tet_number;
+    iss >> numTets;
 
-    std::vector<GLuint> Tet(tet_number * 4);
+    std::vector<GLuint> Tet(numTets * 4);
 
     int a, b, c, d, e;
-    for (int tet = 0; tet < tet_number && std::getline(file, line); ++tet) {
+    for (int tet = 0; tet < numTets && std::getline(file, line); ++tet) {
         std::istringstream iss(line);
         iss >> a >> b >> c >> d >> e;
 
@@ -117,7 +112,7 @@ std::vector<GLuint> SoftBody::loadEleFile(const std::string& EleFilename, int st
         Tet[tet * 4 + 2] = d - startIndex;
         Tet[tet * 4 + 3] = e - startIndex;
     }
-    std::cout << "number of tetrahedrons: " << tet_number << std::endl;
+    std::cout << "numVerts of tetrahedrons: " << numTets << std::endl;
 
     file.close();
     return Tet;
@@ -133,11 +128,11 @@ std::vector<glm::vec3> SoftBody::loadNodeFile(const std::string& nodeFilename, b
     std::string line;
     std::getline(file, line);
     std::istringstream iss(line);
-    iss >> number;
-    std::vector<glm::vec3> X(number);
+    iss >> numVerts;
+    std::vector<glm::vec3> X(numVerts);
     glm::vec3 center(0.0f);
 
-    for (int i = 0; i < number && std::getline(file, line); ++i) {
+    for (int i = 0; i < numVerts && std::getline(file, line); ++i) {
         std::istringstream lineStream(line);
         int index;
         float x, y, z;
@@ -152,15 +147,15 @@ std::vector<glm::vec3> SoftBody::loadNodeFile(const std::string& nodeFilename, b
 
     // Centralize the model
     if (centralize) {
-        center /= static_cast<float>(number);
-        for (int i = 0; i < number; ++i) {
+        center /= static_cast<float>(numVerts);
+        for (int i = 0; i < numVerts; ++i) {
             X[i] -= center;
             float temp = X[i].y;
             X[i].y = X[i].z;
             X[i].z = temp;
         }
     }
-    std::cout << "number of nodes: " << number << std::endl;
+    std::cout << "numVerts of nodes: " << numVerts << std::endl;
 
     return X;
 }
@@ -168,7 +163,7 @@ std::vector<glm::vec3> SoftBody::loadNodeFile(const std::string& nodeFilename, b
 AABB SoftBody::GetAABB()
 {
     thrust::device_ptr<glm::vec3> dev_ptr(X);
-    return computeBoundingBox(dev_ptr, dev_ptr + number);
+    return computeBoundingBox(dev_ptr, dev_ptr + numVerts);
 }
 
 void SoftBody::setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)

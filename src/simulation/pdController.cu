@@ -13,12 +13,12 @@
 void SoftBody::solverPrepare()
 {
     int threadsPerBlock = 64;
-    int vertBlocks = (number + threadsPerBlock - 1) / threadsPerBlock;
-    int tetBlocks = (tet_number + threadsPerBlock - 1) / threadsPerBlock;
+    int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
     float dt = mpSimContext->GetDt();
     float const m_1_dt2 = mass / (dt * dt);
-    int len = number * 3 + 48 * tet_number;
-    int ASize = 3 * number;
+    int len = numVerts * 3 + 48 * numTets;
+    int ASize = 3 * numVerts;
 
     cudaMalloc((void**)&sn, sizeof(float) * ASize);
     cudaMalloc((void**)&b, sizeof(float) * ASize);
@@ -32,11 +32,11 @@ void SoftBody::solverPrepare()
     cudaMalloc((void**)&tmpVal, sizeof(int) * len);
     cudaMemset(tmpVal, 0, sizeof(int) * len);
 
-    cudaMalloc((void**)&ExtForce, sizeof(glm::vec3) * number);
-    cudaMemset(ExtForce, 0, sizeof(float) * number);
+    cudaMalloc((void**)&ExtForce, sizeof(glm::vec3) * numVerts);
+    cudaMemset(ExtForce, 0, sizeof(float) * numVerts);
 
-    computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, inv_Dm, Tet, wi, tet_number, number);
-    setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * tet_number, m_1_dt2, number);
+    computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, inv_Dm, Tet, wi, numTets, numVerts);
+    setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * numTets, m_1_dt2, numVerts);
 
 
     if (useEigen)
@@ -122,13 +122,13 @@ void SoftBody::PDSolverStep()
 
 
     int threadsPerBlock = 64;
-    int vertBlocks = (number + threadsPerBlock - 1) / threadsPerBlock;
-    int tetBlocks = (tet_number + threadsPerBlock - 1) / threadsPerBlock;
+    int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
 
     glm::vec3 gravity = glm::vec3(0.0f, -mpSimContext->GetGravity(), 0.0f);
-    setExtForce << < vertBlocks, threadsPerBlock >> > (ExtForce, gravity, number);
-    computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, X, V, ExtForce, number);
-    computeM_h2Sn << < vertBlocks, threadsPerBlock >> > (masses, sn, m_1_dt2, number);
+    setExtForce << < vertBlocks, threadsPerBlock >> > (ExtForce, gravity, numVerts);
+    computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, X, V, ExtForce, numVerts);
+    computeM_h2Sn << < vertBlocks, threadsPerBlock >> > (masses, sn, m_1_dt2, numVerts);
     cusolverSpHandle_t cusolverHandle;
     int singularity = 0;
     cusparseMatDescr_t descrA;
@@ -140,25 +140,25 @@ void SoftBody::PDSolverStep()
         cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
     }
 
-    // 10 is the number of iterations
+    // 10 is the numVerts of iterations
     for (int i = 0; i < 10; i++)
     {
-        cudaMemset(b, 0, sizeof(float) * number * 3);
-        computeLocal << < tetBlocks, threadsPerBlock >> > (V0, wi, b, inv_Dm, sn, Tet, tet_number);
-        addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, number);
+        cudaMemset(b, 0, sizeof(float) * numVerts * 3);
+        computeLocal << < tetBlocks, threadsPerBlock >> > (V0, wi, b, inv_Dm, sn, Tet, numTets);
+        addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, numVerts);
 
         if (useEigen)
         {
-            cudaMemcpy(bHost, b, sizeof(float) * (number * 3), cudaMemcpyDeviceToHost);
-            Eigen::VectorXf bh = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(bHost, number * 3);
+            cudaMemcpy(bHost, b, sizeof(float) * (numVerts * 3), cudaMemcpyDeviceToHost);
+            Eigen::VectorXf bh = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(bHost, numVerts * 3);
             Eigen::VectorXf res = cholesky_decomposition_.solve(bh);
-            cudaMemcpy(sn, res.data(), sizeof(float) * (number * 3), cudaMemcpyHostToDevice);
+            cudaMemcpy(sn, res.data(), sizeof(float) * (numVerts * 3), cudaMemcpyHostToDevice);
         }
         else
         {
-            cusolverSpScsrlsvchol(cusolverHandle, number * 3, nnzNumber, descrA, AVal, ARow, ACol, b, 0.0001f, 0, sn, &singularity);
+            cusolverSpScsrlsvchol(cusolverHandle, numVerts * 3, nnzNumber, descrA, AVal, ARow, ACol, b, 0.0001f, 0, sn, &singularity);
         }
     }
 
-    updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, X, V, number);
+    updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, X, V, numVerts);
 }

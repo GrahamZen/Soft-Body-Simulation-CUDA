@@ -16,6 +16,8 @@ public:
     AABB GetAABB() const;
     const BVH* GetBVHPtr() const { return &m_bvh; };
     int GetTetCnt() const;
+    int GetVertCnt() const;
+    void CCD();
 private:
     std::vector<SoftBody*> softBodies;
     BVH m_bvh;

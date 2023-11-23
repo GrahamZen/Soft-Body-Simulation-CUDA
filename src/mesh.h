@@ -24,7 +24,7 @@ public:
 protected:
     cudaGraphicsResource* cuda_bufPos_resource = nullptr;
     cudaGraphicsResource* cuda_bufNor_resource = nullptr;
-    int tet_number = 0;
+    int numTets = 0;
 private:
     std::unique_ptr<Texture> mp_texture;
     std::unique_ptr<Texture> mp_bgTexture;

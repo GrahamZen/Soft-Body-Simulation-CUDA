@@ -23,11 +23,11 @@ void checkCUDAErrorFn(const char* msg, const char* file, int line) {
 #endif
 }
 
-__global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int number)
+__global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int numVerts)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
-    if (index < number)
+    if (index < numVerts)
     {
         X[index] = glm::vec3(transform * glm::vec4(X[index], 1.f));
     }
@@ -62,10 +62,10 @@ __device__ void svdGLM(const glm::mat3& A, glm::mat3& U, glm::mat3& S, glm::mat3
         V[0][0], V[1][0], V[2][0], V[0][1], V[1][1], V[2][1], V[0][2], V[1][2], V[2][2]);
 }
 
-__global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int tet_number, const glm::vec3* X, const GLuint* Tet)
+__global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const glm::vec3* X, const GLuint* Tet)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-    if (index < tet_number)
+    if (index < numTets)
     {
         glm::mat3 Dm = Build_Edge_Matrix(X, Tet, index);
         inv_Dm[index] = glm::inverse(Dm);
@@ -73,9 +73,9 @@ __global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int tet_number, con
     }
 }
 
-__global__ void LaplacianGatherKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int tet_number, const GLuint* Tet) {
+__global__ void LaplacianGatherKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int numTets, const GLuint* Tet) {
     int tet = (blockIdx.x * blockDim.x) + threadIdx.x;
-    if (tet < tet_number) {
+    if (tet < numTets) {
         glm::vec3 sum = V[Tet[tet * 4]] + V[Tet[tet * 4 + 1]] + V[Tet[tet * 4 + 2]] + V[Tet[tet * 4 + 3]];
 
         for (int i = 0; i < 4; ++i) {
@@ -88,19 +88,19 @@ __global__ void LaplacianGatherKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, 
     }
 }
 
-__global__ void LaplacianKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int number, const GLuint* Tet, float blendAlpha) {
+__global__ void LaplacianKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int numVerts, const GLuint* Tet, float blendAlpha) {
     int i = (blockIdx.x * blockDim.x) + threadIdx.x;
-    if (i < number) {
+    if (i < numVerts) {
         V[i] = blendAlpha * V[i] + (1 - blendAlpha) * V_sum[i] / float(V_num[i]);
     }
 }
 
 
-__global__ void PopulatePos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int tet_number)
+__global__ void PopulatePos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int numTets)
 {
     int tet = (blockIdx.x * blockDim.x) + threadIdx.x;
 
-    if (tet < tet_number)
+    if (tet < numTets)
     {
         vertices[tet * 12 + 0] = X[Tet[tet * 4 + 0]];
         vertices[tet * 12 + 1] = X[Tet[tet * 4 + 2]];
@@ -117,11 +117,11 @@ __global__ void PopulatePos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int 
     }
 }
 
-__global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int number)
+__global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int numVerts)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
-    if (index < number)
+    if (index < numVerts)
     {
         glm::vec3 v0v1 = vertices[index * 3 + 1] - vertices[index * 3 + 0];
         glm::vec3 v0v2 = vertices[index * 3 + 2] - vertices[index * 3 + 0];
@@ -132,9 +132,9 @@ __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int nu
     }
 }
 
-__global__ void ComputeForces(glm::vec3* Force, const glm::vec3* X, const GLuint* Tet, int tet_number, const glm::mat3* inv_Dm, float stiffness_0, float stiffness_1) {
+__global__ void ComputeForces(glm::vec3* Force, const glm::vec3* X, const GLuint* Tet, int numTets, const glm::mat3* inv_Dm, float stiffness_0, float stiffness_1) {
     int tet = blockIdx.x * blockDim.x + threadIdx.x;
-    if (tet >= tet_number) return;
+    if (tet >= numTets) return;
 
     glm::mat3 F = Build_Edge_Matrix(X, Tet, tet) * inv_Dm[tet];
     glm::mat3 FtF = glm::transpose(F) * F;
@@ -162,10 +162,10 @@ __global__ void ComputeForces(glm::vec3* Force, const glm::vec3* X, const GLuint
 }
 
 __global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* Force,
-    int number, float mass, float dt, float damp,
+    int numVerts, float mass, float dt, float damp,
     glm::vec3 floorPos, glm::vec3 floorUp, float muT, float muN) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= number) return;
+    if (i >= numVerts) return;
 
     V[i] += Force[i] / mass * dt;
     V[i] *= damp;
@@ -183,9 +183,9 @@ __global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* For
 }
 
 __global__ void HandleFloorCollision(glm::vec3* X, glm::vec3* V,
-    int number, glm::vec3 floorPos, glm::vec3 floorUp, float muT, float muN) {
+    int numVerts, glm::vec3 floorPos, glm::vec3 floorUp, float muT, float muN) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
-    if (i >= number) return;
+    if (i >= numVerts) return;
     V[i] *= 0.99f;
     float signedDis = glm::dot(X[i] - floorPos, floorUp);
     if (signedDis < 0 && glm::dot(V[i], floorUp) < 0) {
@@ -273,7 +273,7 @@ __global__ void computeSn(float* sn, float dt, float dt2_m_1, glm::vec3* pos, gl
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (index < numVerts)
     {
-        // sn is of size 3*number
+        // sn is of size 3*numVerts
         sn[index * 3 + 0] = pos[index].x + dt * vel[index].x + dt2_m_1 * force[index].x;
         sn[index * 3 + 1] = pos[index].y + dt * vel[index].y + dt2_m_1 * force[index].y;
         sn[index * 3 + 2] = pos[index].z + dt * vel[index].z + dt2_m_1 * force[index].z;
@@ -379,7 +379,7 @@ __global__ void updateVelPos(float* newPos, float dt_1, glm::vec3* pos, glm::vec
     {
         int offset = 3 * index;
         glm::vec3 newPosition = glm::vec3(newPos[offset], newPos[offset + 1], newPos[offset + 2]);
-        // sn is of size 3*number
+        // sn is of size 3*numVerts
         vel[index] = (newPosition - pos[index]) * dt_1;
         pos[index] = newPosition;
     }

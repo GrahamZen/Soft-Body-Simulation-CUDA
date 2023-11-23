@@ -227,14 +227,15 @@ __global__ void buildBBoxes(int leafCount, BVHNode* nodes, unsigned char* ready)
 }
 
 
-__device__ int traverseTree(const BVHNode* nodes, Geom geo, glm::vec3* X,
-    int start, int end, AABB bbox, glm::vec3 X0, glm::vec3 dX0, int meshInd, int* indicesToReport)
+__device__ float traverseTree(const BVHNode* nodes, glm::vec3* X,
+    int start, int end, AABB bbox, glm::vec3 X0, glm::vec3 XTilt, int& hitTetId)
 {
-    int numIndices = 0;
+    // record the closest intersection
+    float closest = FLT_MAX;
     glm::vec3 worldIntersect = glm::vec3(0.f);
     glm::vec3 objectIntersect = glm::vec3(0.f);
 
-    if (!bboxIntersectionTest(X0, dX0, bbox))
+    if (!bboxIntersectionTest(X0, XTilt, bbox))
     {
         return -1;
     }
@@ -252,20 +253,23 @@ __device__ int traverseTree(const BVHNode* nodes, Geom geo, glm::vec3* X,
         BVHNode leftChild = nodes[currentNode.leftIndex + bvhStart];
         BVHNode rightChild = nodes[currentNode.rightIndex + bvhStart];
 
-        bool hitLeft = bboxIntersectionTest(X0, dX0, leftChild.bbox);
-        bool hitRight = bboxIntersectionTest(X0, dX0, rightChild.bbox);
+        bool hitLeft = bboxIntersectionTest(X0, XTilt, leftChild.bbox);
+        bool hitRight = bboxIntersectionTest(X0, XTilt, rightChild.bbox);
         if (hitLeft)
         {
-            // check Tetrahedron intersection
+            // check triangle intersection
             if (leftChild.isLeaf == 1)
             {
                 const glm::vec3& v0 = X[leftChild.TetrahedronIndex * 4 + 0];
                 const glm::vec3& v1 = X[leftChild.TetrahedronIndex * 4 + 1];
                 const glm::vec3& v2 = X[leftChild.TetrahedronIndex * 4 + 2];
                 const glm::vec3& v3 = X[leftChild.TetrahedronIndex * 4 + 3];
-                if (tetrahedronIntersectionTest(X0, dX0, v0, v1, v2, v3)) {
-                    indicesToReport[numIndices] = leftChild.TetrahedronIndex;
-                    numIndices++;
+                float distance = tetrahedronIntersectionTest(X0, XTilt, v0, v1, v2, v3);
+                // if is closer, then calculate normal and uv
+                if (distance < closest)
+                {
+                    hitTetId = leftChild.TetrahedronIndex;
+                    closest = distance;
                 }
             }
             else
@@ -276,16 +280,21 @@ __device__ int traverseTree(const BVHNode* nodes, Geom geo, glm::vec3* X,
         }
         if (hitRight)
         {
-            // check Tetrahedron intersection
+            // check triangle intersection
             if (rightChild.isLeaf == 1)
             {
                 const glm::vec3& v0 = X[leftChild.TetrahedronIndex * 4 + 0];
                 const glm::vec3& v1 = X[leftChild.TetrahedronIndex * 4 + 1];
                 const glm::vec3& v2 = X[leftChild.TetrahedronIndex * 4 + 2];
                 const glm::vec3& v3 = X[leftChild.TetrahedronIndex * 4 + 3];
-                if (tetrahedronIntersectionTest(X0, dX0, v0, v1, v2, v3)) {
-                    indicesToReport[numIndices] = rightChild.TetrahedronIndex;
-                    numIndices++;
+                glm::vec3 tmpWorldIntersect = glm::vec3(0.f);
+                glm::vec3 tmpObjectIntersect = glm::vec3(0.f);
+                float distance = tetrahedronIntersectionTest(X0, XTilt, v0, v1, v2, v3);
+                // if is closer, then calculate normal and uv
+                if (distance < closest)
+                {
+                    hitTetId = rightChild.TetrahedronIndex;
+                    closest = distance;
                 }
             }
             else
@@ -295,12 +304,36 @@ __device__ int traverseTree(const BVHNode* nodes, Geom geo, glm::vec3* X,
 
         }
     }
-    return numIndices;
+    return closest;
 }
 
-std::vector<std::pair<int, int>> BVH::detectCollisionCandidates(GLuint* Tet, int numTet, glm::vec3* X, int number)
+
+__global__ void detectCollisionCandidatesKern(int numVerts, const BVHNode* nodes, glm::vec3* X, glm::vec3 X0, glm::vec3 XTilt, int meshInd, int* indicesToReport, float* tI)
 {
-    return std::vector<std::pair<int, int>>();
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < numVerts)
+    {
+        int hitTetId = -1;
+        AABB bbox = computeBBox(X[index * 4], X[index * 4 + 1], X[index * 4 + 2], X[index * 4 + 3]);
+        float distance = traverseTree(nodes, X, 0, 0, bbox, X0, XTilt, hitTetId);
+        if (distance != -1)
+        {
+            indicesToReport[index] = hitTetId;
+            tI[index] = distance;
+        }
+        else {
+            tI[index] = 1;
+            indicesToReport[index] = -1;
+        }
+    }
+}
+
+float* BVH::detectCollisionCandidates(GLuint* Tet, glm::vec3* X, glm::vec3* XTilt) const
+{
+    int blockSize1d = 128;
+    dim3 numblocks = (numVerts + blockSize1d - 1) / blockSize1d;
+    detectCollisionCandidatesKern << <numblocks, blockSize1d >> > (numVerts, dev_BVHNodes, X, glm::vec3(0.f), glm::vec3(0.f), 0, dev_indicesToReport, dev_tI);
+    return dev_tI;
 }
 
 
@@ -308,14 +341,20 @@ BVH::~BVH()
 {
     cudaFree(dev_BVHNodes);
     //cudaFree(dev_bboxes);
+    cudaFree(dev_tI);
+    cudaFree(dev_indicesToReport);
 }
 
-void BVH::Init(int tet_number, int numSoftBodies)
+void BVH::Init(int numTets, int numSoftBodies, int numVerts)
 {
-    cudaMalloc(&dev_BVHNodes, (tet_number * 2 - numSoftBodies) * sizeof(BVHNode));
-    cudaMemset(dev_BVHNodes, 0, (tet_number * 2 - numSoftBodies) * sizeof(BVHNode));
+    cudaMalloc(&dev_BVHNodes, (numTets * 2 - numSoftBodies) * sizeof(BVHNode));
+    cudaMemset(dev_BVHNodes, 0, (numTets * 2 - numSoftBodies) * sizeof(BVHNode));
     //cudaMalloc(&dev_bboxes, bboxes.size() * sizeof(AABB));
     //cudaMemcpy(dev_bboxes, bboxes.data(), bboxes.size() * sizeof(AABB), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&dev_tI, numVerts * sizeof(float));
+    cudaMemset(dev_tI, 0, numVerts * sizeof(float));
+    cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
+    cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
 }
 
 void BVH::BuildBVHTree(int startIndexBVH, const AABB& ctxAABB, int triCount, const std::vector<SoftBody*>& softBodies)

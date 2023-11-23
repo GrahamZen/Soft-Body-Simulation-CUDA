@@ -41,8 +41,8 @@ endif()
 find_package(CUDA 10 REQUIRED)
 include(${CMAKE_MODULE_PATH}/CUDAComputesList.cmake)
 
-list(APPEND CUDA_NVCC_FLAGS ${CUDA_GENERATE_CODE} "--extended-lambda")
-list(APPEND CUDA_NVCC_FLAGS_DEBUG "-g -G --extended-lambda")
+list(APPEND CUDA_NVCC_FLAGS ${CUDA_GENERATE_CODE} "--extended-lambda --expt-relaxed-constexpr")
+list(APPEND CUDA_NVCC_FLAGS_DEBUG "-g -G --extended-lambda --expt-relaxed-constexpr")
 set(CUDA_VERBOSE_BUILD ON)
 
 if(WIN32)

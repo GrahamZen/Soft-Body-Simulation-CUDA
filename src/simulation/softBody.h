@@ -36,8 +36,8 @@ public:
     glm::mat3* getInvDm()const { return inv_Dm; }
     AABB GetAABB();
     void setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr);
-    int getNumber()const { return number; }
-    int getTetNumber()const { return tet_number; }
+    int getNumber()const { return numVerts; }
+    int getTetNumber()const { return numTets; }
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
     SimulationCUDAContext* mpSimContext;
@@ -57,8 +57,8 @@ private:
     bool jump = false;
 
     GLuint* Tet;
-    int tet_number; // The number of tetrahedra
-    int number; // The number of vertices
+    int numTets; // The numVerts of tetrahedra
+    int numVerts; // The numVerts of vertices
     int nnzNumber;
 
     bool solverReady = false;
@@ -94,7 +94,6 @@ private:
     // Methods
     void _Update();
     void SetForce(Eigen::MatrixX3d* fext);
-    void HandleCollision(BVH* bvh);
     std::vector<GLuint> loadEleFile(const std::string&, int startIndex = 0);
     std::vector<glm::vec3> loadNodeFile(const std::string&, bool centralize = false);
 };

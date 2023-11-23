@@ -35,12 +35,10 @@ __host__ __device__ glm::vec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
     return glm::vec3(m * v);
 }
 
-__host__ __device__ bool bboxIntersectionTest(const glm::vec3& X0, const glm::vec3& dX, const AABB& bbox) {
-    glm::vec3 X1 = X0 + dX;
-
+__host__ __device__ bool bboxIntersectionTest(const glm::vec3& X0, const glm::vec3& XTilt, const AABB& bbox) {
     for (int i = 0; i < 3; i++) {
-        float min = fminf(X0[i], X1[i]);
-        float max = fmaxf(X0[i], X1[i]);
+        float min = fminf(X0[i], XTilt[i]);
+        float max = fmaxf(X0[i], XTilt[i]);
 
         if (max < bbox.min[i] || min > bbox.max[i]) {
             return false;
@@ -50,14 +48,40 @@ __host__ __device__ bool bboxIntersectionTest(const glm::vec3& X0, const glm::ve
     return true;
 }
 
-
 __host__ __device__ float tetrahedronVolume(const glm::vec3& A, const glm::vec3& B, const glm::vec3& C, const glm::vec3& D) {
     return glm::abs(glm::dot(glm::cross(B - A, C - A), D - A)) / 6.0f;
 }
 
-__host__ __device__ bool tetrahedronIntersectionTest(const glm::vec3& X0, const glm::vec3& dX, const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3) {
-    // unimplemented!
-    return true;
+__host__ __device__ float tetrahedronIntersectionTest(const glm::vec3& X0, const glm::vec3& XTilt,
+    const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3) {
+    glm::vec3 baryPosition;
+    float distance;
+    bool intersected = false;
+    float minDistance = FLT_MAX;
+
+    const glm::vec3* triangles[4][3] = {
+        {&v0, &v1, &v2},
+        {&v0, &v1, &v3},
+        {&v0, &v2, &v3},
+        {&v1, &v2, &v3}
+    };
+
+    for (int i = 0; i < 4; ++i) {
+        if (glm::intersectRayTriangle(X0, XTilt - X0, *triangles[i][0], *triangles[i][1], *triangles[i][2], baryPosition)) {
+            glm::vec3 intersectionPoint = (1.0f - baryPosition.x - baryPosition.y) * *triangles[i][0] + baryPosition.x * *triangles[i][1] + baryPosition.y * *triangles[i][2];
+            distance = glm::length(intersectionPoint - X0);
+            if (distance >= 0 && distance < minDistance) {
+                minDistance = distance;
+                intersected = true;
+            }
+        }
+    }
+
+    if (intersected) {
+        return minDistance / glm::length(XTilt - X0);
+    }
+
+    return FLT_MAX;
 }
 
 
