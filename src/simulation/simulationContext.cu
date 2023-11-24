@@ -23,6 +23,10 @@ SimulationCUDAContext::~SimulationCUDAContext()
 {
     cudaFree(dev_Xs);
     cudaFree(dev_Tets);
+    cudaFree(dev_Vs);
+    cudaFree(dev_Fs);
+    cudaFree(dev_X0s);
+    cudaFree(dev_XTilts);
     for (auto softbody : softBodies) {
         delete softbody;
     }
@@ -43,7 +47,6 @@ void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, 
     model = glm::rotate(model, glm::radians(rot.x), glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, glm::radians(rot.z), glm::vec3(0.0f, 0.0f, 1.0f));
-    int threadsPerBlock = 64;
     int blocks = (softBodyData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     TransformVertices << < blocks, threadsPerBlock >> > (softBodyData.dev_X, model, softBodyData.numVerts);
 
@@ -56,12 +59,13 @@ void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, 
     m_softBodyData.push_back({ softBodyData, attrib });
 }
 
-void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gV, glm::vec3*& gF, GLuint*& gTet, int& numVerts, int& numTets)
+void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilt, glm::vec3*& gV, glm::vec3*& gF, GLuint*& gTet, int& numVerts, int& numTets)
 {
     numVerts = totalNumVerts;
     numTets = totalNumTets;
     cudaMalloc((void**)&gX, sizeof(glm::vec3) * totalNumVerts);
     cudaMalloc((void**)&gX0, sizeof(glm::vec3) * totalNumVerts);
+    cudaMalloc((void**)&gXTilt, sizeof(glm::vec3) * totalNumVerts);
     cudaMalloc((void**)&gV, sizeof(glm::vec3) * totalNumVerts);
     cudaMalloc((void**)&gF, sizeof(glm::vec3) * totalNumVerts);
     cudaMemset(gV, 0, sizeof(glm::vec3) * totalNumVerts);
@@ -80,12 +84,14 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
         cudaFree(data.dev_X);
         data.dev_X = gX + vertOffset;
         data.dev_X0 = gX0 + vertOffset;
+        data.dev_XTilt = gXTilt + vertOffset;
         data.dev_V = gV + vertOffset;
         data.dev_F = gF + vertOffset;
         vertOffset += data.numVerts;
         tetOffset += data.numTets * 4;
     }
     cudaMemcpy(gX0, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(gXTilt, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
 
 void SimulationCUDAContext::Update()
@@ -93,16 +99,28 @@ void SimulationCUDAContext::Update()
     //m_bvh.BuildBVHTree(0, GetAABB(), GetTetCnt(), softBodies);
     for (auto softbody : softBodies) {
         softbody->Update();
+    }
+    glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
+    glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
+    HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_XTilts, dev_Vs, numVerts, floorPos, floorUp, muT, muN);
+    CCD();
+    cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
+    PrepareRenderData();
+}
+
+void SimulationCUDAContext::PrepareRenderData() {
+    for (auto softbody : softBodies) {
         glm::vec3* pos;
         glm::vec4* nor;
         softbody->mapDevicePtr(&pos, &nor);
-        dim3 numThreadsPerBlock(softbody->getTetNumber() / 32 + 1);
+        dim3 numThreadsPerBlock(softbody->getTetNumber() / threadsPerBlock + 1);
 
-        PopulatePos << <numThreadsPerBlock, 32 >> > (pos, softbody->getX(), softbody->getTet(), softbody->getTetNumber());
-        RecalculateNormals << <softbody->getTetNumber() * 4 / 32 + 1, 32 >> > (nor, pos, 4 * softbody->getTetNumber());
+        PopulatePos << <numThreadsPerBlock, threadsPerBlock >> > (pos, softbody->getX(), softbody->getTet(), softbody->getTetNumber());
+        RecalculateNormals << <softbody->getTetNumber() * 4 / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, 4 * softbody->getTetNumber());
         softbody->unMapDevicePtr();
     }
 }
+
 
 void SoftBody::mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr)
 {

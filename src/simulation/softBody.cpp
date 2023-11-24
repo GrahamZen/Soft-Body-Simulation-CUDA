@@ -100,10 +100,4 @@ void SoftBody::setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)
         attrib.stiffness_0 = softBodyAttr.stiffness_0.first;
     if (softBodyAttr.stiffness_1.second)
         attrib.stiffness_1 = softBodyAttr.stiffness_1.first;
-    if (softBodyAttr.damp.second)
-        attrib.damp = softBodyAttr.damp.first;
-    if (softBodyAttr.muN.second)
-        attrib.muN = softBodyAttr.muN.first;
-    if (softBodyAttr.muT.second)
-        attrib.muT = softBodyAttr.muT.first;
 }

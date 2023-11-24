@@ -12,7 +12,6 @@
 
 void SoftBody::solverPrepare()
 {
-    int threadsPerBlock = 64;
     int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
     float dt = mpSimContext->GetDt();
@@ -92,7 +91,6 @@ void SoftBody::solverPrepare()
         cudaMalloc((void**)&ARowTmp, sizeof(int) * nnzNumber);
         cudaMemset(ARowTmp, 0, sizeof(int) * nnzNumber);
 
-        //int threadsPerBlock = 64;
         int blocks = (nnzNumber + threadsPerBlock - 1) / threadsPerBlock;
 
         initAMatrix << < blocks, threadsPerBlock >> > (newIdx, ARowTmp, ACol, ASize, nnzNumber);
@@ -121,7 +119,6 @@ void SoftBody::PDSolverStep()
     float const m_1_dt2 = attrib.mass / dt2;
 
 
-    int threadsPerBlock = 64;
     int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
 
@@ -160,5 +157,5 @@ void SoftBody::PDSolverStep()
         }
     }
 
-    updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, X, V, numVerts);
+    updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, XTilt, V, numVerts);
 }

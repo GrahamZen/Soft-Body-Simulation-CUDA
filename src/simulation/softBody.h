@@ -20,9 +20,6 @@ public:
         float mass = 1.0f;
         float stiffness_0 = 20000.0f;
         float stiffness_1 = 5000.0f;
-        float damp = 0.999f;
-        float muN = 0.5f;
-        float muT = 0.5f;
         int numConstraints = 0;
     }attrib;
     SoftBody(SimulationCUDAContext*, SoftBodyAttribute&, SoftBodyData*);
@@ -48,6 +45,7 @@ public:
     int getTetNumber()const { return numTets; }
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
+    int& threadsPerBlock;
     SimulationCUDAContext* mpSimContext;
     pd::deformable_mesh_t model{};
     pd::solver_t solver;
@@ -71,6 +69,7 @@ private:
     glm::vec3* V;
     glm::vec3* X;
     glm::vec3* X0;
+    glm::vec3* XTilt;
     glm::vec3* Velocity;
     float* Mass;
     float* V0;

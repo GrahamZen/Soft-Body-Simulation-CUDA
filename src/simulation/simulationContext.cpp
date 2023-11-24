@@ -2,16 +2,28 @@
 #include <fstream>
 #include <sstream>
 
+DataLoader::DataLoader(int& _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
+{
+}
+
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json) :context(ctx)
 {
-    DataLoader dataLoader;
+    DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
         dt = json["dt"].get<float>();
     }
     if (json.contains("gravity")) {
         gravity = json["gravity"].get<float>();
     }
-
+    if (json.contains("damp")) {
+        float damp = json["damp"].get<float>();
+    }
+    if (json.contains("muN")) {
+        float muN = json["muN"].get<float>();
+    }
+    if (json.contains("muT")) {
+        float muT = json["muT"].get<float>();
+    }
     if (json.contains("softBodies")) {
         for (const auto& sbJson : json["softBodies"]) {
             std::string nodeFile = sbJson["nodeFile"];
@@ -23,9 +35,6 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json)
             float mass = sbJson["mass"].get<float>();
             float stiffness_0 = sbJson["stiffness_0"].get<float>();
             float stiffness_1 = sbJson["stiffness_1"].get<float>();
-            float damp = sbJson["damp"].get<float>();
-            float muN = sbJson["muN"].get<float>();
-            float muT = sbJson["muT"].get<float>();
             int constraints = sbJson["constraints"].get<int>();
             bool centralize = sbJson["centralize"].get<bool>();
             int startIndex = sbJson["start index"].get<int>();
@@ -34,14 +43,14 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json)
             strcpy(name, baseName.c_str());
             ctx->namesSoftBodies.push_back(name);
             dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), pos, scale, rot, centralize, startIndex,
-                SoftBody::SoftBodyAttribute{ mass, stiffness_0, stiffness_1, damp, muN, muT, constraints });
+                SoftBody::SoftBodyAttribute{ mass, stiffness_0, stiffness_1, constraints });
         }
     }
-    dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_Vs, dev_Fs, dev_Tets, numVerts, numTets);
+    dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_XTilts, dev_Vs, dev_Fs, dev_Tets, numVerts, numTets);
     for (auto softBodyData : dataLoader.m_softBodyData) {
         softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
     }
-    m_bvh.Init(GetTetCnt(), softBodies.size(), GetVertCnt());
+    m_bvh.Init(numTets, softBodies.size(), numVerts);
 }
 
 void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {
@@ -69,25 +78,9 @@ AABB SimulationCUDAContext::GetAABB() const
     return result;
 }
 
-int SimulationCUDAContext::GetTetCnt() const
-{
-    int result = 0;
-    for (auto softBody : softBodies)
-        result += softBody->getTetNumber();
-    return result;
-}
-
-int SimulationCUDAContext::GetVertCnt() const
-{
-    int result = 0;
-    for (auto softBody : softBodies)
-        result += softBody->getNumber();
-    return result;
-}
-
 void SimulationCUDAContext::CCD()
 {
-    //auto pairCollision = m_bvh.detectCollisionCandidates(Tet, numTets, X, numVerts);
+    //auto pairCollision = m_bvh.detectCollisionCandidates(dev_Tets, dev_Xs, dev_XTilts);
 }
 
 std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)

@@ -297,7 +297,7 @@ __global__ void computeLocal(float* V0, float wi, float* xProj, glm::mat3* DmInv
         float weight = glm::abs(V0[index]) * wi;
 
         glm::mat3 Dl = glm::mat3();
-        
+
         Dl[0] = v0 - v3;
         Dl[1] = v1 - v3;
         Dl[2] = v2 - v3;

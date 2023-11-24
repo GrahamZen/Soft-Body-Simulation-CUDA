@@ -5,8 +5,8 @@
 #include <utilities.cuh>
 
 SoftBody::SoftBody(SimulationCUDAContext* context, SoftBodyAttribute& _attrib, SoftBodyData* dataPtr)
-    : mpSimContext(context), attrib(_attrib), Tet(dataPtr->Tets), X(dataPtr->dev_X), X0(dataPtr->dev_X0), V(dataPtr->dev_V), Force(dataPtr->dev_F),
-    numTets(dataPtr->numTets), numVerts(dataPtr->numVerts)
+    : mpSimContext(context), threadsPerBlock(context->GetThreadsPerBlock()), attrib(_attrib), Tet(dataPtr->Tets), X(dataPtr->dev_X), X0(dataPtr->dev_X0), XTilt(dataPtr->dev_XTilt),
+    V(dataPtr->dev_V), Force(dataPtr->dev_F), numTets(dataPtr->numTets), numVerts(dataPtr->numVerts)
 {
     vertices.resize(numVerts);
     cudaMemcpy(vertices.data(), X, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToHost);
@@ -25,7 +25,6 @@ SoftBody::SoftBody(SimulationCUDAContext* context, SoftBodyAttribute& _attrib, S
     cudaMemset(V_num, 0, sizeof(int) * numVerts);
     cudaMalloc((void**)&V0, sizeof(float) * numTets);
     cudaMemset(V0, 0, sizeof(float) * numTets);
-    int threadsPerBlock = 64;
     int blocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
     computeInvDmV0 << < blocks, threadsPerBlock >> > (V0, inv_Dm, numTets, X, Tet);
 }
@@ -70,7 +69,6 @@ void SoftBody::Laplacian_Smoothing(float blendAlpha)
 {
     cudaMemset(V_sum, 0, sizeof(glm::vec3) * numVerts);
     cudaMemset(V_num, 0, sizeof(int) * numVerts);
-    int threadsPerBlock = 64;
     int blocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
     LaplacianGatherKern << < blocks, threadsPerBlock >> > (V, V_sum, V_num, numTets, Tet);
     LaplacianKern << < (numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (V, V_sum, V_num, numVerts, Tet, blendAlpha);
@@ -86,16 +84,14 @@ void SoftBody::Reset()
     cudaMemset(Force, 0, sizeof(glm::vec3) * numVerts);
     cudaMemset(V, 0, sizeof(glm::vec3) * numVerts);
     cudaMemcpy(X, X0, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(XTilt, X0, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
     InitModel();
 }
 
 void SoftBody::_Update()
 {
-    int threadsPerBlock = 64;
-    AddGravity << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, V, attrib.mass, numVerts, jump);
+    //AddGravity << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, V, attrib.mass, numVerts, jump);
     // Laplacian_Smoothing();
-    glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
-    glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     //ComputeForces << <(numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, numTets, inv_Dm, stiffness_0, stiffness_1);
     if (useGPUSolver)
     {
@@ -117,5 +113,4 @@ void SoftBody::_Update()
         velocitiesFloat = model.velocity().cast<float>();
         cudaMemcpy(V, velocitiesFloat.data(), numVerts * sizeof(glm::vec3), cudaMemcpyHostToDevice);
     }
-    HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (X, V, numVerts, floorPos, floorUp, attrib.muT, attrib.muN);
 }
