@@ -94,16 +94,23 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
     cudaMemcpy(gXTilt, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
 
+void SimulationCUDAContext::CCD()
+{
+    float* tIs = m_bvh.detectCollisionCandidates(dev_Tets, dev_Xs, dev_XTilts);
+    int blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, tIs, numVerts);
+}
+
 void SimulationCUDAContext::Update()
 {
-    //m_bvh.BuildBVHTree(0, GetAABB(), GetTetCnt(), softBodies);
+    //m_bvh.BuildBVHTree(0, GetAABB(), numTets, softBodies);
     for (auto softbody : softBodies) {
         softbody->Update();
     }
     glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
     glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_XTilts, dev_Vs, numVerts, floorPos, floorUp, muT, muN);
-    CCD();
+    //CCD();
     cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
     PrepareRenderData();
 }

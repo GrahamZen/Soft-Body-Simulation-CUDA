@@ -21,7 +21,7 @@ struct BVHNode {
 
 class BVH {
 public:
-    BVH() = default;
+    BVH(int& threadsPerBlock);
     ~BVH();
     void Init(int numTets, int numSoftBodies, int numVerts);
     void BuildBVHTree(int startIndexBVH, const AABB& ctxAABB, int triCount, const std::vector<SoftBody*>& softBodies);
@@ -34,4 +34,5 @@ private:
     int numVerts;
     float* dev_tI;
     int* dev_indicesToReport;
+    int& threadsPerBlock;
 };

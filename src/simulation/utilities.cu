@@ -394,3 +394,9 @@ __global__ void setExtForce(glm::vec3* ExtForce, glm::vec3 gravity, int numVerts
         ExtForce[index] = gravity;
     }
 }
+
+__global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, float* tI, int numVerts) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx >= numVerts) return;
+    X[idx] = X[idx] + (XTilt[idx] - X[idx]) * tI[idx];
+}

@@ -336,6 +336,7 @@ float* BVH::detectCollisionCandidates(GLuint* Tet, glm::vec3* X, glm::vec3* XTil
     return dev_tI;
 }
 
+BVH::BVH(int& _threadsPerBlock) : threadsPerBlock(_threadsPerBlock) {}
 
 BVH::~BVH()
 {

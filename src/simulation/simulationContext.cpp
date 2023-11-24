@@ -6,7 +6,7 @@ DataLoader::DataLoader(int& _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
 {
 }
 
-SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json) :context(ctx)
+SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json) :context(ctx), m_bvh(threadsPerBlock)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
@@ -76,11 +76,6 @@ AABB SimulationCUDAContext::GetAABB() const
     for (auto softBody : softBodies)
         result.expand(softBody->GetAABB());
     return result;
-}
-
-void SimulationCUDAContext::CCD()
-{
-    //auto pairCollision = m_bvh.detectCollisionCandidates(dev_Tets, dev_Xs, dev_XTilts);
 }
 
 std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)

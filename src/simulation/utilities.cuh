@@ -87,3 +87,6 @@ __global__ void computeSiTSi(int* outIdx, float* val, float* V0, glm::mat3* DmIn
 __global__ void updateVelPos(float* newPos, float dt_1, glm::vec3* pos, glm::vec3* vel, int numVerts);
 __global__ void initAMatrix(int* idx, int* row, int* col, int rowLen, int totalNumber);
 __global__ void setExtForce(glm::vec3* ExtForce, glm::vec3 gravity, int numVerts);
+
+
+__global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, float* tI, int numVerts);
