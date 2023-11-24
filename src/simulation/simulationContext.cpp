@@ -37,20 +37,13 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json)
                 SoftBody::SoftBodyAttribute{ mass, stiffness_0, stiffness_1, damp, muN, muT, constraints });
         }
     }
-    dev_Xs = dataLoader.AllocData(startIndices);
+    dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_Vs, dev_Fs, dev_Tets, numVerts, numTets);
     for (auto softBodyData : dataLoader.m_softBodyData) {
         softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
     }
     m_bvh.Init(GetTetCnt(), softBodies.size(), GetVertCnt());
 }
 
-SimulationCUDAContext::~SimulationCUDAContext()
-{
-    cudaFree(dev_Xs);
-    for (auto softbody : softBodies) {
-        delete softbody;
-    }
-}
 void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {
     softBodies[index]->setAttributes(softBodyAttr);
 }
@@ -122,7 +115,7 @@ std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int 
         Tet[tet * 4 + 2] = d - startIndex;
         Tet[tet * 4 + 3] = e - startIndex;
     }
-    std::cout << "numVerts of tetrahedrons: " << numTets << std::endl;
+    std::cout << "number of tetrahedrons: " << numTets << std::endl;
 
     file.close();
     return Tet;
@@ -165,7 +158,7 @@ std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename,
             X[i].z = temp;
         }
     }
-    std::cout << "numVerts of nodes: " << numVerts << std::endl;
+    std::cout << "number of nodes: " << numVerts << std::endl;
 
     return X;
 }

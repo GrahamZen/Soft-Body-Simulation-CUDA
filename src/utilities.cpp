@@ -152,9 +152,11 @@ bool compareHostVSHost(T* host_ptr1, T* host_ptr2, int size) {
 template bool compareHostVSHost<glm::vec3>(glm::vec3*, glm::vec3*, int size);
 
 void inspectHost(unsigned int* host_ptr, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size / 4; i++) {
         std::cout << host_ptr[i * 4] << " " << host_ptr[i * 4 + 1] << " " << host_ptr[i * 4 + 2] << " " << host_ptr[i * 4 + 3] << std::endl;
     }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
 std::ifstream findFile(const std::string& fileName) {

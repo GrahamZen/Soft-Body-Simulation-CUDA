@@ -1,5 +1,6 @@
 #include <cuda.h>
-
+#include <thrust/device_ptr.h>
+#include <thrust/transform.h>
 #include <sceneStructs.h>
 #include <simulationContext.h>
 #include <utilities.cuh>
@@ -17,6 +18,15 @@
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
  * of memory management
  */
+
+SimulationCUDAContext::~SimulationCUDAContext()
+{
+    cudaFree(dev_Xs);
+    cudaFree(dev_Tets);
+    for (auto softbody : softBodies) {
+        delete softbody;
+    }
+}
 
 void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
     bool centralize, int startIndex, SoftBody::SoftBodyAttribute attrib)
@@ -41,24 +51,41 @@ void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, 
     cudaMalloc((void**)&softBodyData.Tets, sizeof(GLuint) * idx.size());
     cudaMemcpy(softBodyData.Tets, idx.data(), sizeof(GLuint) * idx.size(), cudaMemcpyHostToDevice);
     totalNumVerts += softBodyData.numVerts;
+    totalNumTets += softBodyData.numTets;
 
     m_softBodyData.push_back({ softBodyData, attrib });
 }
 
-glm::vec3* DataLoader::AllocData(std::vector<int>& startIndices)
+void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gV, glm::vec3*& gF, GLuint*& gTet, int& numVerts, int& numTets)
 {
-    cudaMalloc((void**)&dev_XPtr, sizeof(glm::vec3) * totalNumVerts);
-    int offset = 0;
+    numVerts = totalNumVerts;
+    numTets = totalNumTets;
+    cudaMalloc((void**)&gX, sizeof(glm::vec3) * totalNumVerts);
+    cudaMalloc((void**)&gX0, sizeof(glm::vec3) * totalNumVerts);
+    cudaMalloc((void**)&gV, sizeof(glm::vec3) * totalNumVerts);
+    cudaMalloc((void**)&gF, sizeof(glm::vec3) * totalNumVerts);
+    cudaMemset(gV, 0, sizeof(glm::vec3) * totalNumVerts);
+    cudaMemset(gF, 0, sizeof(glm::vec3) * totalNumVerts);
+    cudaMalloc((void**)&gTet, sizeof(GLuint) * totalNumTets * 4);
+    int vertOffset = 0, tetOffset = 0;
+    thrust::device_ptr<GLuint> dev_ptr(gTet);
     for (auto& softBodyData : m_softBodyData)
     {
-        startIndices.push_back(offset);
+        startIndices.push_back(vertOffset);
         auto& data = softBodyData.first;
-        cudaMemcpy(dev_XPtr + offset, data.dev_X, sizeof(glm::vec3) * data.numVerts, cudaMemcpyDeviceToDevice);
+        cudaMemcpy(gX + vertOffset, data.dev_X, sizeof(glm::vec3) * data.numVerts, cudaMemcpyDeviceToDevice);
+        thrust::transform(data.Tets, data.Tets + data.numTets * 4, dev_ptr + tetOffset, [vertOffset] __device__(GLuint x) {
+            return x + vertOffset;
+        });
         cudaFree(data.dev_X);
-        data.dev_X = dev_XPtr + offset;
-        offset += data.numVerts;
+        data.dev_X = gX + vertOffset;
+        data.dev_X0 = gX0 + vertOffset;
+        data.dev_V = gV + vertOffset;
+        data.dev_F = gF + vertOffset;
+        vertOffset += data.numVerts;
+        tetOffset += data.numTets * 4;
     }
-    return dev_XPtr;
+    cudaMemcpy(gX0, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
 
 void SimulationCUDAContext::Update()

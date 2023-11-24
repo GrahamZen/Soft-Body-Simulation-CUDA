@@ -167,3 +167,6 @@ CUDA::cusolver
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
 )
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda>
+)

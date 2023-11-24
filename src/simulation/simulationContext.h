@@ -5,6 +5,9 @@
 struct SoftBodyData {
     GLuint* Tets;
     glm::vec3* dev_X;
+    glm::vec3* dev_X0;
+    glm::vec3* dev_V;
+    glm::vec3* dev_F;
     int numTets;
     int numVerts;
 };
@@ -15,13 +18,13 @@ public:
     DataLoader() = default;
     void CollectData(const char* nodeFileName, const char* eleFileName, const glm::vec3& pos, const glm::vec3& scale,
         const glm::vec3& rot, bool centralize, int startIndex, SoftBody::SoftBodyAttribute attrib);
+    void AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gV, glm::vec3*& gF, GLuint*& gTet, int& numVerts, int& numTets);
 private:
-    glm::vec3* AllocData(std::vector<int>& startIndices);
     static std::vector<GLuint> loadEleFile(const std::string& EleFilename, int startIndex, int& numTets);
     static std::vector<glm::vec3> loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts);
     std::vector<std::pair<SoftBodyData, SoftBody::SoftBodyAttribute>> m_softBodyData;
-    glm::vec3* dev_XPtr;
     int totalNumVerts = 0;
+    int totalNumTets = 0;
 };
 
 class SimulationCUDAContext {
@@ -42,6 +45,12 @@ public:
     void CCD();
 private:
     glm::vec3* dev_Xs;
+    glm::vec3* dev_X0s;
+    glm::vec3* dev_Vs;
+    glm::vec3* dev_Fs;
+    GLuint* dev_Tets;
+    int numVerts = 0;
+    int numTets = 0;
     std::vector<SoftBody*> softBodies;
     std::vector<int> startIndices;
     BVH m_bvh;
