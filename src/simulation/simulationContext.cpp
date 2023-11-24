@@ -1,7 +1,10 @@
 #include <simulationContext.h>
+#include <fstream>
+#include <sstream>
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json) :context(ctx)
 {
+    DataLoader dataLoader;
     if (json.contains("dt")) {
         dt = json["dt"].get<float>();
     }
@@ -30,18 +33,20 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json)
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());
             ctx->namesSoftBodies.push_back(name);
-
-            softBodies.push_back(new SoftBody(nodeFile.c_str(), eleFile.c_str(), this,
-                pos, scale, rot,
-                mass, stiffness_0, stiffness_1, damp, muN, muT, constraints,
-                centralize, startIndex));
+            dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), pos, scale, rot, centralize, startIndex,
+                SoftBody::SoftBodyAttribute{ mass, stiffness_0, stiffness_1, damp, muN, muT, constraints });
         }
+    }
+    dev_Xs = dataLoader.AllocData(startIndices);
+    for (auto softBodyData : dataLoader.m_softBodyData) {
+        softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
     }
     m_bvh.Init(GetTetCnt(), softBodies.size(), GetVertCnt());
 }
 
 SimulationCUDAContext::~SimulationCUDAContext()
 {
+    cudaFree(dev_Xs);
     for (auto softbody : softBodies) {
         delete softbody;
     }
@@ -90,4 +95,77 @@ int SimulationCUDAContext::GetVertCnt() const
 void SimulationCUDAContext::CCD()
 {
     //auto pairCollision = m_bvh.detectCollisionCandidates(Tet, numTets, X, numVerts);
+}
+
+std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
+{
+    std::string line;
+    std::ifstream file(EleFilename);
+
+    if (!file.is_open()) {
+        std::cerr << "Unable to open file" << std::endl;
+    }
+
+    std::getline(file, line);
+    std::istringstream iss(line);
+    iss >> numTets;
+
+    std::vector<GLuint> Tet(numTets * 4);
+
+    int a, b, c, d, e;
+    for (int tet = 0; tet < numTets && std::getline(file, line); ++tet) {
+        std::istringstream iss(line);
+        iss >> a >> b >> c >> d >> e;
+
+        Tet[tet * 4 + 0] = b - startIndex;
+        Tet[tet * 4 + 1] = c - startIndex;
+        Tet[tet * 4 + 2] = d - startIndex;
+        Tet[tet * 4 + 3] = e - startIndex;
+    }
+    std::cout << "numVerts of tetrahedrons: " << numTets << std::endl;
+
+    file.close();
+    return Tet;
+}
+std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
+{
+    std::ifstream file(nodeFilename);
+    if (!file.is_open()) {
+        std::cerr << "Unable to open file: " << nodeFilename << std::endl;
+        return {};
+    }
+
+    std::string line;
+    std::getline(file, line);
+    std::istringstream iss(line);
+    iss >> numVerts;
+    std::vector<glm::vec3> X(numVerts);
+    glm::vec3 center(0.0f);
+
+    for (int i = 0; i < numVerts && std::getline(file, line); ++i) {
+        std::istringstream lineStream(line);
+        int index;
+        float x, y, z;
+        lineStream >> index >> x >> y >> z;
+
+        X[i].x = x;
+        X[i].y = y;
+        X[i].z = z;
+
+        center += X[i];
+    }
+
+    // Centralize the model
+    if (centralize) {
+        center /= static_cast<float>(numVerts);
+        for (int i = 0; i < numVerts; ++i) {
+            X[i] -= center;
+            float temp = X[i].y;
+            X[i].y = X[i].z;
+            X[i].z = temp;
+        }
+    }
+    std::cout << "numVerts of nodes: " << numVerts << std::endl;
+
+    return X;
 }

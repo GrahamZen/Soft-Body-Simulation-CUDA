@@ -126,9 +126,11 @@ std::istream& utilityCore::safeGetline(std::istream& is, std::string& t) {
 
 template <typename T>
 void inspectHost(T* host_ptr, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size; i++) {
         std::cout << glm::to_string(host_ptr[i]) << std::endl;
     }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 template void inspectHost<glm::vec3>(glm::vec3* dev_ptr, int size);
 template void inspectHost<glm::vec4>(glm::vec4* dev_ptr, int size);

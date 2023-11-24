@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.18)
 
-project(softbody_simulation)
+project(softbody_simulation LANGUAGES CXX CUDA)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -27,6 +27,8 @@ FetchContent_MakeAvailable(Eigen)
 # Enable C++11 for host code
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_ARCHITECTURES 86)
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -38,20 +40,9 @@ endif()
 ########################################
 # CUDA Setup
 ########################################
-find_package(CUDA 10 REQUIRED)
-include(${CMAKE_MODULE_PATH}/CUDAComputesList.cmake)
-
-list(APPEND CUDA_NVCC_FLAGS ${CUDA_GENERATE_CODE} "--extended-lambda --expt-relaxed-constexpr")
-list(APPEND CUDA_NVCC_FLAGS_DEBUG "-g -G --extended-lambda --expt-relaxed-constexpr")
-set(CUDA_VERBOSE_BUILD ON)
-
-if(WIN32)
-    # Set up include and lib paths
-    set(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER} CACHE FILEPATH "Host side compiler used by NVCC" FORCE)
-endif(WIN32)
+find_package(CUDAToolkit REQUIRED)
 ########################################
 
-find_package(CUDAToolkit)
 
 find_package(OpenGL REQUIRED)
 
@@ -162,13 +153,17 @@ include_directories(
     ${GLFW_INCLUDE_DIR})
 
 
-cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers} ${IMGUI_SOURCES})
+add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers} ${IMGUI_SOURCES})
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui")
 #"${EXTERNAL}/svd3_cuda"
 target_link_libraries(${CMAKE_PROJECT_NAME}
 ${LIBRARIES}
+CUDA::cudart
 Eigen3::Eigen
 OpenMP::OpenMP_CXX
 CUDA::cusolver
 #stream_compaction  # TODO: uncomment if using your stream compaction
+)
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
 )

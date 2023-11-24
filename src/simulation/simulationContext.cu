@@ -4,7 +4,7 @@
 #include <simulationContext.h>
 #include <utilities.cuh>
 #include <iostream>
-
+#include <glm/gtc/matrix_transform.hpp>
 
 #define ERRORCHECK 1
 
@@ -17,6 +17,49 @@
  * Wrapper for the __global__ call that sets up the kernel calls and does a ton
  * of memory management
  */
+
+void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
+    bool centralize, int startIndex, SoftBody::SoftBodyAttribute attrib)
+{
+    SoftBodyData softBodyData;
+    auto vertices = loadNodeFile(nodeFileName, centralize, softBodyData.numVerts);
+    cudaMalloc((void**)&softBodyData.dev_X, sizeof(glm::vec3) * softBodyData.numVerts);
+    cudaMemcpy(softBodyData.dev_X, vertices.data(), sizeof(glm::vec3) * softBodyData.numVerts, cudaMemcpyHostToDevice);
+
+    // transform
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, pos);
+    model = glm::scale(model, scale);
+    model = glm::rotate(model, glm::radians(rot.x), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rot.z), glm::vec3(0.0f, 0.0f, 1.0f));
+    int threadsPerBlock = 64;
+    int blocks = (softBodyData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    TransformVertices << < blocks, threadsPerBlock >> > (softBodyData.dev_X, model, softBodyData.numVerts);
+
+    auto idx = loadEleFile(eleFileName, startIndex, softBodyData.numTets);
+    cudaMalloc((void**)&softBodyData.Tets, sizeof(GLuint) * idx.size());
+    cudaMemcpy(softBodyData.Tets, idx.data(), sizeof(GLuint) * idx.size(), cudaMemcpyHostToDevice);
+    totalNumVerts += softBodyData.numVerts;
+
+    m_softBodyData.push_back({ softBodyData, attrib });
+}
+
+glm::vec3* DataLoader::AllocData(std::vector<int>& startIndices)
+{
+    cudaMalloc((void**)&dev_XPtr, sizeof(glm::vec3) * totalNumVerts);
+    int offset = 0;
+    for (auto& softBodyData : m_softBodyData)
+    {
+        startIndices.push_back(offset);
+        auto& data = softBodyData.first;
+        cudaMemcpy(dev_XPtr + offset, data.dev_X, sizeof(glm::vec3) * data.numVerts, cudaMemcpyDeviceToDevice);
+        cudaFree(data.dev_X);
+        data.dev_X = dev_XPtr + offset;
+        offset += data.numVerts;
+    }
+    return dev_XPtr;
+}
 
 void SimulationCUDAContext::Update()
 {

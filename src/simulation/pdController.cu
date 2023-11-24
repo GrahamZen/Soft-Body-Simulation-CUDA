@@ -16,7 +16,7 @@ void SoftBody::solverPrepare()
     int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
     float dt = mpSimContext->GetDt();
-    float const m_1_dt2 = mass / (dt * dt);
+    float const m_1_dt2 = attrib.mass / (dt * dt);
     int len = numVerts * 3 + 48 * numTets;
     int ASize = 3 * numVerts;
 
@@ -117,8 +117,8 @@ void SoftBody::PDSolverStep()
     float dt = mpSimContext->GetDt();
     float const dtInv = 1.0f / dt;
     float const dt2 = dt * dt;
-    float const dt2_m_1 = dt2 / mass;
-    float const m_1_dt2 = mass / dt2;
+    float const dt2_m_1 = dt2 / attrib.mass;
+    float const m_1_dt2 = attrib.mass / dt2;
 
 
     int threadsPerBlock = 64;

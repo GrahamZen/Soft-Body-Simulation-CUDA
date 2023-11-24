@@ -14,7 +14,7 @@ void SoftBody::PdSolver()
     fext.resizeLike(model.positions());
     fext.setZero();
     // set gravity force
-    fext.col(1).array() -= mpSimContext->GetGravity() * mass;
+    fext.col(1).array() -= mpSimContext->GetGravity() * attrib.mass;
     if (!solver.ready())
     {
         solver.prepare(mpSimContext->GetDt());
@@ -72,14 +72,14 @@ void SoftBody::InitModel()
     }
 
     Eigen::VectorXd masses(V.rows());
-    masses.setConstant(mass);
+    masses.setConstant(attrib.mass);
     model = pd::deformable_mesh_t{ V, F, T, masses };
     model.constrain_deformation_gradient(wi);
     //model.velocity().rowwise() += Eigen::RowVector3d{ 0, 0, 0. };
     double const positional_wi = 1'000'000'000.;
     //model.constrain_deformation_gradient(deformation_gradient_wi);
 
-    for (std::size_t i = 0u; i < numConstraints; ++i)
+    for (std::size_t i = 0u; i < attrib.numConstraints; ++i)
     {
         model.add_positional_constraint(i, positional_wi);
         model.fix(i);
@@ -170,13 +170,13 @@ void SoftBody::setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)
 {
     softBodyAttr.setJumpClean(jump);
     if (softBodyAttr.stiffness_0.second)
-        stiffness_0 = softBodyAttr.stiffness_0.first;
+        attrib.stiffness_0 = softBodyAttr.stiffness_0.first;
     if (softBodyAttr.stiffness_1.second)
-        stiffness_1 = softBodyAttr.stiffness_1.first;
+        attrib.stiffness_1 = softBodyAttr.stiffness_1.first;
     if (softBodyAttr.damp.second)
-        damp = softBodyAttr.damp.first;
+        attrib.damp = softBodyAttr.damp.first;
     if (softBodyAttr.muN.second)
-        muN = softBodyAttr.muN.first;
+        attrib.muN = softBodyAttr.muN.first;
     if (softBodyAttr.muT.second)
-        muT = softBodyAttr.muT.first;
+        attrib.muT = softBodyAttr.muT.first;
 }
