@@ -111,7 +111,11 @@ void RenderImGui()
     imguiData->softBodyAttr.muT.second = ImGui::DragFloat("muT", &imguiData->softBodyAttr.muT.first, 0.01f, 0.0f, 100.0f, "%.4f");
     ImGui::Separator();
     const auto& nameItems = context->GetNamesSoftBodies();
-    if (ImGui::Combo("label", &imguiData->softBodyAttr.currSoftBodyId, nameItems.data(), nameItems.size()))
+    if (ImGui::Combo("soft bodies", &imguiData->softBodyAttr.currSoftBodyId, nameItems.data(), nameItems.size()))
+    {
+    }
+    const auto& nameContextItems = context->GetNamesContexts();
+    if (ImGui::Combo("label", &imguiData->currSimContextId, nameContextItems.data(), nameContextItems.size()))
     {
     }
 

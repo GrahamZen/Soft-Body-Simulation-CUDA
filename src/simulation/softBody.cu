@@ -5,7 +5,7 @@
 #include <utilities.cuh>
 
 SoftBody::SoftBody(SimulationCUDAContext* context, SoftBodyAttribute& _attrib, SoftBodyData* dataPtr)
-    : mpSimContext(context), threadsPerBlock(context->GetThreadsPerBlock()), attrib(_attrib), Tet(dataPtr->Tets), X(dataPtr->dev_X), X0(dataPtr->dev_X0), XTilt(dataPtr->dev_XTilt),
+    : mcrpSimContext(context), threadsPerBlock(context->GetThreadsPerBlock()), attrib(_attrib), Tet(dataPtr->Tets), X(dataPtr->dev_X), X0(dataPtr->dev_X0), XTilt(dataPtr->dev_XTilt),
     V(dataPtr->dev_V), Force(dataPtr->dev_F), numTets(dataPtr->numTets), numVerts(dataPtr->numVerts)
 {
     vertices.resize(numVerts);
@@ -88,7 +88,7 @@ void SoftBody::Reset()
 
 void SoftBody::_Update()
 {
-    //AddGravity << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, V, attrib.mass, numVerts, jump);
+    AddExternal << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (V, numVerts, jump);
     // Laplacian_Smoothing();
     //ComputeForces << <(numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, numTets, inv_Dm, stiffness_0, stiffness_1);
     if (useGPUSolver)

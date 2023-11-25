@@ -15,7 +15,7 @@ void SoftBody::solverPrepare()
 {
     int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
-    float dt = mpSimContext->GetDt();
+    float dt = mcrpSimContext->GetDt();
     float const m_1_dt2 = attrib.mass / (dt * dt);
     int len = numVerts * 3 + 48 * numTets;
     int ASize = 3 * numVerts;
@@ -134,7 +134,7 @@ void SoftBody::solverPrepare()
 void SoftBody::PDSolverStep()
 {
 
-    float dt = mpSimContext->GetDt();
+    float dt = mcrpSimContext->GetDt();
     float const dtInv = 1.0f / dt;
     float const dt2 = dt * dt;
     float const dt2_m_1 = dt2 / attrib.mass;
@@ -144,7 +144,7 @@ void SoftBody::PDSolverStep()
     int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
 
-    glm::vec3 gravity = glm::vec3(0.0f, -mpSimContext->GetGravity(), 0.0f);
+    glm::vec3 gravity = glm::vec3(0.0f, -mcrpSimContext->GetGravity(), 0.0f);
     setExtForce << < vertBlocks, threadsPerBlock >> > (ExtForce, gravity, numVerts);
     computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, X, V, ExtForce, numVerts);
     computeM_h2Sn << < vertBlocks, threadsPerBlock >> > (masses, sn, m_1_dt2, numVerts);

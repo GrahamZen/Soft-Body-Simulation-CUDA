@@ -1,4 +1,3 @@
-#include <json.hpp>
 #include <context.h>
 #include <sceneStructs.h>
 #include <surfaceshader.h>
@@ -6,20 +5,55 @@
 #include <iostream>
 #include <fstream>
 
-Camera& computeCameraParams(Camera& camera)
+Camera::Camera(nlohmann::json& camJson)
 {
-    // assuming resolution, position, lookAt, view, up, fovy are already set
-    float yscaled = tan(camera.fov.y * (PI / 180));
-    float xscaled = (yscaled * camera.resolution.x) / camera.resolution.y;
-    float fovx = (atan(xscaled) * 180) / PI;
-    camera.fov.x = fovx;
-
-    camera.right = glm::normalize(glm::cross(camera.view, camera.up));
-    camera.pixelLength = glm::vec2(2 * xscaled / (float)camera.resolution.x, 2 * yscaled / (float)camera.resolution.y);
-    return camera;
+    resolution.y = camJson["screen height"];
+    float aspectRatio = camJson["aspect ratio"];
+    resolution.x = aspectRatio * resolution.y;
+    position = glm::vec3(camJson["position"][0],
+        camJson["position"][1],
+        camJson["position"][2]);
+    lookAt = glm::vec3(camJson["lookAt"][0],
+        camJson["lookAt"][1],
+        camJson["lookAt"][2]);
+    view = glm::vec3(camJson["view"][0],
+        camJson["view"][1],
+        camJson["view"][2]);
+    up = glm::vec3(camJson["up"][0],
+        camJson["up"][1],
+        camJson["up"][2]);
+    fov.y = camJson["fovy"];
+    computeCameraParams();
 }
 
-Context::Context(const std::string& _filename) :filename(_filename), mpCamera(loadCamera(_filename)), mpProgLambert(new SurfaceShader()),
+Camera::Camera(const std::string& _filename)
+{
+    std::ifstream fileStream = findFile(_filename);
+    if (!fileStream.is_open()) {
+        std::cerr << "Failed to open JSON file: " << _filename << std::endl;
+    }
+    nlohmann::json json;
+    fileStream >> json;
+    fileStream.close();
+    if (json.contains("default camera")) {
+        *this = Camera(json["default camera"]);
+    }
+}
+
+Camera& Camera::computeCameraParams()
+{
+    // assuming resolution, position, lookAt, view, up, fovy are already set
+    float yscaled = tan(fov.y * (PI / 180));
+    float xscaled = (yscaled * resolution.x) / resolution.y;
+    float fovx = (atan(xscaled) * 180) / PI;
+    fov.x = fovx;
+
+    right = glm::normalize(glm::cross(view, up));
+    pixelLength = glm::vec2(2 * xscaled / (float)resolution.x, 2 * yscaled / (float)resolution.y);
+    return *this;
+}
+
+Context::Context(const std::string& _filename) :filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()),
 width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer())
 {
     glm::vec3 view = mpCamera->view;
@@ -40,13 +74,13 @@ width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera
 
 Context::~Context()
 {
-    for (auto name : namesSoftBodies) {
+    for (auto name : namesContexts) {
         delete[]name;
     }
     delete mpProgLambert;
-    delete mpSimContext;
-    delete mpCamera;
+    delete mcrpSimContext;
     delete guiData;
+    delete mpCamera;
 }
 
 void Context::PollEvents() {
@@ -54,7 +88,7 @@ void Context::PollEvents() {
     if (attrs.currSoftBodyId == -1) return;
     bool result = attrs.stiffness_0.second || attrs.stiffness_1.second || attrs.damp.second || attrs.muN.second || attrs.muT.second || attrs.getJumpDirty();
     if (result)
-        mpSimContext->UpdateSingleSBAttr(guiData->softBodyAttr.currSoftBodyId, guiData->softBodyAttr);
+        mcrpSimContext->UpdateSingleSBAttr(guiData->softBodyAttr.currSoftBodyId, guiData->softBodyAttr);
     else
         return;
     attrs.stiffness_0.second = false;
@@ -71,39 +105,8 @@ void Context::LoadShaders(const std::string& vertShaderFilename, const std::stri
     mpProgLambert->setCameraPos(cameraPosition);
     mpProgLambert->setModelMatrix(glm::mat4(1.f));
 }
-
-Camera* Context::loadCamera(const std::string& _filename) {
-    Camera* camera = new Camera;
-    std::ifstream fileStream = findFile(_filename);
-    if (!fileStream.is_open()) {
-        std::cerr << "Failed to open JSON file: " << _filename << std::endl;
-        return false;
-    }
-    nlohmann::json json;
-    fileStream >> json;
-    fileStream.close();
-
-    if (json.contains("camera")) {
-        camera->resolution.y = json["camera"]["screen height"];
-        float aspectRatio = json["camera"]["aspect ratio"];
-        camera->resolution.x = aspectRatio * camera->resolution.y;
-        camera->position = glm::vec3(json["camera"]["position"][0],
-            json["camera"]["position"][1],
-            json["camera"]["position"][2]);
-        camera->lookAt = glm::vec3(json["camera"]["lookAt"][0],
-            json["camera"]["lookAt"][1],
-            json["camera"]["lookAt"][2]);
-        camera->view = glm::vec3(json["camera"]["view"][0],
-            json["camera"]["view"][1],
-            json["camera"]["view"][2]);
-        camera->up = glm::vec3(json["camera"]["up"][0],
-            json["camera"]["up"][1],
-            json["camera"]["up"][2]);
-        camera->fov.y = json["camera"]["fovy"];
-        computeCameraParams(*camera);
-    }
-
-    return camera;
+const std::vector<const char*>& Context::GetNamesSoftBodies() const {
+    return mcrpSimContext->GetNamesSoftBodies();
 }
 
 SimulationCUDAContext* Context::LoadSimContext() {
@@ -115,9 +118,20 @@ SimulationCUDAContext* Context::LoadSimContext() {
     nlohmann::json json;
     fileStream >> json;
     fileStream.close();
-    mpSimContext = new SimulationCUDAContext(this, json);
-
-    return mpSimContext;
+    if (json.contains("contexts")) {
+        auto& contextJsons = json["contexts"];
+        for (auto& contextJson : contextJsons) {
+            if (contextJson.contains("load") && !contextJson["load"].get<bool>())
+                continue;
+            std::string baseName = contextJson["name"];
+            char* name = new char[baseName.size() + 1];
+            strcpy(name, baseName.c_str());
+            namesContexts.push_back(name);
+            mpSimContexts.push_back(new SimulationCUDAContext(this, contextJson));
+        }
+        mcrpSimContext = mpSimContexts[0];
+    }
+    return mcrpSimContext;
 }
 
 void Context::InitDataContainer() {
@@ -137,13 +151,16 @@ void Context::InitCuda() {
 }
 
 void Context::Draw() {
-    mpSimContext->Draw(mpProgLambert);
+    mcrpSimContext->Draw(mpProgLambert);
 }
 
 void Context::Update() {
+    if (guiData->currSimContextId != -1) {
+        mcrpSimContext = mpSimContexts[guiData->currSimContextId];
+    }
     PollEvents();
     if (panelModified) {
-        mpSimContext->SetDt(guiData->Dt);
+        mcrpSimContext->SetDt(guiData->Dt);
         phi = guiData->phi;
         theta = guiData->theta;
         mpCamera->lookAt = guiData->cameraLookAt;
@@ -175,19 +192,19 @@ void Context::Update() {
 
     if (guiData->Reset) {
         iteration = 0;
-        mpSimContext->Reset();
-        mpSimContext->Update();
+        mcrpSimContext->Reset();
+        mcrpSimContext->Update();
     }
     if (guiData->Pause) {
         pause = !pause;
     }
     if (!pause) {
         iteration++;
-        mpSimContext->Update();
+        mcrpSimContext->Update();
     }
     else if (guiData->Step) {
         iteration++;
-        mpSimContext->Update();
+        mcrpSimContext->Update();
     }
     // Map OpenGL buffer object for writing from CUDA on a single GPU
     // No data is moved (Win & Linux). When mapped to CUDA, OpenGL should not use this buffer

@@ -22,6 +22,9 @@
 
 SimulationCUDAContext::~SimulationCUDAContext()
 {
+    for (auto name : namesSoftBodies) {
+        delete[]name;
+    }
     cudaFree(dev_Xs);
     cudaFree(dev_Tets);
     cudaFree(dev_Vs);
