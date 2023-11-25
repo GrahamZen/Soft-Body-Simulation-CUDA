@@ -10,14 +10,17 @@ void checkCUDAErrorFn(const char* msg, const char* file, int line);
 #define _gamma 5.828427124 // FOUR_GAMMA_SQUARED = sqrt(8)+3;
 #define _cstar 0.923879532 // cos(pi/8)
 #define _sstar 0.3826834323 // sin(p/8)
-#define EPSILON 1e-6
 
+class BVHNode;
 template <typename T>
 void inspectGLM(T* dev_ptr, int size) {
     std::vector<T> host_ptr(size);
     cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost);
     inspectHost(host_ptr.data(), size);
 }
+
+void inspectMortonCodes(int* dev_mortonCodes, int numTets);
+void inspectBVHNode(BVHNode* dev_BVHNodes, int numTets);
 
 template <typename T1, typename T2>
 bool compareDevVSHost(T1* dev_ptr, T2* host_ptr2, int size) {

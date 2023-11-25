@@ -15,6 +15,8 @@
 #include <fstream>
 #include <filesystem>
 #include <utilities.h>
+#include <bitset>
+#include <bvh.h>
 
 namespace fs = std::filesystem;
 
@@ -137,6 +139,17 @@ template void inspectHost<glm::vec4>(glm::vec4* dev_ptr, int size);
 template void inspectHost<glm::mat3>(glm::mat3* dev_ptr, int size);
 template void inspectHost<glm::mat4>(glm::mat4* dev_ptr, int size);
 
+void inspectHost(BVHNode* hstBVHNodes, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+    for (int i = 0; i < size; i++)
+    {
+        std::cout << i << ": " << hstBVHNodes[i].leftIndex << "," << hstBVHNodes[i].rightIndex << "  parent:" << hstBVHNodes[i].parent << std::endl;
+        std::cout << i << ": " << hstBVHNodes[i].bbox.max.x << "," << hstBVHNodes[i].bbox.max.y << "," << hstBVHNodes[i].bbox.max.z << std::endl;
+        //cout << i << ": " << hstBVHNodes[i].bbox.min.x << "," << hstBVHNodes[i].bbox.min.y << "," << hstBVHNodes[i].bbox.min.z << endl;
+    }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
+}
+
 template <typename T>
 bool compareHostVSHost(T* host_ptr1, T* host_ptr2, int size) {
     for (int i = 0; i < size; i++) {
@@ -155,6 +168,15 @@ void inspectHost(unsigned int* host_ptr, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size / 4; i++) {
         std::cout << host_ptr[i * 4] << " " << host_ptr[i * 4 + 1] << " " << host_ptr[i * 4 + 2] << " " << host_ptr[i * 4 + 3] << std::endl;
+    }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
+}
+
+void inspectHostMorton(unsigned int* host_ptr, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+    for (int i = 0; i < 20; i++)
+    {
+        std::cout << std::bitset<30>(host_ptr[i]) << std::endl;
     }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }

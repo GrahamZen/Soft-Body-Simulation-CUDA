@@ -1,6 +1,7 @@
 #include <utilities.cuh>
 #include <svd3_cuda.h>
 #include <cuda.h>
+#include <bvh.h>
 
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
 void checkCUDAErrorFn(const char* msg, const char* file, int line) {
@@ -21,6 +22,19 @@ void checkCUDAErrorFn(const char* msg, const char* file, int line) {
 #  endif
     exit(EXIT_FAILURE);
 #endif
+}
+
+void inspectMortonCodes(int* dev_mortonCodes, int numTets) {
+    std::vector<unsigned int> hstMorton(numTets);
+    cudaMemcpy(hstMorton.data(), dev_mortonCodes, numTets * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    inspectHostMorton(hstMorton.data(), numTets);
+}
+
+void inspectBVHNode(BVHNode* dev_BVHNodes, int numTets)
+{
+    std::vector<BVHNode> hstBVHNodes(2 * numTets - 1);
+    cudaMemcpy(hstBVHNodes.data(), dev_BVHNodes, sizeof(BVHNode) * (2 * numTets - 1), cudaMemcpyDeviceToHost);
+    inspectHost(hstBVHNodes.data(), 2 * numTets - 1);
 }
 
 __global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int numVerts)

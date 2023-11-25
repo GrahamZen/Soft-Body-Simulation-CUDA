@@ -1,7 +1,7 @@
 #pragma once
 
-#include <vector>
 #include <glm/glm.hpp>
+#include <GL/glew.h>
 
 class SoftBody;
 
@@ -23,12 +23,15 @@ class BVH {
 public:
     BVH(int& threadsPerBlock);
     ~BVH();
-    void Init(int numTets, int numSoftBodies, int numVerts);
-    void BuildBVHTree(int startIndexBVH, const AABB& ctxAABB, int triCount, const std::vector<SoftBody*>& softBodies);
-    float* detectCollisionCandidates(GLuint* Tet, glm::vec3* X, glm::vec3* XTilt) const;
+    void Init(int numTets, int numVerts);
+    void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
+    float* DetectCollisionCandidates(GLuint* Tet, glm::vec3* Xs, glm::vec3* XTilts, GLuint* TetId) const;
 private:
     BVHNode* dev_BVHNodes = nullptr;
     AABB* dev_bboxes = nullptr;
+    unsigned int* dev_mortonCodes = NULL;
+    unsigned char* dev_ready = NULL;
+
     int numNodes;
     int numTets;
     int numVerts;

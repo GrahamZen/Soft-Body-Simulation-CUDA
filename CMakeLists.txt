@@ -21,7 +21,6 @@ set(EIGEN_BUILD_DOC OFF)
 
 set(BUILD_TESTING OFF)
 set(EIGEN_BUILD_PKGCONFIG OFF)
-set( OFF)
 FetchContent_MakeAvailable(Eigen)
 
 # Enable C++11 for host code
@@ -75,76 +74,32 @@ include_directories(${EXTERNAL}/include)
 
 find_package(OpenMP)
 
-set(headers
-    src/main.h
-    src/simulation/simulationContext.h
-    src/simulation/softBody.h
-    src/simulation/utilities.cuh
-    src/collision/intersections.h
-    src/collision/bvh.cuh
-    src/collision/bvh.h
-    src/sceneStructs.h
-    src/preview.h
-    src/utilities.h
-    src/context.h
-    src/openglcontext/surfaceshader.h
-    src/openglcontext/shaderprogram.h
-    src/openglcontext/drawable.h
-    src/openglcontext/texture.h
-    src/mesh.h
+file(GLOB_RECURSE HEADER_FILES 
+     "${PROJECT_SOURCE_DIR}/src/*.h"
+     "${PROJECT_SOURCE_DIR}/src/*.cuh")
+file(GLOB_RECURSE SOURCE_FILES 
+     "${PROJECT_SOURCE_DIR}/src/*.cpp"
+     "${PROJECT_SOURCE_DIR}/src/*.cu")
 
-    src/svd3_cuda.h
-    src/svd3.h
+foreach(FILE ${HEADER_FILES} ${SOURCE_FILES}) 
+    get_filename_component(PARENT_DIR "${FILE}" DIRECTORY)
 
-    src/constraint.h
-    src/solver.h
-    src/deformable_mesh.h
-    src/deformation_gradient_constraint.h
-    src/positional_constraint.h
-)
+    string(REPLACE "${PROJECT_SOURCE_DIR}/src" "" GROUP "${PARENT_DIR}")
 
-set(sources
-    src/main.cpp
-    src/stb.cpp
-    src/simulation/softBody.cpp
-    src/simulation/softBody.cu
-    src/simulation/pdController.cu
-    src/simulation/utilities.cu
-    src/simulation/simulationContext.cu
-    src/simulation/simulationContext.cpp
-    src/collision/bvh.cu
-    src/preview.cpp
-    src/utilities.cpp
-    src/context.cpp
-    src/openglcontext/surfaceshader.cpp
-    src/openglcontext/shaderprogram.cpp
-    src/openglcontext/drawable.cpp
-    src/openglcontext/texture.cpp
-    src/mesh.cpp
+    string(REPLACE "/" "\\" GROUP "${GROUP}")
 
-    src/solver.cpp
-    src/deformable_mesh.cpp
-    src/deformation_gradient_constraint.cpp
-    src/positional_constraint.cpp
-)
+    source_group("${GROUP}" FILES "${FILE}")
+endforeach()
 
-list(SORT headers)
-list(SORT sources)
-
-source_group(Headers FILES ${headers})
-source_group(Sources FILES ${sources})
 
 #add_subdirectory(src/ImGui)
 set(PROJECT_INCLUDE_DIR 
 ${PROJECT_SOURCE_DIR}/src 
-${PROJECT_SOURCE_DIR}/src/ImGui 
 ${PROJECT_SOURCE_DIR}/src/openglcontext 
 ${PROJECT_SOURCE_DIR}/src/simulation 
-${PROJECT_SOURCE_DIR}/src/utilities 
-${PROJECT_SOURCE_DIR}/src/sceneStructs 
-${PROJECT_SOURCE_DIR}/src/openglcontext 
+${PROJECT_SOURCE_DIR}/src/simulation/eigen
 ${PROJECT_SOURCE_DIR}/src/collision 
-${PROJECT_SOURCE_DIR}/src/simulation)
+)
 
 include_directories(
     ${PROJECT_INCLUDE_DIR} 
@@ -153,9 +108,8 @@ include_directories(
     ${GLFW_INCLUDE_DIR})
 
 
-add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers} ${IMGUI_SOURCES})
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui")
-#"${EXTERNAL}/svd3_cuda"
+add_executable(${CMAKE_PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES} ${IMGUI_SOURCES})
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui" "${EXTERNAL}/svd3_cuda")
 target_link_libraries(${CMAKE_PROJECT_NAME}
 ${LIBRARIES}
 CUDA::cudart

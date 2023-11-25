@@ -15,6 +15,7 @@ public:
     float Dt = 0.001;
     bool WireFrame = false;
     bool Reset = false;
+    bool Pause = false;
     float theta, phi;
     glm::vec3 cameraLookAt;
     float zoom;
@@ -70,5 +71,6 @@ private:
     glm::vec3 ogLookAt; // for recentering the camera
     SurfaceShader* mpProgLambert;
     int iteration = 0;
+    bool pause = false;
     std::vector<const char*> namesSoftBodies;
 };

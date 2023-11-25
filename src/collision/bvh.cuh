@@ -8,15 +8,16 @@
 
 AABB computeBoundingBox(const thrust::device_ptr<glm::vec3>& begin, const thrust::device_ptr<glm::vec3>& end);
 
-__inline__ __device__ AABB computeBBox(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3)
+__inline__ __device__ AABB computeTetTrajBBox(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3,
+    const glm::vec3& v4, const glm::vec3& v5, const glm::vec3& v6, const glm::vec3& v7)
 {
     glm::vec3 min, max;
-    min.x = fminf(fminf(fminf(v0.x, v1.x), v2.x), v3.x);
-    min.y = fminf(fminf(fminf(v0.y, v1.y), v2.y), v3.y);
-    min.z = fminf(fminf(fminf(v0.z, v1.z), v2.z), v3.z);
-    max.x = fmaxf(fmaxf(fmaxf(v0.x, v1.x), v2.x), v3.x);
-    max.y = fmaxf(fmaxf(fmaxf(v0.y, v1.y), v2.y), v3.y);
-    max.z = fmaxf(fmaxf(fmaxf(v0.z, v1.z), v2.z), v3.z);
+    min.x = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.x, v1.x), v2.x), v3.x), v4.x), v5.x), v6.x), v7.x);
+    min.y = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.y, v1.y), v2.y), v3.y), v4.y), v5.y), v6.y), v7.y);
+    min.z = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.z, v1.z), v2.z), v3.z), v4.z), v5.z), v6.z), v7.z);
+    max.x = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.x, v1.x), v2.x), v3.x), v4.x), v5.x), v6.x), v7.x);
+    max.y = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.y, v1.y), v2.y), v3.y), v4.y), v5.y), v6.y), v7.y);
+    max.z = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.z, v1.z), v2.z), v3.z), v4.z), v5.z), v6.z), v7.z);
 
     return AABB{ min, max };
 }
@@ -71,5 +72,4 @@ __global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNod
 // very naive implementation
 __global__ void buildBBoxes(int leafCount, BVHNode* nodes, unsigned char* ready);
 
-__device__ float traverseTree(const BVHNode* nodes, glm::vec3* X,
-    int start, int end, AABB bbox, glm::vec3 X0, glm::vec3 XTilt, int& hitTetId);
+__device__ void traverseTree(const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, int tetId, int* hitTetId, int& numHitTet);

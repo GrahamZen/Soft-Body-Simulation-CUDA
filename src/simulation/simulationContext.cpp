@@ -50,7 +50,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json)
     for (auto softBodyData : dataLoader.m_softBodyData) {
         softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
     }
-    m_bvh.Init(numTets, softBodies.size(), numVerts);
+    m_bvh.Init(numTets, numVerts);
 }
 
 void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {

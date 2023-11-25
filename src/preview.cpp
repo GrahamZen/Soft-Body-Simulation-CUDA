@@ -89,6 +89,7 @@ void RenderImGui()
     ImGui::Begin("Simulator Analytics");                  // Create a window called "Hello, world!" and append into it.
     ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
     imguiData->Reset = ImGui::Button("Reset");
+    imguiData->Pause = ImGui::Button("Pause");
     bool dtChanged = ImGui::DragFloat("dt", &imguiData->Dt, 0.0001f, 0.0001f, 0.05f, "%.4f");
     float availWidth = ImGui::GetContentRegionAvail().x;
     ImGui::SetNextItemWidth(availWidth * 0.25f);
