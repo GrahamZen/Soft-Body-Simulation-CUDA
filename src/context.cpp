@@ -174,12 +174,18 @@ void Context::Update() {
     }
 
     if (guiData->Reset) {
+        iteration = 0;
         mpSimContext->Reset();
+        mpSimContext->Update();
     }
     if (guiData->Pause) {
         pause = !pause;
     }
     if (!pause) {
+        iteration++;
+        mpSimContext->Update();
+    }
+    else if (guiData->Step) {
         iteration++;
         mpSimContext->Update();
     }

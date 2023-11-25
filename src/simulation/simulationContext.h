@@ -36,13 +36,12 @@ public:
     ~SimulationCUDAContext();
     void Update();
     void Reset();
-    float GetDt() { return dt; }
-    float GetGravity() { return gravity; }
+    float GetDt() const { return dt; }
+    float GetGravity() const { return gravity; }
     void UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr);
     void SetDt(float dt) { this->dt = dt; }
     void Draw(ShaderProgram*);
     AABB GetAABB() const;
-    const BVH* GetBVHPtr() const { return &m_bvh; };
     int GetTetCnt() const;
     int GetVertCnt() const;
     int& GetThreadsPerBlock() { return threadsPerBlock; }

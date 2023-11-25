@@ -26,7 +26,7 @@ public:
     ~BVH();
     void Init(int numTets, int numVerts);
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
-    float* DetectCollisionCandidates(GLuint* Tet, glm::vec3* Xs, glm::vec3* XTilts, GLuint* TetId) const;
+    float* DetectCollisionCandidates(const GLuint* Tet, const glm::vec3* Xs, const glm::vec3* XTilts, const GLuint* TetId) const;
     void PrepareRenderData();
 private:
     BVHNode* dev_BVHNodes = nullptr;

@@ -18,6 +18,7 @@ public:
     bool ObjectVis = true;
     bool Reset = false;
     bool Pause = false;
+    bool Step = false;
     float theta, phi;
     glm::vec3 cameraLookAt;
     float zoom;

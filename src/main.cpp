@@ -68,7 +68,7 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         case GLFW_KEY_ESCAPE:
             glfwSetWindowShouldClose(window, GL_TRUE);
             break;
-        case GLFW_KEY_S:
+        case GLFW_KEY_R:
             context->ResetCamera();
             break;
         case GLFW_KEY_SPACE:
@@ -76,6 +76,9 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
                 context->guiData->softBodyAttr.setJump(true);
             break;
         }
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        context->guiData->Step = true;
     }
 }
 

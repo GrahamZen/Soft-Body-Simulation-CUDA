@@ -92,6 +92,7 @@ void RenderImGui()
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
     imguiData->Reset = ImGui::Button("Reset");
     imguiData->Pause = ImGui::Button("Pause");
+    imguiData->Step = ImGui::Button("Step");
     bool dtChanged = ImGui::DragFloat("dt", &imguiData->Dt, 0.0001f, 0.0001f, 0.05f, "%.4f");
     float availWidth = ImGui::GetContentRegionAvail().x;
     ImGui::SetNextItemWidth(availWidth * 0.25f);

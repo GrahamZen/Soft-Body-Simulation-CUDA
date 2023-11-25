@@ -36,7 +36,8 @@ SimulationCUDAContext::~SimulationCUDAContext()
 AABB SimulationCUDAContext::GetAABB() const
 {
     thrust::device_ptr<glm::vec3> dev_ptr(dev_Xs);
-    return computeBoundingBox(dev_ptr, dev_ptr + numVerts);
+    thrust::device_ptr<glm::vec3> dev_ptrTilts(dev_XTilts);
+    return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTilts, dev_ptrTilts + numVerts));
 }
 
 void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
