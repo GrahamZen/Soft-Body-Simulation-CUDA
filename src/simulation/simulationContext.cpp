@@ -66,8 +66,15 @@ void SimulationCUDAContext::Reset()
 
 void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram)
 {
-    for (auto softBody : softBodies)
-        shaderProgram->draw(*softBody, 0);
+    if (context->guiData->ObjectVis) {
+        for (auto softBody : softBodies)
+            shaderProgram->draw(*softBody, 0);
+    }
+    if (context->guiData->BVHVis) {
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        shaderProgram->draw(m_bvh, 0);
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    }
 }
 
 AABB SimulationCUDAContext::GetAABB() const

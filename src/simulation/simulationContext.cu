@@ -112,35 +112,24 @@ void SimulationCUDAContext::Update()
     HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_XTilts, dev_Vs, numVerts, floorPos, floorUp, muT, muN);
     //CCD();
     cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
-    PrepareRenderData();
+    if (context->guiData->ObjectVis) {
+        PrepareRenderData();
+    }
+    if (context->guiData->BVHVis)
+        m_bvh.PrepareRenderData();
 }
 
 void SimulationCUDAContext::PrepareRenderData() {
     for (auto softbody : softBodies) {
         glm::vec3* pos;
         glm::vec4* nor;
-        softbody->mapDevicePtr(&pos, &nor);
+        softbody->Mesh::mapDevicePtr(&pos, &nor);
         dim3 numThreadsPerBlock(softbody->getTetNumber() / threadsPerBlock + 1);
 
         PopulatePos << <numThreadsPerBlock, threadsPerBlock >> > (pos, softbody->getX(), softbody->getTet(), softbody->getTetNumber());
         RecalculateNormals << <softbody->getTetNumber() * 4 / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, 4 * softbody->getTetNumber());
-        softbody->unMapDevicePtr();
+        softbody->Mesh::unMapDevicePtr();
     }
 }
 
 
-void SoftBody::mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr)
-{
-    size_t size;
-    cudaGraphicsMapResources(1, &cuda_bufPos_resource, 0);
-    cudaGraphicsResourceGetMappedPointer((void**)bufPosDevPtr, &size, cuda_bufPos_resource);
-
-    cudaGraphicsMapResources(1, &cuda_bufNor_resource, 0);
-    cudaGraphicsResourceGetMappedPointer((void**)bufNorDevPtr, &size, cuda_bufNor_resource);
-}
-
-void SoftBody::unMapDevicePtr()
-{
-    cudaGraphicsUnmapResources(1, &cuda_bufPos_resource, 0);
-    cudaGraphicsUnmapResources(1, &cuda_bufNor_resource, 0);
-}

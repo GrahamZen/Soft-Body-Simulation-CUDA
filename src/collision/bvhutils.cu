@@ -7,6 +7,7 @@
 #include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
+#include <utilities.cuh>
 
 //input the aabb box of a Tetrahedron
 //generate a 30-bit morton code

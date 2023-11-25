@@ -6,7 +6,7 @@
 #include <thrust/reduce.h>
 #include <intersections.h>
 #include <cuda_runtime.h>
-#include <utilities.h>
+#include <utilities.cuh>
 
 struct MinOp {
     __host__ __device__
@@ -138,12 +138,20 @@ float* BVH::DetectCollisionCandidates(GLuint* Tet, glm::vec3* Xs, glm::vec3* XTi
     return dev_tI;
 }
 
+void BVH::PrepareRenderData()
+{
+    glm::vec3* pos;
+    Mesh::mapDevicePosPtr(&pos);
+    dim3 numThreadsPerBlock(numNodes / threadsPerBlock + 1);
+    populateBVHNodeAABBPos << <numThreadsPerBlock, threadsPerBlock >> > (dev_BVHNodes, pos, numNodes);
+    Mesh::unMapDevicePtr();
+}
+
 BVH::BVH(int& _threadsPerBlock) : threadsPerBlock(_threadsPerBlock) {}
 
 BVH::~BVH()
 {
     cudaFree(dev_BVHNodes);
-    //cudaFree(dev_bboxes);
     cudaFree(dev_tI);
     cudaFree(dev_indicesToReport);
 
@@ -151,15 +159,17 @@ BVH::~BVH()
     cudaFree(dev_mortonCodes);
 }
 
-void BVH::Init(int numTets, int numVerts)
+void BVH::Init(int _numTets, int _numVerts)
 {
-    cudaMalloc(&dev_BVHNodes, (numTets * 2 - 1) * sizeof(BVHNode));
-    //cudaMalloc(&dev_bboxes, bboxes.size() * sizeof(AABB));
-    //cudaMemcpy(dev_bboxes, bboxes.data(), bboxes.size() * sizeof(AABB), cudaMemcpyHostToDevice);
+    numTets = _numTets;
+    numVerts = _numVerts;
+    numNodes = numTets * 2 - 1;
+    cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode));
     cudaMalloc((void**)&dev_tI, numVerts * sizeof(float));
     cudaMemset(dev_tI, 0, numVerts * sizeof(float));
     cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
     cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
     cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
-    cudaMalloc(&dev_ready, (numTets * 2 - 1) * sizeof(unsigned char));
+    cudaMalloc(&dev_ready, numNodes * sizeof(unsigned char));
+    createBVH(numNodes);
 }

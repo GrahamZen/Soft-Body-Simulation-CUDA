@@ -88,6 +88,8 @@ void RenderImGui()
 
     ImGui::Begin("Simulator Analytics");                  // Create a window called "Hello, world!" and append into it.
     ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
+    ImGui::Checkbox("Visualize BVH", &imguiData->BVHVis);
+    ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
     imguiData->Reset = ImGui::Button("Reset");
     imguiData->Pause = ImGui::Button("Pause");
     bool dtChanged = ImGui::DragFloat("dt", &imguiData->Dt, 0.0001f, 0.0001f, 0.05f, "%.4f");

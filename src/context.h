@@ -14,6 +14,8 @@ public:
     int TracedDepth;
     float Dt = 0.001;
     bool WireFrame = false;
+    bool BVHVis = false;
+    bool ObjectVis = true;
     bool Reset = false;
     bool Pause = false;
     float theta, phi;

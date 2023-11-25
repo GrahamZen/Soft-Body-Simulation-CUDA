@@ -93,3 +93,4 @@ __global__ void setExtForce(glm::vec3* ExtForce, glm::vec3 gravity, int numVerts
 
 
 __global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, float* tI, int numVerts);
+__global__ void populateBVHNodeAABBPos(BVHNode* nodes, glm::vec3* pos, int numNodes);

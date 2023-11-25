@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <GL/glew.h>
+#include <mesh.h>
 
 class SoftBody;
 
@@ -19,13 +20,14 @@ struct BVHNode {
     int TetrahedronIndex;
 };
 
-class BVH {
+class BVH : public Mesh {
 public:
     BVH(int& threadsPerBlock);
     ~BVH();
     void Init(int numTets, int numVerts);
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
     float* DetectCollisionCandidates(GLuint* Tet, glm::vec3* Xs, glm::vec3* XTilts, GLuint* TetId) const;
+    void PrepareRenderData();
 private:
     BVHNode* dev_BVHNodes = nullptr;
     AABB* dev_bboxes = nullptr;
