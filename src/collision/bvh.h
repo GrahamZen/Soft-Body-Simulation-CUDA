@@ -2,7 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <GL/glew.h>
-#include <mesh.h>
+#include <wireframe.h>
 
 class SoftBody;
 
@@ -20,7 +20,7 @@ struct BVHNode {
     int TetrahedronIndex;
 };
 
-class BVH : public Mesh {
+class BVH : public Wireframe {
 public:
     BVH(int& threadsPerBlock);
     ~BVH();

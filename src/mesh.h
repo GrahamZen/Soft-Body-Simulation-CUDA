@@ -6,8 +6,6 @@
 #include <glm/glm.hpp>
 #include <cuda_gl_interop.h>
 
-class BVHNode;
-
 class Mesh : public Drawable
 {
     friend class SoftBody;
@@ -18,14 +16,12 @@ public:
 
     void createFromOBJ(const char* filename, const char* textureFile, const char* bgTextureFile);
     void createCube(const char* textureFile = nullptr, const char* bgTextureFile = nullptr);
-    void createBVH(int numNodes);
     void createTetrahedron();
     void bindTexture() const;
     void loadTexture() const;
     void bindBGTexture() const;
     void loadBGTexture() const;
     void mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr);
-    void mapDevicePosPtr(glm::vec3** bufPosDevPtr);
     void unMapDevicePtr();
 protected:
     cudaGraphicsResource* cuda_bufPos_resource = nullptr;

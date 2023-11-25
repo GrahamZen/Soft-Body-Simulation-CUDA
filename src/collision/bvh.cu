@@ -141,10 +141,10 @@ float* BVH::DetectCollisionCandidates(GLuint* Tet, glm::vec3* Xs, glm::vec3* XTi
 void BVH::PrepareRenderData()
 {
     glm::vec3* pos;
-    Mesh::mapDevicePosPtr(&pos);
+    Wireframe::mapDevicePosPtr(&pos);
     dim3 numThreadsPerBlock(numNodes / threadsPerBlock + 1);
     populateBVHNodeAABBPos << <numThreadsPerBlock, threadsPerBlock >> > (dev_BVHNodes, pos, numNodes);
-    Mesh::unMapDevicePtr();
+    Wireframe::unMapDevicePtr();
 }
 
 BVH::BVH(int& _threadsPerBlock) : threadsPerBlock(_threadsPerBlock) {}
