@@ -44,7 +44,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json)
             std::string baseName = nodeFile.substr(nodeFile.find_last_of('/') + 1);
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());
-            ctx->namesSoftBodies.push_back(name);
+            namesSoftBodies.push_back(name);
             dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), pos, scale, rot, centralize, startIndex,
                 SoftBody::SoftBodyAttribute{ mass, stiffness_0, stiffness_1, constraints });
         }

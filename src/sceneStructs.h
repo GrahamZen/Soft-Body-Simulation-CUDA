@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <json.hpp>
 
 #define BACKGROUND_COLOR (glm::vec3(0.0f))
 
@@ -26,6 +27,10 @@ struct Geom {
 };
 
 struct Camera {
+    Camera() = default;
+    Camera(nlohmann::json& camJson);
+    Camera(const std::string& _filename);
+    Camera& computeCameraParams();
     glm::ivec2 resolution;
     glm::vec3 position;
     glm::vec3 lookAt;

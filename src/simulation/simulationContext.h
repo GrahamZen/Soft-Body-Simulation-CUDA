@@ -2,6 +2,7 @@
 #include <softBody.h>
 #include <shaderprogram.h>
 #include <bvh.h>
+#include <sceneStructs.h>
 
 struct SoftBodyData {
     GLuint* Tets;
@@ -36,6 +37,7 @@ public:
     ~SimulationCUDAContext();
     void Update();
     void Reset();
+    const std::vector<const char*>& GetNamesSoftBodies() const { return namesSoftBodies; }
     float GetDt() const { return dt; }
     float GetGravity() const { return gravity; }
     void UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr);
@@ -48,6 +50,7 @@ public:
     void CCD();
 private:
     void PrepareRenderData();
+    std::vector<const char*> namesSoftBodies;
     glm::vec3* dev_Xs;
     glm::vec3* dev_X0s;
     glm::vec3* dev_XTilts;

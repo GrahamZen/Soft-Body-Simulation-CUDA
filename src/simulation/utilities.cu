@@ -54,8 +54,7 @@ __global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int numVert
     }
 }
 
-// Add the current iteration's output to the overall image
-__global__ void AddGravity(glm::vec3* Force, glm::vec3* V, float mass, int numVerts, bool jump)
+__global__ void AddExternal(glm::vec3* V, int numVerts, bool jump)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 

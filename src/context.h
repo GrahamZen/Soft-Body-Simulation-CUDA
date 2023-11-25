@@ -2,8 +2,8 @@
 #include <utilities.h>
 #include <vector>
 
-class Camera;
 class SoftBody;
+class Camera;
 class SimulationCUDAContext;
 class SurfaceShader;
 
@@ -22,6 +22,7 @@ public:
     float theta, phi;
     glm::vec3 cameraLookAt;
     float zoom;
+    int currSimContextId = -1;
     struct SoftBodyAttr
     {
         int currSoftBodyId = -1;
@@ -54,7 +55,8 @@ public:
     void ResetCamera();
     void Draw();
     int GetIteration() const { return iteration; }
-    const std::vector<const char*>& GetNamesSoftBodies() const { return namesSoftBodies; }
+    const std::vector<const char*>& GetNamesSoftBodies() const;
+    const std::vector<const char*>& GetNamesContexts() const { return namesContexts; }
     Camera* mpCamera = nullptr;
     const int width = 1024;
     const int height = 1024;
@@ -64,16 +66,16 @@ public:
     float zoom, theta, phi;
     glm::vec3 cameraPosition;
     GuiDataContainer* guiData;
-    SimulationCUDAContext* mpSimContext;
+    SimulationCUDAContext* mcrpSimContext = nullptr;
+    std::vector<SimulationCUDAContext*> mpSimContexts;
 
 private:
     void PollEvents();
-    Camera* loadCamera(const std::string& _filename);
     std::string filename = "context.json";
     SimulationCUDAContext* LoadSimContext();
     glm::vec3 ogLookAt; // for recentering the camera
     SurfaceShader* mpProgLambert;
     int iteration = 0;
     bool pause = false;
-    std::vector<const char*> namesSoftBodies;
+    std::vector<const char*> namesContexts;
 };

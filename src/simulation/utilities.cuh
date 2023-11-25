@@ -77,7 +77,7 @@ __device__ glm::mat3 Build_Edge_Matrix(const glm::vec3* X, const GLuint* Tet, in
 __device__ void svdGLM(const glm::mat3& A, glm::mat3& U, glm::mat3& S, glm::mat3& V);
 
 __global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int numVerts);
-__global__ void AddGravity(glm::vec3* Force, glm::vec3* V, float mass, int numVerts, bool jump);
+__global__ void AddExternal(glm::vec3* V, int numVerts, bool jump);
 __global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const glm::vec3* X, const GLuint* Tet);
 __global__ void LaplacianGatherKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int numTets, const GLuint* Tet);
 __global__ void LaplacianKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int numVerts, const GLuint* Tet, float blendAlpha);

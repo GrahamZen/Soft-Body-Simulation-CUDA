@@ -14,10 +14,10 @@ void SoftBody::PdSolver()
     fext.resizeLike(model.positions());
     fext.setZero();
     // set gravity force
-    fext.col(1).array() -= mpSimContext->GetGravity() * attrib.mass;
+    fext.col(1).array() -= mcrpSimContext->GetGravity() * attrib.mass;
     if (!solver.ready())
     {
-        solver.prepare(mpSimContext->GetDt());
+        solver.prepare(mcrpSimContext->GetDt());
     }
     solver.step(fext, 10);
     //fext.setZero();

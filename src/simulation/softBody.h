@@ -44,7 +44,7 @@ public:
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
     int& threadsPerBlock;
-    SimulationCUDAContext* mpSimContext;
+    SimulationCUDAContext* mcrpSimContext;
     pd::deformable_mesh_t model{};
     pd::solver_t solver;
 
