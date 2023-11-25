@@ -47,9 +47,7 @@ SoftBody::~SoftBody()
     }
     else
     {
-        cudaFree(ARow);
-        cudaFree(ACol);
-        cudaFree(AVal);
+        cudaFree(buffer_gpu);
     }
 }
 

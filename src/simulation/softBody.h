@@ -6,6 +6,7 @@
 #include <Eigen/Dense>
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
+#include <cusolverSp_LOWLEVEL_PREVIEW.h>
 
 #include <deformable_mesh.h>
 #include <solver.h>
@@ -72,9 +73,9 @@ private:
     float* Mass;
     float* V0;
 
-    int* ARow;
-    int* ACol;
-    float* AVal;
+    csrcholInfo_t d_info = NULL;
+    void* buffer_gpu = NULL;
+    cusolverSpHandle_t cusolverHandle;
 
     float* masses;
     float* sn;

@@ -4,6 +4,7 @@
 #include <thrust/reduce.h>
 #include <thrust/execution_policy.h>
 #include <cusolverSp.h>
+#include <cusolverSp_LOWLEVEL_PREVIEW.h>
 #include <cusparse.h>
 
 #define ERRORCHECK 1
@@ -75,6 +76,10 @@ void SoftBody::solverPrepare()
 
         thrust::pair<int*, float*> newEnd = thrust::reduce_by_key(thrust::device, AIdx, AIdx + len, tmpVal, newIdx, newVal);
 
+        int* ARow;
+        int* ACol;
+        float* AVal;
+
         nnzNumber = newEnd.first - newIdx;
         std::cout << nnzNumber << std::endl;
 
@@ -100,9 +105,26 @@ void SoftBody::solverPrepare()
         cusparseCreate(&handle);
         cusparseXcoo2csr(handle, ARowTmp, nnzNumber, ASize, ARow, CUSPARSE_INDEX_BASE_ZERO);
 
+        cusparseMatDescr_t descrA;
+        cusolverSpCreate(&cusolverHandle);
+        cusparseCreateMatDescr(&descrA);
+        cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
+        cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
+
+        size_t cholSize = 0;
+        size_t internalSize = 0;
+        cusolverSpCreateCsrcholInfo(&d_info);
+        cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnzNumber, descrA, ARow, ACol, d_info);
+        cusolverSpScsrcholBufferInfo(cusolverHandle, ASize, nnzNumber, descrA, AVal, ARow, ACol, d_info, &internalSize, &cholSize);
+        cudaMalloc(&buffer_gpu, sizeof(char) * cholSize);
+        cusolverSpScsrcholFactor(cusolverHandle, ASize, nnzNumber, descrA, AVal, ARow, ACol, d_info, buffer_gpu);
+
         cudaFree(newIdx);
         cudaFree(newVal);
         cudaFree(ARowTmp);
+        cudaFree(ARow);
+        cudaFree(ACol);
+        cudaFree(AVal);
     }
     cudaFree(AIdx);
     cudaFree(tmpVal);
@@ -153,7 +175,7 @@ void SoftBody::PDSolverStep()
         }
         else
         {
-            cusolverSpScsrlsvchol(cusolverHandle, numVerts * 3, nnzNumber, descrA, AVal, ARow, ACol, b, 0.0001f, 0, sn, &singularity);
+            cusolverSpScsrcholSolve(cusolverHandle, numVerts * 3, b, sn, d_info, buffer_gpu);
         }
     }
 
