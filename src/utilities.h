@@ -10,6 +10,7 @@
 #define EPSILON 0.00001f
 
 class BVHNode;
+class AABB;
 
 namespace utilityCore
 {
@@ -24,11 +25,12 @@ namespace utilityCore
 }
 
 template <typename T>
-void inspectHost(T*, int);
-void inspectHost(unsigned int*, int);
-void inspectHostMorton(unsigned int* host_ptr, int size);
-void inspectHost(BVHNode* hstBVHNodes, int size);
+void inspectHost(const T*, int);
+void inspectHost(const unsigned int*, int);
+void inspectHostMorton(const unsigned int* host_ptr, int size);
+void inspectHost(const BVHNode* hstBVHNodes, int size);
+void inspectHost(const AABB*, int);
 
 template <typename T>
-bool compareHostVSHost(T* host_ptr1, T* host_ptr2, int size);
+bool compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int size);
 std::ifstream findFile(const std::string& fileName);

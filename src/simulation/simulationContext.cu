@@ -6,6 +6,7 @@
 #include <utilities.cuh>
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
+#include <bvh.cuh>
 
 #define ERRORCHECK 1
 
@@ -30,6 +31,12 @@ SimulationCUDAContext::~SimulationCUDAContext()
     for (auto softbody : softBodies) {
         delete softbody;
     }
+}
+
+AABB SimulationCUDAContext::GetAABB() const
+{
+    thrust::device_ptr<glm::vec3> dev_ptr(dev_Xs);
+    return computeBoundingBox(dev_ptr, dev_ptr + numVerts);
 }
 
 void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,

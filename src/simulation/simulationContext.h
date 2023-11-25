@@ -1,6 +1,7 @@
+#include <json.hpp>
 #include <softBody.h>
 #include <shaderprogram.h>
-#include <json.hpp>
+#include <bvh.h>
 
 struct SoftBodyData {
     GLuint* Tets;

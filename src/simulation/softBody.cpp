@@ -87,12 +87,6 @@ void SoftBody::InitModel()
     solver.set_model(&model);
 }
 
-AABB SoftBody::GetAABB()
-{
-    thrust::device_ptr<glm::vec3> dev_ptr(X);
-    return computeBoundingBox(dev_ptr, dev_ptr + numVerts);
-}
-
 void SoftBody::setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)
 {
     softBodyAttr.setJumpClean(jump);

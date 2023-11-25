@@ -9,7 +9,6 @@
 
 #include <deformable_mesh.h>
 #include <solver.h>
-#include <bvh.h>
 
 class SimulationCUDAContext;
 class SoftBodyData;
@@ -39,7 +38,6 @@ public:
     glm::vec3* getV()const { return V; }
     glm::vec3* getForce()const { return Force; }
     glm::mat3* getInvDm()const { return inv_Dm; }
-    AABB GetAABB();
     void setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr);
     int getNumber()const { return numVerts; }
     int getTetNumber()const { return numTets; }

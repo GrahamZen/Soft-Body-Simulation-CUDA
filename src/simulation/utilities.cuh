@@ -21,6 +21,7 @@ void inspectGLM(T* dev_ptr, int size) {
 
 void inspectMortonCodes(int* dev_mortonCodes, int numTets);
 void inspectBVHNode(BVHNode* dev_BVHNodes, int numTets);
+void inspectBVH(AABB* dev_aabbs, int size);
 
 template <typename T1, typename T2>
 bool compareDevVSHost(T1* dev_ptr, T2* host_ptr2, int size) {

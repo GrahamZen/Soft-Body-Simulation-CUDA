@@ -127,19 +127,19 @@ std::istream& utilityCore::safeGetline(std::istream& is, std::string& t) {
 }
 
 template <typename T>
-void inspectHost(T* host_ptr, int size) {
+void inspectHost(const T* host_ptr, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size; i++) {
         std::cout << glm::to_string(host_ptr[i]) << std::endl;
     }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
-template void inspectHost<glm::vec3>(glm::vec3* dev_ptr, int size);
-template void inspectHost<glm::vec4>(glm::vec4* dev_ptr, int size);
-template void inspectHost<glm::mat3>(glm::mat3* dev_ptr, int size);
-template void inspectHost<glm::mat4>(glm::mat4* dev_ptr, int size);
+template void inspectHost<glm::vec3>(const glm::vec3* dev_ptr, int size);
+template void inspectHost<glm::vec4>(const glm::vec4* dev_ptr, int size);
+template void inspectHost<glm::mat3>(const glm::mat3* dev_ptr, int size);
+template void inspectHost<glm::mat4>(const glm::mat4* dev_ptr, int size);
 
-void inspectHost(BVHNode* hstBVHNodes, int size) {
+void inspectHost(const BVHNode* hstBVHNodes, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size; i++)
     {
@@ -150,8 +150,18 @@ void inspectHost(BVHNode* hstBVHNodes, int size) {
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
+void inspectHost(const AABB* aabb, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+    for (int i = 0; i < size; i++)
+    {
+        std::cout << "min: " << glm::to_string(aabb->min) << ", max:" << glm::to_string(aabb->max) << std::endl;
+    }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
+}
+
+
 template <typename T>
-bool compareHostVSHost(T* host_ptr1, T* host_ptr2, int size) {
+bool compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int size) {
     for (int i = 0; i < size; i++) {
         if (host_ptr1[i] != host_ptr2[i]) {
             std::cout << "Failed:" << std::endl
@@ -162,9 +172,9 @@ bool compareHostVSHost(T* host_ptr1, T* host_ptr2, int size) {
     }
     return true;
 }
-template bool compareHostVSHost<glm::vec3>(glm::vec3*, glm::vec3*, int size);
+template bool compareHostVSHost<glm::vec3>(const glm::vec3*, const glm::vec3*, int size);
 
-void inspectHost(unsigned int* host_ptr, int size) {
+void inspectHost(const unsigned int* host_ptr, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size / 4; i++) {
         std::cout << host_ptr[i * 4] << " " << host_ptr[i * 4 + 1] << " " << host_ptr[i * 4 + 2] << " " << host_ptr[i * 4 + 3] << std::endl;
@@ -172,7 +182,7 @@ void inspectHost(unsigned int* host_ptr, int size) {
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
-void inspectHostMorton(unsigned int* host_ptr, int size) {
+void inspectHostMorton(const unsigned int* host_ptr, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < 20; i++)
     {

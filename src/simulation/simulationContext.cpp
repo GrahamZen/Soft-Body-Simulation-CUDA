@@ -77,14 +77,6 @@ void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram)
     }
 }
 
-AABB SimulationCUDAContext::GetAABB() const
-{
-    AABB result{ glm::vec3(FLT_MAX),glm::vec3(-FLT_MAX) };
-    for (auto softBody : softBodies)
-        result.expand(softBody->GetAABB());
-    return result;
-}
-
 std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
 {
     std::string line;
