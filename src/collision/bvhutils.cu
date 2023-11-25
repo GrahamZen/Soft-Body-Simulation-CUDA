@@ -85,7 +85,8 @@ __global__ void buildLeafMorton(int startIndex, int numTri, float minX, float mi
     if (ind < numTri)
     {
         int leafPos = ind + numTri - 1;
-        leafNodes[leafPos].bbox = computeTetTrajBBox(X[tet[ind] * 4], X[tet[ind] * 4 + 1], X[tet[ind] * 4 + 2], X[tet[ind] * 4 + 3], XTilt[tet[ind] * 4], XTilt[tet[ind] * 4 + 1], XTilt[tet[ind] * 4 + 2], XTilt[tet[ind] * 4 + 3]);
+        leafNodes[leafPos].bbox = computeTetTrajBBox(X[tet[ind * 4]], X[tet[ind * 4 + 1]], X[tet[ind * 4 + 2]], X[tet[ind * 4 + 3]],
+            XTilt[tet[ind * 4]], XTilt[tet[ind * 4 + 1]], XTilt[tet[ind * 4 + 2]], XTilt[tet[ind * 4 + 3]]);
         leafNodes[leafPos].isLeaf = 1;
         leafNodes[leafPos].leftIndex = -1;
         leafNodes[leafPos].rightIndex = -1;

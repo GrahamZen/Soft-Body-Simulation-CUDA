@@ -15,6 +15,9 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json)
     if (json.contains("gravity")) {
         gravity = json["gravity"].get<float>();
     }
+    if (json.contains("pause")) {
+        context->guiData->Pause = json["pause"].get<bool>();
+    }
     if (json.contains("damp")) {
         float damp = json["damp"].get<float>();
     }
