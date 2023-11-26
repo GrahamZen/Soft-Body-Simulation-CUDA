@@ -148,16 +148,6 @@ void SoftBody::PDSolverStep()
     setExtForce << < vertBlocks, threadsPerBlock >> > (ExtForce, gravity, numVerts);
     computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, X, V, ExtForce, numVerts);
     computeM_h2Sn << < vertBlocks, threadsPerBlock >> > (masses, sn, m_1_dt2, numVerts);
-    cusolverSpHandle_t cusolverHandle;
-    int singularity = 0;
-    cusparseMatDescr_t descrA;
-    if (!mcrpSimContext->IsEigenGlobalSolver())
-    {
-        cusolverSpCreate(&cusolverHandle);
-        cusparseCreateMatDescr(&descrA);
-        cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
-        cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
-    }
 
     // 10 is the numVerts of iterations
     for (int i = 0; i < 10; i++)
