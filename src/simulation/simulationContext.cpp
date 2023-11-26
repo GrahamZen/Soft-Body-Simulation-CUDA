@@ -6,8 +6,8 @@ DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerB
 {
 }
 
-SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json, int _threadsPerBlock)
-    :context(ctx), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlock)
+SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json, int _threadsPerBlock, int _threadsPerBlockBVH)
+    :context(ctx), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {

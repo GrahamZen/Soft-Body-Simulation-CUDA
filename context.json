@@ -1,6 +1,7 @@
 {
     "pause": false,
     "threads per block": 128,
+    "threads per block(bvh)": 64,
     "default camera": {
         "aspect ratio": 1.3333,
         "screen height": 1280,

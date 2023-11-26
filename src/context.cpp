@@ -118,9 +118,12 @@ SimulationCUDAContext* Context::LoadSimContext() {
     nlohmann::json json;
     fileStream >> json;
     fileStream.close();
-    int threadsPerBlock = 128;
+    int threadsPerBlock = 128, threadsPerBlockBVH = threadsPerBlock;
     if (json.contains("threads per block")) {
         threadsPerBlock = json["threads per block"].get<int>();
+    }
+    if (json.contains("threads per block(bvh)")) {
+        threadsPerBlockBVH = json["threads per block(bvh)"].get<int>();
     }
     if (json.contains("contexts")) {
         auto& contextJsons = json["contexts"];
@@ -131,7 +134,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());
             namesContexts.push_back(name);
-            mpSimContexts.push_back(new SimulationCUDAContext(this, contextJson, threadsPerBlock));
+            mpSimContexts.push_back(new SimulationCUDAContext(this, contextJson, threadsPerBlock, threadsPerBlockBVH));
         }
         mcrpSimContext = mpSimContexts[0];
     }

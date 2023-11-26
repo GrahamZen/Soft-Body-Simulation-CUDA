@@ -33,7 +33,7 @@ private:
 
 class SimulationCUDAContext {
 public:
-    SimulationCUDAContext(Context* ctx, nlohmann::json& json, int threadsPerBlock);
+    SimulationCUDAContext(Context* ctx, nlohmann::json& json, int threadsPerBlock, int _threadsPerBlockBVH);
     ~SimulationCUDAContext();
     void Update();
     void Reset();
