@@ -20,6 +20,7 @@ public:
     bool Pause = false;
     bool Step = false;
     bool UseEigen = true;
+    bool UseCUDASolver = true;
     float theta, phi;
     glm::vec3 cameraLookAt;
     float zoom;

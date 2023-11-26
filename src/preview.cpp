@@ -90,7 +90,8 @@ void RenderImGui()
     ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
     ImGui::Checkbox("Visualize BVH", &imguiData->BVHVis);
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
-    bool solverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
+    bool globalSolverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
+    bool solverChanged = ImGui::Checkbox("Use CUDA Solver", &imguiData->UseCUDASolver);
     imguiData->Reset = ImGui::Button("Reset");
     imguiData->Pause = ImGui::Button("Pause");
     imguiData->Step = ImGui::Button("Step");
@@ -133,7 +134,7 @@ void RenderImGui()
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
 
-    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged || solverChanged || contextChanged) {
+    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged || solverChanged || contextChanged || globalSolverChanged) {
         context->panelModified = true;
     }
 

@@ -139,7 +139,9 @@ void Context::InitDataContainer() {
     guiData->theta = theta;
     guiData->cameraLookAt = ogLookAt;
     guiData->zoom = zoom;
-
+    guiData->Dt = mcrpSimContext->GetDt();
+    guiData->Pause = pause;
+    guiData->UseEigen = mcrpSimContext->IsEigenGlobalSolver();
 }
 
 void Context::InitCuda() {
@@ -161,6 +163,7 @@ void Context::Update() {
             mcrpSimContext = mpSimContexts[guiData->currSimContextId];
         }
         mcrpSimContext->SetGlobalSolver(guiData->UseEigen);
+        mcrpSimContext->SetCUDASolver(guiData->UseCUDASolver);
         mcrpSimContext->SetDt(guiData->Dt);
         phi = guiData->phi;
         theta = guiData->theta;
