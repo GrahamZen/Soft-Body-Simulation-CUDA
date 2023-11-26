@@ -38,94 +38,89 @@ void SoftBody::solverPrepare()
     computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, inv_Dm, Tet, wi, numTets, numVerts);
     setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * numTets, m_1_dt2, numVerts);
 
+    bHost = (float*)malloc(sizeof(float) * ASize);
 
-    if (mcrpSimContext->IsEigenGlobalSolver())
+    int* AIdxHost = (int*)malloc(sizeof(int) * len);
+    float* tmpValHost = (float*)malloc(sizeof(float) * len);
+
+    cudaMemcpy(AIdxHost, AIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
+    cudaMemcpy(tmpValHost, tmpVal, sizeof(float) * len, cudaMemcpyDeviceToHost);
+
+    std::vector<Eigen::Triplet<float>> A_triplets;
+
+    for (auto i = 0; i < len; ++i)
     {
-        bHost = (float*)malloc(sizeof(float) * ASize);
-
-        int* AIdxHost = (int*)malloc(sizeof(int) * len);
-        float* tmpValHost = (float*)malloc(sizeof(float) * len);
-
-        cudaMemcpy(AIdxHost, AIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
-        cudaMemcpy(tmpValHost, tmpVal, sizeof(float) * len, cudaMemcpyDeviceToHost);
-
-        std::vector<Eigen::Triplet<float>> A_triplets;
-
-        for (auto i = 0; i < len; ++i)
-        {
-            A_triplets.push_back({ AIdxHost[i] / ASize, AIdxHost[i] % ASize, tmpValHost[i] });
-        }
-        Eigen::SparseMatrix<float> A(ASize, ASize);
-
-        A.setFromTriplets(A_triplets.begin(), A_triplets.end());
-        cholesky_decomposition_.compute(A);
-
-        free(AIdxHost);
-        free(tmpValHost);
+        A_triplets.push_back({ AIdxHost[i] / ASize, AIdxHost[i] % ASize, tmpValHost[i] });
     }
-    else
-    {
-        int* newIdx;
-        float* newVal;
+    Eigen::SparseMatrix<float> A(ASize, ASize);
 
-        cudaMalloc((void**)&newIdx, sizeof(int) * len);
-        cudaMalloc((void**)&newVal, sizeof(float) * len);
+    A.setFromTriplets(A_triplets.begin(), A_triplets.end());
+    cholesky_decomposition_.compute(A);
 
-        thrust::sort_by_key(thrust::device, AIdx, AIdx + len, tmpVal);
+    free(AIdxHost);
+    free(tmpValHost);
+
+    int* newIdx;
+    float* newVal;
+
+    cudaMalloc((void**)&newIdx, sizeof(int) * len);
+    cudaMalloc((void**)&newVal, sizeof(float) * len);
+
+    thrust::sort_by_key(thrust::device, AIdx, AIdx + len, tmpVal);
 
 
-        thrust::pair<int*, float*> newEnd = thrust::reduce_by_key(thrust::device, AIdx, AIdx + len, tmpVal, newIdx, newVal);
+    thrust::pair<int*, float*> newEnd = thrust::reduce_by_key(thrust::device, AIdx, AIdx + len, tmpVal, newIdx, newVal);
 
-        int* ARow;
-        int* ACol;
-        float* AVal;
+    int* ARow;
+    int* ACol;
+    float* AVal;
 
-        nnzNumber = newEnd.first - newIdx;
-        std::cout << nnzNumber << std::endl;
+    nnzNumber = newEnd.first - newIdx;
+    std::cout << nnzNumber << std::endl;
 
-        cudaMalloc((void**)&ARow, sizeof(int) * nnzNumber);
-        cudaMemset(ARow, 0, sizeof(int) * nnzNumber);
+    cudaMalloc((void**)&ARow, sizeof(int) * nnzNumber);
+    cudaMemset(ARow, 0, sizeof(int) * nnzNumber);
 
-        cudaMalloc((void**)&ACol, sizeof(int) * nnzNumber);
-        cudaMemset(ACol, 0, sizeof(int) * nnzNumber);
+    cudaMalloc((void**)&ACol, sizeof(int) * nnzNumber);
+    cudaMemset(ACol, 0, sizeof(int) * nnzNumber);
 
-        cudaMalloc((void**)&AVal, sizeof(float) * nnzNumber);
-        cudaMemcpy(AVal, newVal, sizeof(float) * nnzNumber, cudaMemcpyDeviceToDevice);
+    cudaMalloc((void**)&AVal, sizeof(float) * nnzNumber);
+    cudaMemcpy(AVal, newVal, sizeof(float) * nnzNumber, cudaMemcpyDeviceToDevice);
 
-        int* ARowTmp;
-        cudaMalloc((void**)&ARowTmp, sizeof(int) * nnzNumber);
-        cudaMemset(ARowTmp, 0, sizeof(int) * nnzNumber);
+    int* ARowTmp;
+    cudaMalloc((void**)&ARowTmp, sizeof(int) * nnzNumber);
+    cudaMemset(ARowTmp, 0, sizeof(int) * nnzNumber);
 
-        int blocks = (nnzNumber + threadsPerBlock - 1) / threadsPerBlock;
+    int blocks = (nnzNumber + threadsPerBlock - 1) / threadsPerBlock;
 
-        initAMatrix << < blocks, threadsPerBlock >> > (newIdx, ARowTmp, ACol, ASize, nnzNumber);
+    initAMatrix << < blocks, threadsPerBlock >> > (newIdx, ARowTmp, ACol, ASize, nnzNumber);
 
-        // transform ARow into csr format
-        cusparseHandle_t handle;
-        cusparseCreate(&handle);
-        cusparseXcoo2csr(handle, ARowTmp, nnzNumber, ASize, ARow, CUSPARSE_INDEX_BASE_ZERO);
+    // transform ARow into csr format
+    cusparseHandle_t handle;
+    cusparseCreate(&handle);
+    cusparseXcoo2csr(handle, ARowTmp, nnzNumber, ASize, ARow, CUSPARSE_INDEX_BASE_ZERO);
 
-        cusparseMatDescr_t descrA;
-        cusolverSpCreate(&cusolverHandle);
-        cusparseCreateMatDescr(&descrA);
-        cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
-        cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
+    cusparseMatDescr_t descrA;
+    cusolverSpCreate(&cusolverHandle);
+    cusparseCreateMatDescr(&descrA);
+    cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
+    cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
 
-        size_t cholSize = 0;
-        size_t internalSize = 0;
-        cusolverSpCreateCsrcholInfo(&d_info);
-        cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnzNumber, descrA, ARow, ACol, d_info);
-        cusolverSpScsrcholBufferInfo(cusolverHandle, ASize, nnzNumber, descrA, AVal, ARow, ACol, d_info, &internalSize, &cholSize);
-        cudaMalloc(&buffer_gpu, sizeof(char) * cholSize);
-        cusolverSpScsrcholFactor(cusolverHandle, ASize, nnzNumber, descrA, AVal, ARow, ACol, d_info, buffer_gpu);
+    size_t cholSize = 0;
+    size_t internalSize = 0;
+    cusolverSpCreateCsrcholInfo(&d_info);
+    cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnzNumber, descrA, ARow, ACol, d_info);
+    cusolverSpScsrcholBufferInfo(cusolverHandle, ASize, nnzNumber, descrA, AVal, ARow, ACol, d_info, &internalSize, &cholSize);
+    cudaMalloc(&buffer_gpu, sizeof(char) * cholSize);
+    cusolverSpScsrcholFactor(cusolverHandle, ASize, nnzNumber, descrA, AVal, ARow, ACol, d_info, buffer_gpu);
 
-        cudaFree(newIdx);
-        cudaFree(newVal);
-        cudaFree(ARowTmp);
-        cudaFree(ARow);
-        cudaFree(ACol);
-        cudaFree(AVal);
-    }
+    cudaFree(newIdx);
+    cudaFree(newVal);
+    cudaFree(ARowTmp);
+    cudaFree(ARow);
+    cudaFree(ACol);
+    cudaFree(AVal);
+
     cudaFree(AIdx);
     cudaFree(tmpVal);
 }

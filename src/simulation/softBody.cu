@@ -41,14 +41,8 @@ SoftBody::~SoftBody()
     cudaFree(b);
     cudaFree(masses);
 
-    if (mcrpSimContext->IsEigenGlobalSolver())
-    {
-        free(bHost);
-    }
-    else
-    {
-        cudaFree(buffer_gpu);
-    }
+    free(bHost);
+    cudaFree(buffer_gpu);
 }
 
 
