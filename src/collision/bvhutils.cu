@@ -190,8 +190,6 @@ __global__ void buildBBoxes(int leafCount, BVHNode* nodes, unsigned char* ready)
 
 void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets)
 {
-    const int threadsPerBlock = 128;
-
     cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
     cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
     cudaMemset(dev_ready, 0, numTets * sizeof(unsigned char));

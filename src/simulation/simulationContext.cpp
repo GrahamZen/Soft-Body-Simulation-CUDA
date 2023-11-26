@@ -2,11 +2,12 @@
 #include <fstream>
 #include <sstream>
 
-DataLoader::DataLoader(int& _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
+DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
 {
 }
 
-SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json) :context(ctx), m_bvh(threadsPerBlock)
+SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json, int _threadsPerBlock)
+    :context(ctx), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlock)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
@@ -73,7 +74,7 @@ void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram)
         for (auto softBody : softBodies)
             shaderProgram->draw(*softBody, 0);
     }
-    if (context->guiData->BVHVis) {
+    if (context->guiData->handleCollision && context->guiData->BVHVis) {
         glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
         shaderProgram->draw(m_bvh, 0);
         glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

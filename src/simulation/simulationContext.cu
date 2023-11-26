@@ -117,16 +117,18 @@ void SimulationCUDAContext::Update()
     for (auto softbody : softBodies) {
         softbody->Update();
     }
-    m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
+    if (context->guiData->handleCollision)
+        m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
     glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
     glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_XTilts, dev_Vs, numVerts, floorPos, floorUp, muT, muN);
-    //CCD();
+    //if(context->guiData->handleCollision)
+    //    CCD();
     cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
     if (context->guiData->ObjectVis) {
         PrepareRenderData();
     }
-    if (context->guiData->BVHVis)
+    if (context->guiData->handleCollision && context->guiData->BVHVis)
         m_bvh.PrepareRenderData();
 }
 

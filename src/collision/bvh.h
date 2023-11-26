@@ -22,7 +22,7 @@ struct BVHNode {
 
 class BVH : public Wireframe {
 public:
-    BVH(int& threadsPerBlock);
+    BVH(const int threadsPerBlock);
     ~BVH();
     void Init(int numTets, int numVerts);
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
@@ -39,5 +39,5 @@ private:
     int numVerts;
     float* dev_tI;
     int* dev_indicesToReport;
-    int& threadsPerBlock;
+    const int threadsPerBlock;
 };

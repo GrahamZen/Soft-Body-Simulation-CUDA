@@ -161,7 +161,8 @@ void BVH::PrepareRenderData()
     Wireframe::unMapDevicePtr();
 }
 
-BVH::BVH(int& _threadsPerBlock) : threadsPerBlock(_threadsPerBlock) {}
+BVH::BVH(const int _threadsPerBlock) : threadsPerBlock(_threadsPerBlock) {
+}
 
 BVH::~BVH()
 {

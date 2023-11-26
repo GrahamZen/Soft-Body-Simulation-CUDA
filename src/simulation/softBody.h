@@ -44,7 +44,7 @@ public:
     int getTetNumber()const { return numTets; }
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
-    int& threadsPerBlock;
+    const int threadsPerBlock;
     SimulationCUDAContext* mcrpSimContext;
     pd::deformable_mesh_t model{};
     pd::solver_t solver;

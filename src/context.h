@@ -15,6 +15,7 @@ public:
     float Dt = 0.001;
     bool WireFrame = false;
     bool BVHVis = false;
+    bool handleCollision = true;
     bool ObjectVis = true;
     bool Reset = false;
     bool Pause = false;

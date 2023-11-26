@@ -1,5 +1,6 @@
 {
     "pause": false,
+    "threads per block": 128,
     "default camera": {
         "aspect ratio": 1.3333,
         "screen height": 1280,
@@ -14,7 +15,7 @@
             "name": "context1",
             "load": true,
             "dt": 0.01,
-            "gravity": 0,
+            "gravity": 98,
             "damp": 0.999,
             "muN": 0.5,
             "muT": 0.5,
@@ -62,9 +63,9 @@
         },
         {
             "name": "context3",
-            "load": false,
+            "load": true,
             "dt": 0.01,
-            "gravity": 9.8,
+            "gravity": 9800,
             "damp": 0.999,
             "muN": 0.5,
             "muT": 0.5,

@@ -18,7 +18,7 @@ struct SoftBodyData {
 class DataLoader {
     friend class SimulationCUDAContext;
 public:
-    DataLoader(int&);
+    DataLoader(const int);
     void CollectData(const char* nodeFileName, const char* eleFileName, const glm::vec3& pos, const glm::vec3& scale,
         const glm::vec3& rot, bool centralize, int startIndex, SoftBody::SoftBodyAttribute attrib);
     void AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilt, glm::vec3*& gV, glm::vec3*& gF, GLuint*& gTet, int& numVerts, int& numTets);
@@ -28,12 +28,12 @@ private:
     std::vector<std::pair<SoftBodyData, SoftBody::SoftBodyAttribute>> m_softBodyData;
     int totalNumVerts = 0;
     int totalNumTets = 0;
-    int& threadsPerBlock;
+    const int threadsPerBlock;
 };
 
 class SimulationCUDAContext {
 public:
-    SimulationCUDAContext(Context* ctx, nlohmann::json& json);
+    SimulationCUDAContext(Context* ctx, nlohmann::json& json, int threadsPerBlock);
     ~SimulationCUDAContext();
     void Update();
     void Reset();
@@ -50,11 +50,11 @@ public:
     AABB GetAABB() const;
     int GetTetCnt() const;
     int GetVertCnt() const;
-    int& GetThreadsPerBlock() { return threadsPerBlock; }
+    int GetThreadsPerBlock() const { return threadsPerBlock; }
     void CCD();
 private:
     void PrepareRenderData();
-    std::vector<const char*> namesSoftBodies;
+    int threadsPerBlock = 64;
     bool useEigen = true;
     bool useCUDASolver = true;
     glm::vec3* dev_Xs;
@@ -66,6 +66,7 @@ private:
     GLuint* dev_TetIds;
     int numVerts = 0;
     int numTets = 0;
+    std::vector<const char*> namesSoftBodies;
     std::vector<SoftBody*> softBodies;
     std::vector<int> startIndices;
     BVH m_bvh;
@@ -75,5 +76,4 @@ private:
     float dt = 0.001f;
     float gravity = 9.8f;
     Context* context = nullptr;
-    int threadsPerBlock = 64;
 };
