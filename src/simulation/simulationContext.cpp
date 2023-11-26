@@ -32,6 +32,10 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json,
         for (const auto& sbJson : json["softBodies"]) {
             std::string nodeFile = sbJson["nodeFile"];
             std::string eleFile = sbJson["eleFile"];
+            std::string faceFile;
+            if (sbJson.contains("faceFile")) {
+                faceFile = sbJson["faceFile"];
+            }
             glm::vec3 pos = glm::vec3(sbJson["pos"][0].get<float>(), sbJson["pos"][1].get<float>(), sbJson["pos"][2].get<float>());
             glm::vec3 scale = glm::vec3(sbJson["scale"][0].get<float>(), sbJson["scale"][1].get<float>(), sbJson["scale"][2].get<float>());
             glm::vec3 rot = glm::vec3(sbJson["rot"][0].get<float>(), sbJson["rot"][1].get<float>(), sbJson["rot"][2].get<float>());
@@ -46,7 +50,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json,
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());
             namesSoftBodies.push_back(name);
-            dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), pos, scale, rot, centralize, startIndex,
+            dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), faceFile.c_str(), pos, scale, rot, centralize, startIndex,
                 SoftBody::SoftBodyAttribute{ mass, stiffness_0, stiffness_1, constraints });
         }
     }
@@ -110,6 +114,37 @@ std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int 
 
     file.close();
     return Tet;
+}
+
+std::vector<GLuint> DataLoader::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
+{
+    std::string line;
+    std::ifstream file(faceFilename);
+
+    if (!file.is_open()) {
+        std::cerr << "Unable to open file" << std::endl;
+        return std::vector<GLuint>();
+    }
+
+    std::getline(file, line);
+    std::istringstream iss(line);
+    iss >> numTris;
+
+    std::vector<GLuint> Triangle(numTris * 3);
+
+    int a, b, c, d, e;
+    for (int tet = 0; tet < numTris && std::getline(file, line); ++tet) {
+        std::istringstream iss(line);
+        iss >> a >> b >> c >> d >> e;
+
+        Triangle[tet * 3 + 0] = b - startIndex;
+        Triangle[tet * 3 + 1] = c - startIndex;
+        Triangle[tet * 3 + 2] = d - startIndex;
+    }
+    std::cout << "number of triangles: " << numTris << std::endl;
+
+    file.close();
+    return Triangle;
 }
 std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
 {

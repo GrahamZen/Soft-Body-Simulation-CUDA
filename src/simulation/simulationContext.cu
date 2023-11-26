@@ -43,7 +43,7 @@ AABB SimulationCUDAContext::GetAABB() const
     return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTilts, dev_ptrTilts + numVerts));
 }
 
-void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
+void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
     bool centralize, int startIndex, SoftBody::SoftBodyAttribute attrib)
 {
     SoftBodyData softBodyData;
@@ -61,9 +61,18 @@ void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, 
     int blocks = (softBodyData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     TransformVertices << < blocks, threadsPerBlock >> > (softBodyData.dev_X, model, softBodyData.numVerts);
 
-    auto idx = loadEleFile(eleFileName, startIndex, softBodyData.numTets);
-    cudaMalloc((void**)&softBodyData.Tets, sizeof(GLuint) * idx.size());
-    cudaMemcpy(softBodyData.Tets, idx.data(), sizeof(GLuint) * idx.size(), cudaMemcpyHostToDevice);
+    auto tetIdx = loadEleFile(eleFileName, startIndex, softBodyData.numTets);
+    cudaMalloc((void**)&softBodyData.Tets, sizeof(GLuint) * tetIdx.size());
+    cudaMemcpy(softBodyData.Tets, tetIdx.data(), sizeof(GLuint) * tetIdx.size(), cudaMemcpyHostToDevice);
+    auto triIdx = loadFaceFile(faceFileName, startIndex, softBodyData.numTris);
+    if (!triIdx.empty()) {
+        cudaMalloc((void**)&softBodyData.Tris, sizeof(GLuint) * triIdx.size());
+        cudaMemcpy(softBodyData.Tris, triIdx.data(), sizeof(GLuint) * triIdx.size(), cudaMemcpyHostToDevice);
+    }
+    else {
+        softBodyData.Tris = nullptr;
+        softBodyData.numTris = 0;
+    }
     totalNumVerts += softBodyData.numVerts;
     totalNumTets += softBodyData.numTets;
 
@@ -137,11 +146,18 @@ void SimulationCUDAContext::PrepareRenderData() {
         glm::vec3* pos;
         glm::vec4* nor;
         softbody->Mesh::mapDevicePtr(&pos, &nor);
-        dim3 numThreadsPerBlock(softbody->getTetNumber() / threadsPerBlock + 1);
-
-        PopulatePos << <numThreadsPerBlock, threadsPerBlock >> > (pos, softbody->getX(), softbody->getTet(), softbody->getTetNumber());
-        RecalculateNormals << <softbody->getTetNumber() * 4 / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, 4 * softbody->getTetNumber());
-        softbody->Mesh::unMapDevicePtr();
+        if (softbody->getTriNumber() == 0) {
+            dim3 numThreadsPerBlock(softbody->getTetNumber() / threadsPerBlock + 1);
+            PopulatePos << <numThreadsPerBlock, threadsPerBlock >> > (pos, softbody->getX(), softbody->getTet(), softbody->getTetNumber());
+            RecalculateNormals << <softbody->getTetNumber() * 4 / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, 4 * softbody->getTetNumber());
+            softbody->Mesh::unMapDevicePtr();
+        }
+        else {
+            dim3 numThreadsPerBlock(softbody->getTriNumber() / threadsPerBlock + 1);
+            PopulateTriPos << <numThreadsPerBlock, threadsPerBlock >> > (pos, softbody->getX(), softbody->getTri(), softbody->getTriNumber());
+            RecalculateNormals << <softbody->getTriNumber() / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, softbody->getTriNumber());
+            softbody->Mesh::unMapDevicePtr();
+        }
     }
 }
 

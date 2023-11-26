@@ -137,6 +137,18 @@ __global__ void PopulatePos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int 
     }
 }
 
+__global__ void PopulateTriPos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int numTris)
+{
+    int tri = (blockIdx.x * blockDim.x) + threadIdx.x;
+
+    if (tri < numTris)
+    {
+        vertices[tri * 3 + 0] = X[Tet[tri * 3 + 0]];
+        vertices[tri * 3 + 1] = X[Tet[tri * 3 + 2]];
+        vertices[tri * 3 + 2] = X[Tet[tri * 3 + 1]];
+    }
+}
+
 __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int numVerts)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;

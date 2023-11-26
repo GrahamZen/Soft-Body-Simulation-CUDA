@@ -17,6 +17,7 @@ public:
     void createFromOBJ(const char* filename, const char* textureFile, const char* bgTextureFile);
     void createCube(const char* textureFile = nullptr, const char* bgTextureFile = nullptr);
     void createTetrahedron();
+    void createMesh();
     void bindTexture() const;
     void loadTexture() const;
     void bindBGTexture() const;
@@ -27,6 +28,7 @@ protected:
     cudaGraphicsResource* cuda_bufPos_resource = nullptr;
     cudaGraphicsResource* cuda_bufNor_resource = nullptr;
     int numTets = 0;
+    int numTris = 0;
 private:
     std::unique_ptr<Texture> mp_texture;
     std::unique_ptr<Texture> mp_bgTexture;

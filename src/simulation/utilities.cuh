@@ -82,6 +82,7 @@ __global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const 
 __global__ void LaplacianGatherKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int numTets, const GLuint* Tet);
 __global__ void LaplacianKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int numVerts, const GLuint* Tet, float blendAlpha);
 __global__ void PopulatePos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int numTets);
+__global__ void PopulateTriPos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int numTris);
 __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* X, int numVerts);
 __global__ void ComputeForces(glm::vec3* Force, const glm::vec3* X, const GLuint* Tet, int numTets, const glm::mat3* inv_Dm, float stiffness_0, float stiffness_1);
 __global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* Force,

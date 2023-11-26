@@ -5,8 +5,8 @@
 #include <utilities.cuh>
 
 SoftBody::SoftBody(SimulationCUDAContext* context, SoftBodyAttribute& _attrib, SoftBodyData* dataPtr)
-    : mcrpSimContext(context), threadsPerBlock(context->GetThreadsPerBlock()), attrib(_attrib), Tet(dataPtr->Tets), X(dataPtr->dev_X), X0(dataPtr->dev_X0), XTilt(dataPtr->dev_XTilt),
-    V(dataPtr->dev_V), Force(dataPtr->dev_F), numTets(dataPtr->numTets), numVerts(dataPtr->numVerts)
+    : mcrpSimContext(context), threadsPerBlock(context->GetThreadsPerBlock()), attrib(_attrib), Tet(dataPtr->Tets), Tri(dataPtr->Tris), X(dataPtr->dev_X), X0(dataPtr->dev_X0), XTilt(dataPtr->dev_XTilt),
+    V(dataPtr->dev_V), Force(dataPtr->dev_F), numTets(dataPtr->numTets), numVerts(dataPtr->numVerts), numTris(dataPtr->numTris)
 {
     vertices.resize(numVerts);
     cudaMemcpy(vertices.data(), X, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToHost);
@@ -14,10 +14,13 @@ SoftBody::SoftBody(SimulationCUDAContext* context, SoftBodyAttribute& _attrib, S
     cudaMemcpy(idx.data(), Tet, sizeof(int) * numTets * 4, cudaMemcpyDeviceToHost);
 
     Mesh::numTets = numTets;
+    Mesh::numTris = numTris;
 
     InitModel();
-
-    createTetrahedron();
+    if (numTris == 0)
+        createTetrahedron();
+    else
+        createMesh();
     cudaMalloc((void**)&inv_Dm, sizeof(glm::mat4) * numTets);
     cudaMalloc((void**)&V_sum, sizeof(glm::vec3) * numVerts);
     cudaMemset(V_sum, 0, sizeof(glm::vec3) * numVerts);

@@ -35,6 +35,7 @@ public:
     void mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr);
     void unMapDevicePtr();
     GLuint* getTet()const { return Tet; }
+    GLuint* getTri()const { return Tri; }
     glm::vec3* getX()const { return X; }
     glm::vec3* getV()const { return V; }
     glm::vec3* getForce()const { return Force; }
@@ -42,6 +43,7 @@ public:
     void setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr);
     int getNumber()const { return numVerts; }
     int getTetNumber()const { return numTets; }
+    int getTriNumber()const { return numTris; }
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
     const int threadsPerBlock;
@@ -55,8 +57,10 @@ private:
     bool jump = false;
 
     GLuint* Tet;
+    GLuint* Tri;
     int numTets; // The numVerts of tetrahedra
     int numVerts; // The numVerts of vertices
+    int numTris; // The numVerts of vertices
     int nnzNumber;
 
     bool solverReady = false;

@@ -1,7 +1,7 @@
 {
     "pause": false,
     "threads per block": 128,
-    "threads per block(bvh)": 64,
+    "threads per block(bvh)": 128,
     "default camera": {
         "aspect ratio": 1.3333,
         "screen height": 1280,
@@ -49,6 +49,7 @@
               {
                 "nodeFile": "../assets/cube/cube.1.node",
                 "eleFile": "../assets/cube/cube.1.ele",
+                "faceFile": "../assets/cube/cube.1.face",
                 "jump": true,
                 "mass": 10.0,
                 "stiffness_0": 20000.0,
@@ -74,6 +75,7 @@
               {
                 "nodeFile": "../assets/armadillo0/armadillo0.1.node",
                 "eleFile": "../assets/armadillo0/armadillo0.1.ele",
+                "faceFile": "../assets/armadillo0/armadillo0.1.face",
                 "jump": true,
                 "mass": 10.0,
                 "stiffness_0": 20000.0,
