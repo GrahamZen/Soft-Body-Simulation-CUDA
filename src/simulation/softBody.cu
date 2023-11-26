@@ -41,7 +41,7 @@ SoftBody::~SoftBody()
     cudaFree(b);
     cudaFree(masses);
 
-    if (useEigen)
+    if (mcrpSimContext->IsEigenGlobalSolver())
     {
         free(bHost);
     }
@@ -91,7 +91,7 @@ void SoftBody::_Update()
     AddExternal << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (V, numVerts, jump);
     // Laplacian_Smoothing();
     //ComputeForces << <(numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, numTets, inv_Dm, stiffness_0, stiffness_1);
-    if (useGPUSolver)
+    if (mcrpSimContext->IsEigenGlobalSolver())
     {
         PDSolver();
     }

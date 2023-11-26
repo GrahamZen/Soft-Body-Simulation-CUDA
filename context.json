@@ -12,7 +12,7 @@
     "contexts": [ 
         {
             "name": "context1",
-            "load": false,
+            "load": true,
             "dt": 0.01,
             "gravity": 0,
             "damp": 0.999,

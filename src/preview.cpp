@@ -90,6 +90,7 @@ void RenderImGui()
     ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
     ImGui::Checkbox("Visualize BVH", &imguiData->BVHVis);
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
+    bool solverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
     imguiData->Reset = ImGui::Button("Reset");
     imguiData->Pause = ImGui::Button("Pause");
     imguiData->Step = ImGui::Button("Step");
@@ -102,7 +103,7 @@ void RenderImGui()
     bool cameraThetaChanged = ImGui::DragFloat("Camera Theta", &imguiData->theta, 0.1f, 0.001f, PI - 0.001f, "%.4f");
     bool cameraLookAtChanged = ImGui::DragFloat3("Camera Look At", &imguiData->cameraLookAt.x, 1.0f, -200.0f, 200.0f, "%.4f");
     bool zoomChanged = ImGui::DragFloat("Zoom", &imguiData->zoom, 10.f, 0.01f, 10000.0f, "%.4f");
-    ImGui::Text("Soft Body Attributes");
+    ImGui::Text("Attributes");
     ImGui::Separator();
     imguiData->softBodyAttr.stiffness_0.second = ImGui::DragFloat("Stiffness 0", &imguiData->softBodyAttr.stiffness_0.first, 100.f, 0.0f, 100000.0f, "%.2f");
     imguiData->softBodyAttr.stiffness_1.second = ImGui::DragFloat("Stiffness 1", &imguiData->softBodyAttr.stiffness_1.first, 100.f, 0.0f, 100000.0f, "%.2f");
@@ -111,13 +112,11 @@ void RenderImGui()
     imguiData->softBodyAttr.muT.second = ImGui::DragFloat("muT", &imguiData->softBodyAttr.muT.first, 0.01f, 0.0f, 100.0f, "%.4f");
     ImGui::Separator();
     const auto& nameItems = context->GetNamesSoftBodies();
-    if (ImGui::Combo("soft bodies", &imguiData->softBodyAttr.currSoftBodyId, nameItems.data(), nameItems.size()))
+    if (ImGui::Combo("Soft Bodies", &imguiData->softBodyAttr.currSoftBodyId, nameItems.data(), nameItems.size()))
     {
     }
     const auto& nameContextItems = context->GetNamesContexts();
-    if (ImGui::Combo("label", &imguiData->currSimContextId, nameContextItems.data(), nameContextItems.size()))
-    {
-    }
+    bool contextChanged = ImGui::Combo("Contexts", &imguiData->currSimContextId, nameContextItems.data(), nameContextItems.size());
 
     // LOOK: Un-Comment to check the output window and usage
     //ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
@@ -134,7 +133,7 @@ void RenderImGui()
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::End();
 
-    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged) {
+    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged || solverChanged || contextChanged) {
         context->panelModified = true;
     }
 

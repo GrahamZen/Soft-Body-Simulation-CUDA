@@ -60,8 +60,6 @@ private:
     int nnzNumber;
 
     bool solverReady = false;
-    bool useGPUSolver = true;
-    bool useEigen = true;
 
     glm::vec3* ExtForce;
     glm::vec3* Force;

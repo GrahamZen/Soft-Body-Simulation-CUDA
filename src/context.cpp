@@ -155,11 +155,12 @@ void Context::Draw() {
 }
 
 void Context::Update() {
-    if (guiData->currSimContextId != -1) {
-        mcrpSimContext = mpSimContexts[guiData->currSimContextId];
-    }
     PollEvents();
     if (panelModified) {
+        if (guiData->currSimContextId != -1) {
+            mcrpSimContext = mpSimContexts[guiData->currSimContextId];
+        }
+        mcrpSimContext->SetGlobalSolver(guiData->UseEigen);
         mcrpSimContext->SetDt(guiData->Dt);
         phi = guiData->phi;
         theta = guiData->theta;

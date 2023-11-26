@@ -19,6 +19,7 @@ public:
     bool Reset = false;
     bool Pause = false;
     bool Step = false;
+    bool UseEigen = true;
     float theta, phi;
     glm::vec3 cameraLookAt;
     float zoom;

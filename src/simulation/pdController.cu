@@ -39,7 +39,7 @@ void SoftBody::solverPrepare()
     setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * numTets, m_1_dt2, numVerts);
 
 
-    if (useEigen)
+    if (mcrpSimContext->IsEigenGlobalSolver())
     {
         bHost = (float*)malloc(sizeof(float) * ASize);
 
@@ -151,7 +151,7 @@ void SoftBody::PDSolverStep()
     cusolverSpHandle_t cusolverHandle;
     int singularity = 0;
     cusparseMatDescr_t descrA;
-    if (!useEigen)
+    if (!mcrpSimContext->IsEigenGlobalSolver())
     {
         cusolverSpCreate(&cusolverHandle);
         cusparseCreateMatDescr(&descrA);
@@ -166,7 +166,7 @@ void SoftBody::PDSolverStep()
         computeLocal << < tetBlocks, threadsPerBlock >> > (V0, wi, b, inv_Dm, sn, Tet, numTets);
         addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, numVerts);
 
-        if (useEigen)
+        if (mcrpSimContext->IsEigenGlobalSolver())
         {
             cudaMemcpy(bHost, b, sizeof(float) * (numVerts * 3), cudaMemcpyDeviceToHost);
             Eigen::VectorXf bh = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(bHost, numVerts * 3);

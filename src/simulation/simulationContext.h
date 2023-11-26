@@ -42,6 +42,8 @@ public:
     float GetGravity() const { return gravity; }
     void UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr);
     void SetDt(float dt) { this->dt = dt; }
+    void SetGlobalSolver(bool useEigen) { this->useEigen = useEigen; }
+    bool IsEigenGlobalSolver() { return useEigen; }
     void Draw(ShaderProgram*);
     AABB GetAABB() const;
     int GetTetCnt() const;
@@ -51,6 +53,7 @@ public:
 private:
     void PrepareRenderData();
     std::vector<const char*> namesSoftBodies;
+    bool useEigen = true;
     glm::vec3* dev_Xs;
     glm::vec3* dev_X0s;
     glm::vec3* dev_XTilts;
