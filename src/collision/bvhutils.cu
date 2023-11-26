@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <bvh.cuh>
 #include <cuda_runtime.h>
+#include <cooperative_groups.h>
 #include <thrust/sort.h>
 #include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
@@ -169,17 +170,18 @@ __global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNod
 
 }
 
+namespace cg = cooperative_groups;
 
-// very naive implementation
-__global__ void buildBBoxes(int leafCount, BVHNode* nodes, unsigned char* ready)
-{
+__global__ void buildBBoxes(int leafCount, BVHNode* nodes, unsigned char* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
-    // only update internal node
-    if (ind < leafCount - 1)
-    {
+    cg::grid_group grid = cg::this_grid();
+
+    if (ind >= leafCount - 1)return;
+    for (int i = 0; i < leafCount; i++) {
+        cg::sync(grid);
         BVHNode node = nodes[ind];
         if (ready[ind] != 0)
-            return;
+            continue;
         if (ready[node.leftIndex] != 0 && ready[node.rightIndex] != 0)
         {
             buildBBox(nodes[ind], nodes[node.leftIndex], nodes[node.rightIndex]);
@@ -201,13 +203,9 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
 
     thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTets, dev_BVHNodes + numTets - 1);
 
-
-
     buildSplitList << <numblocks, threadsPerBlock >> > (numTets, dev_mortonCodes, dev_BVHNodes);
 
     //can use atomic operation for further optimization
-    for (int i = 0; i < numTets; i++)
-    {
-        buildBBoxes << <numblocks, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
-    }
+    void* args[] = { &numTets, &dev_BVHNodes, &dev_ready };
+    cudaLaunchCooperativeKernel((void*)buildBBoxes, numblocks, threadsPerBlock, args);
 }
