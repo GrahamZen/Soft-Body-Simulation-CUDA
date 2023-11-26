@@ -1,12 +1,13 @@
 #include <simulationContext.h>
 #include <fstream>
 #include <sstream>
+#include <map>
 
 DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
 {
 }
 
-SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json, int _threadsPerBlock, int _threadsPerBlockBVH)
+SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json, const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH)
     :context(ctx), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH)
 {
     DataLoader dataLoader(threadsPerBlock);
@@ -30,22 +31,64 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json,
     }
     if (json.contains("softBodies")) {
         for (const auto& sbJson : json["softBodies"]) {
-            std::string nodeFile = sbJson["nodeFile"];
-            std::string eleFile = sbJson["eleFile"];
+            auto& sbDefJson = softBodyDefs.at(std::string(sbJson["name"]));
+            std::string nodeFile = sbDefJson["nodeFile"];
+            std::string eleFile = sbDefJson["eleFile"];
             std::string faceFile;
-            if (sbJson.contains("faceFile")) {
-                faceFile = sbJson["faceFile"];
+            if (sbDefJson.contains("faceFile")) {
+                faceFile = sbDefJson["faceFile"];
             }
-            glm::vec3 pos = glm::vec3(sbJson["pos"][0].get<float>(), sbJson["pos"][1].get<float>(), sbJson["pos"][2].get<float>());
-            glm::vec3 scale = glm::vec3(sbJson["scale"][0].get<float>(), sbJson["scale"][1].get<float>(), sbJson["scale"][2].get<float>());
-            glm::vec3 rot = glm::vec3(sbJson["rot"][0].get<float>(), sbJson["rot"][1].get<float>(), sbJson["rot"][2].get<float>());
-            bool jump = sbJson["jump"].get<bool>();
-            float mass = sbJson["mass"].get<float>();
-            float stiffness_0 = sbJson["stiffness_0"].get<float>();
-            float stiffness_1 = sbJson["stiffness_1"].get<float>();
-            int constraints = sbJson["constraints"].get<int>();
-            bool centralize = sbJson["centralize"].get<bool>();
-            int startIndex = sbJson["start index"].get<int>();
+            glm::vec3 pos;
+            glm::vec3 scale;
+            glm::vec3 rot;
+            float mass;
+            float stiffness_0;
+            float stiffness_1;
+            int constraints;
+            if (!sbJson.contains("pos")) {
+                pos = glm::vec3(sbDefJson["pos"][0].get<float>(), sbDefJson["pos"][1].get<float>(), sbDefJson["pos"][2].get<float>());
+            }
+            else {
+                pos = glm::vec3(sbJson["pos"][0].get<float>(), sbJson["pos"][1].get<float>(), sbJson["pos"][2].get<float>());
+            }
+            if (!sbJson.contains("scale")) {
+                scale = glm::vec3(sbDefJson["scale"][0].get<float>(), sbDefJson["scale"][1].get<float>(), sbDefJson["scale"][2].get<float>());
+            }
+            else {
+                scale = glm::vec3(sbJson["scale"][0].get<float>(), sbJson["scale"][1].get<float>(), sbJson["scale"][2].get<float>());
+            }
+            if (!sbJson.contains("rot")) {
+                rot = glm::vec3(sbDefJson["rot"][0].get<float>(), sbDefJson["rot"][1].get<float>(), sbDefJson["rot"][2].get<float>());
+            }
+            else {
+                rot = glm::vec3(sbJson["rot"][0].get<float>(), sbJson["rot"][1].get<float>(), sbJson["rot"][2].get<float>());
+            }
+            if (!sbJson.contains("mass")) {
+                mass = sbDefJson["mass"].get<float>();
+            }
+            else {
+                mass = sbJson["mass"].get<float>();
+            }
+            if (!sbJson.contains("stiffness_0")) {
+                stiffness_0 = sbDefJson["stiffness_0"].get<float>();
+            }
+            else {
+                stiffness_0 = sbJson["stiffness_0"].get<float>();
+            }
+            if (!sbJson.contains("stiffness_1")) {
+                stiffness_1 = sbDefJson["stiffness_1"].get<float>();
+            }
+            else {
+                stiffness_1 = sbJson["stiffness_1"].get<float>();
+            }
+            if (!sbJson.contains("constraints")) {
+                constraints = sbDefJson["constraints"].get<int>();
+            }
+            else {
+                constraints = sbJson["constraints"].get<int>();
+            }
+            bool centralize = sbDefJson["centralize"].get<bool>();
+            int startIndex = sbDefJson["start index"].get<int>();
             std::string baseName = nodeFile.substr(nodeFile.find_last_of('/') + 1);
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());

@@ -110,6 +110,7 @@ const std::vector<const char*>& Context::GetNamesSoftBodies() const {
 }
 
 SimulationCUDAContext* Context::LoadSimContext() {
+    std::map<std::string, nlohmann::json>softBodyDefs;
     std::ifstream fileStream = findFile(filename);
     if (!fileStream.is_open()) {
         std::cerr << "Failed to open JSON file: " << filename << std::endl;
@@ -125,6 +126,12 @@ SimulationCUDAContext* Context::LoadSimContext() {
     if (json.contains("threads per block(bvh)")) {
         threadsPerBlockBVH = json["threads per block(bvh)"].get<int>();
     }
+    if (json.contains("softBodies")) {
+        auto& softBodyJsons = json["softBodies"];
+        for (auto& softBodyJson : softBodyJsons) {
+            softBodyDefs[softBodyJson["name"]] = softBodyJson;
+        }
+    }
     if (json.contains("contexts")) {
         auto& contextJsons = json["contexts"];
         for (auto& contextJson : contextJsons) {
@@ -134,7 +141,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());
             namesContexts.push_back(name);
-            mpSimContexts.push_back(new SimulationCUDAContext(this, contextJson, threadsPerBlock, threadsPerBlockBVH));
+            mpSimContexts.push_back(new SimulationCUDAContext(this, contextJson, softBodyDefs, threadsPerBlock, threadsPerBlockBVH));
         }
         mcrpSimContext = mpSimContexts[0];
     }
@@ -162,6 +169,7 @@ void Context::InitCuda() {
 }
 
 void Context::Draw() {
+    glEnable(GL_CULL_FACE);
     mcrpSimContext->Draw(mpProgLambert);
 }
 

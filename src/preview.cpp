@@ -34,6 +34,7 @@ bool initOpenGL() {
         exit(EXIT_FAILURE);
     }
     glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_DEPTH_BITS, 24);
 
     window = glfwCreateWindow(context->width, context->height, "CIS 565 Path Tracer", NULL, NULL);
     if (!window) {
