@@ -54,14 +54,14 @@ __global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int numVert
     }
 }
 
-__global__ void AddExternal(glm::vec3* V, int numVerts, bool jump)
+__global__ void AddExternal(glm::vec3* V, int numVerts, bool jump, float mass, glm::vec3 vel)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
     if (index < numVerts)
     {
         if (jump)
-            V[index].y += 20.f;
+            V[index] += vel / mass;
     }
 }
 

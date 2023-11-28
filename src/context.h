@@ -58,6 +58,8 @@ public:
     void ResetCamera();
     void Draw();
     int GetIteration() const { return iteration; }
+    const std::vector<int>& GetDOFs() const { return DOFs; }
+    const std::vector<int>& GetEles() const { return Eles; }
     const std::vector<const char*>& GetNamesSoftBodies() const;
     const std::vector<const char*>& GetNamesContexts() const { return namesContexts; }
     Camera* mpCamera = nullptr;
@@ -81,4 +83,6 @@ private:
     int iteration = 0;
     bool pause = false;
     std::vector<const char*> namesContexts;
+    std::vector<int> DOFs;
+    std::vector<int> Eles;
 };

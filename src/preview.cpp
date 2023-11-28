@@ -137,6 +137,7 @@ void RenderImGui()
     //ImGui::SameLine();
     //ImGui::Text("counter = %d", counter);
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::Text("#DOF %d, #Ele %d", context->GetDOFs()[imguiData->currSimContextId], context->GetEles()[imguiData->currSimContextId]);
     ImGui::End();
 
     if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged || solverChanged || contextChanged || globalSolverChanged) {

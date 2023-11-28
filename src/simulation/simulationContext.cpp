@@ -7,8 +7,8 @@ DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerB
 {
 }
 
-SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json, const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH)
-    :context(ctx), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH)
+SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json, const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH)
+    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
@@ -101,6 +101,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, nlohmann::json& json,
     for (auto softBodyData : dataLoader.m_softBodyData) {
         softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
     }
+    m_floor.createQuad(1000, floorY);
     m_bvh.Init(numTets, numVerts);
 }
 
@@ -117,6 +118,7 @@ void SimulationCUDAContext::Reset()
 
 void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram)
 {
+    shaderProgram->draw(m_floor, 0);
     if (context->guiData->ObjectVis) {
         for (auto softBody : softBodies)
             shaderProgram->draw(*softBody, 0);

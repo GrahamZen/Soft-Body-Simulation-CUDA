@@ -85,7 +85,7 @@ void SoftBody::Reset()
 
 void SoftBody::_Update()
 {
-    AddExternal << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (V, numVerts, jump);
+    AddExternal << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (V, numVerts, jump, attrib.mass, mcrpSimContext->GetExtForce().jump);
     // Laplacian_Smoothing();
     //ComputeForces << <(numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, numTets, inv_Dm, stiffness_0, stiffness_1);
     if (mcrpSimContext->IsCUDASolver())

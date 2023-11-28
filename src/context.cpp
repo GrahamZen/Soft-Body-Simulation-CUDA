@@ -116,10 +116,19 @@ SimulationCUDAContext* Context::LoadSimContext() {
         std::cerr << "Failed to open JSON file: " << filename << std::endl;
         return nullptr;
     }
+    SimulationCUDAContext::ExternalForce extForce;
     nlohmann::json json;
     fileStream >> json;
     fileStream.close();
     int threadsPerBlock = 128, threadsPerBlockBVH = threadsPerBlock;
+    if (json.contains("external force")) {
+        auto& externalForceJson = json["external force"];
+        if (externalForceJson.contains("jump")) {
+            auto& jumpJson = externalForceJson["jump"];
+            extForce.jump = glm::vec3(jumpJson[0].get<float>(), jumpJson[1].get<float>(), jumpJson[2].get<float>());
+            std::cout << extForce.jump.g;
+        }
+    }
     if (json.contains("threads per block")) {
         threadsPerBlock = json["threads per block"].get<int>();
     }
@@ -141,7 +150,9 @@ SimulationCUDAContext* Context::LoadSimContext() {
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());
             namesContexts.push_back(name);
-            mpSimContexts.push_back(new SimulationCUDAContext(this, contextJson, softBodyDefs, threadsPerBlock, threadsPerBlockBVH));
+            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, threadsPerBlock, threadsPerBlockBVH));
+            DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
+            Eles.push_back(mpSimContexts.back()->GetTetCnt());
         }
         mcrpSimContext = mpSimContexts[0];
     }

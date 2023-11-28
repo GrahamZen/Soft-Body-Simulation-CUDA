@@ -36,13 +36,17 @@ private:
 
 class SimulationCUDAContext {
 public:
-    SimulationCUDAContext(Context* ctx, nlohmann::json& json, const std::map<std::string, nlohmann::json>& softBodyDefs, int threadsPerBlock, int _threadsPerBlockBVH);
+    struct ExternalForce {
+        glm::vec3 jump = glm::vec3(0.f, 400.f, 0.f);
+    };
+    SimulationCUDAContext(Context* ctx, const ExternalForce& extForce, nlohmann::json& json, const std::map<std::string, nlohmann::json>& softBodyDefs, int threadsPerBlock, int _threadsPerBlockBVH);
     ~SimulationCUDAContext();
     void Update();
     void Reset();
     const std::vector<const char*>& GetNamesSoftBodies() const { return namesSoftBodies; }
     float GetDt() const { return dt; }
     float GetGravity() const { return gravity; }
+    const ExternalForce& GetExtForce() const { return extForce; }
     void UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr);
     void SetDt(float dt) { this->dt = dt; }
     void SetCUDASolver(bool useCUDASolver) { this->useCUDASolver = useCUDASolver; }
@@ -56,6 +60,10 @@ public:
     int GetThreadsPerBlock() const { return threadsPerBlock; }
     void CCD();
 private:
+    ExternalForce extForce;
+    Mesh m_floor;
+    float floorY = -4.0f;
+    glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     void PrepareRenderData();
     int threadsPerBlock = 64;
     bool useEigen = true;

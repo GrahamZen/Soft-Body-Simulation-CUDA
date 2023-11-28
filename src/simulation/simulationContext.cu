@@ -43,6 +43,14 @@ AABB SimulationCUDAContext::GetAABB() const
     return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTilts, dev_ptrTilts + numVerts));
 }
 
+int SimulationCUDAContext::GetVertCnt() const {
+    return numVerts;
+}
+
+int SimulationCUDAContext::GetTetCnt() const {
+    return numTets;
+}
+
 void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
     bool centralize, int startIndex, SoftBody::SoftBodyAttribute attrib)
 {
@@ -128,9 +136,7 @@ void SimulationCUDAContext::Update()
     }
     if (context->guiData->handleCollision)
         m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
-    glm::vec3 floorPos = glm::vec3(0.0f, -4.0f, 0.0f);
-    glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
-    HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_XTilts, dev_Vs, numVerts, floorPos, floorUp, muT, muN);
+    HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_XTilts, dev_Vs, numVerts, glm::vec3(0.f, floorY, 0.f), floorUp, muT, muN);
     //if(context->guiData->handleCollision)
     //    CCD();
     cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
