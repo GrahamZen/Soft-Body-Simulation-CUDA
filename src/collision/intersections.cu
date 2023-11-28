@@ -53,37 +53,60 @@ __host__ __device__ bool edgeBboxIntersectionTest(const glm::vec3& X0, const glm
     return (tminMax <= tmaxMin && tmaxMin >= 0.0f) || inside;
 }
 
-__host__ __device__ bool isPointInParallelogram(const glm::vec3& p, const glm::vec3& a, const glm::vec3& b, const glm::vec3& aTilt, const glm::vec3& bTilt) {
-    glm::vec3 ab = b - a;
-    glm::vec3 aaTilt = aTilt - a;
-    glm::vec3 ap = p - a;
 
-    float u = glm::dot(glm::cross(ab, ap), glm::cross(ab, aaTilt));
-    float v = glm::dot(glm::cross(aaTilt, ap), glm::cross(ab, aaTilt));
-
-    return (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f);
+__host__ __device__ float solveCubic(float a, float b, float c, float d) {
+    return 0.f;
 }
 
-__host__ __device__ void lineParallelogramIntersection(const glm::vec3& X0, const glm::vec3& XTilt, const glm::vec3& a, const glm::vec3& b, const glm::vec3& aTilt, const glm::vec3& bTilt, float& minT) {
-    glm::vec3 n = glm::cross(b - a, aTilt - a);
-    n = glm::normalize(n);
-
-    glm::vec3 dir = XTilt - X0;
-    float denom = glm::dot(n, dir);
-
-    if (abs(denom) < 1e-6) {
-        return;
+__host__ __device__ bool ccdTriangleIntersectionPreTest(const glm::vec3& x0, const glm::vec3& xTilt0,
+    const glm::vec3& x1, const glm::vec3& xTilt1,
+    const glm::vec3& x2, const glm::vec3& xTilt2,
+    const glm::vec3& x3, const glm::vec3& xTilt3,
+    const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3)
+{
+    glm::vec3 n0 = glm::cross(x2 - x1, x3 - x1);
+    glm::vec3 n1 = glm::cross(xTilt2 - xTilt1, xTilt3 - xTilt1);
+    glm::vec3 term = glm::cross(v2 - v1, v3 - v1);
+    glm::vec3 nhat = (n0 + n1 - term) * 0.5f;
+    float A = glm::dot(x0 - x1, n0);
+    float B = glm::dot(xTilt0 - xTilt1, n1);
+    float C = glm::dot(x0 - x1, nhat);
+    float D = glm::dot(xTilt0 - xTilt1, nhat);
+    float E = glm::dot(x0 - x1, n1);
+    float F = glm::dot(xTilt0 - xTilt1, n0);
+    bool NonCoplanar = false;
+    if (A * B > 0.0f && A * (2.0f * C + F) > 0.0f && A * (2.0f * D + E) > 0.0f) {
+        NonCoplanar = true;
     }
+    return NonCoplanar;
+}
 
-    float t = glm::dot(n, a - X0) / denom;
-    glm::vec3 p = X0 + t * dir;
-
-    if (t >= 0.0f && t <= 1.0f && isPointInParallelogram(p, a, b, aTilt, bTilt) && t < minT) {
-        minT = t;
+// triangle intersection test
+// x1, x2, x3 are the vertices of the triangle, x0 is the point
+// v1, v2, v3 are the velocities of the vertices of the triangle, v0 is the velocity of the point
+// return the time of intersection, FLT_MAX if no intersection
+__host__ __device__ float ccdTriangleIntersectionTest(const glm::vec3& x0, const glm::vec3& v0,
+    const glm::vec3& x1, const glm::vec3& x2, const glm::vec3& x3, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3) {
+    const glm::vec3 x01 = x0 - x1;
+    const glm::vec3 x21 = x2 - x1;
+    const glm::vec3 x31 = x3 - x1;
+    const glm::vec3 v01 = v0 - v1;
+    const glm::vec3 v21 = v2 - v1;
+    const glm::vec3 v31 = v3 - v1;
+    float a = glm::dot(v01, glm::cross(v21, v31));
+    float b = glm::dot(x01, glm::cross(v21, v31)) + glm::dot(v01, glm::cross(v21, x31)) + glm::dot(v01, glm::cross(x21, v31));
+    float c = glm::dot(x01, glm::cross(v21, x31)) + glm::dot(x01, glm::cross(x21, v31)) + glm::dot(v01, glm::cross(x21, x31));
+    float d = glm::dot(x01, glm::cross(x21, x31));
+    float t = solveCubic(a, b, c, d);
+    if (t < 0.0f || t > 1.0f) {
+        return FLT_MAX;
     }
+    return t;
 }
 
 __host__ __device__ float tetrahedronTrajIntersectionTest(const glm::vec3& X0, const glm::vec3& XTilt, const glm::vec3* Xs, const glm::vec3* XTilts, GLuint tetId) {
+    const glm::vec3& V0 = XTilt - X0;
+
     const glm::vec3& x0 = Xs[tetId * 4 + 0];
     const glm::vec3& x1 = Xs[tetId * 4 + 1];
     const glm::vec3& x2 = Xs[tetId * 4 + 2];
@@ -94,6 +117,11 @@ __host__ __device__ float tetrahedronTrajIntersectionTest(const glm::vec3& X0, c
     const glm::vec3& xTilt2 = XTilts[tetId * 4 + 2];
     const glm::vec3& xTilt3 = XTilts[tetId * 4 + 3];
 
+    const glm::vec3 v0 = xTilt0 - x0;
+    const glm::vec3 v1 = xTilt1 - x1;
+    const glm::vec3 v2 = xTilt2 - x2;
+    const glm::vec3 v3 = xTilt3 - x3;
+
     // check if the current point is one of the vertices of the tetrahedron, if so, there is no intersection
     // check both the original and the tilted vertices, use epsilon to avoid floating point error
     if ((glm::all(glm::equal(X0, x0)) && glm::all(glm::equal(XTilt, xTilt0))) ||
@@ -102,15 +130,20 @@ __host__ __device__ float tetrahedronTrajIntersectionTest(const glm::vec3& X0, c
         glm::all(glm::equal(X0, x3)) && glm::all(glm::equal(XTilt, xTilt3))) {
         return -1.0f;
     }
-
-    float minT = FLT_MAX;
-
-    lineParallelogramIntersection(X0, XTilt, x0, x1, xTilt0, xTilt1, minT);
-    lineParallelogramIntersection(X0, XTilt, x1, x2, xTilt1, xTilt2, minT);
-    lineParallelogramIntersection(X0, XTilt, x2, x0, xTilt2, xTilt0, minT);
-    lineParallelogramIntersection(X0, XTilt, x0, x3, xTilt0, xTilt3, minT);
-    lineParallelogramIntersection(X0, XTilt, x1, x3, xTilt1, xTilt3, minT);
-    lineParallelogramIntersection(X0, XTilt, x2, x3, xTilt2, xTilt3, minT);
-
-    return minT == FLT_MAX ? -1.0f : minT;
+    float t = FLT_MAX;
+    // pre-test to check if the point is in the same plane as the triangle
+    if (ccdTriangleIntersectionPreTest(x0, xTilt0, x1, xTilt1, x2, xTilt2, x3, xTilt3, v0, v1, v2, v3)) {
+        // check if the trajectory intersects with the triangle formed by the first three vertices
+        t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x0, x1, x2, v0, v1, v2));
+    }
+    if (ccdTriangleIntersectionPreTest(x0, xTilt0, x1, xTilt1, x3, xTilt3, x2, xTilt2, v0, v1, v3, v2)) {
+        t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x0, x1, x3, v0, v1, v3));
+    }
+    if (ccdTriangleIntersectionPreTest(x0, xTilt0, x2, xTilt2, x3, xTilt3, x1, xTilt1, v0, v2, v3, v1)) {
+        t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x0, x2, x3, v0, v2, v3));
+    }
+    if (ccdTriangleIntersectionPreTest(x1, xTilt1, x2, xTilt2, x3, xTilt3, x0, xTilt0, v1, v2, v3, v0)) {
+        t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x1, x2, x3, v1, v2, v3));
+    }
+    return t;
 }

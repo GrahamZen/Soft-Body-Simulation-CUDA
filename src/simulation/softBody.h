@@ -58,9 +58,9 @@ private:
 
     GLuint* Tet;
     GLuint* Tri;
-    int numTets; // The numVerts of tetrahedra
-    int numVerts; // The numVerts of vertices
-    int numTris; // The numVerts of vertices
+    int numTets; // The number of tetrahedra
+    int numVerts; // The number of vertices
+    int numTris; // The number of triangles
     int nnzNumber;
 
     bool solverReady = false;

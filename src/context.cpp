@@ -117,6 +117,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
         return nullptr;
     }
     SimulationCUDAContext::ExternalForce extForce;
+    BVH::BuildMethodType buildMethod;
     nlohmann::json json;
     fileStream >> json;
     fileStream.close();
@@ -127,6 +128,21 @@ SimulationCUDAContext* Context::LoadSimContext() {
             auto& jumpJson = externalForceJson["jump"];
             extForce.jump = glm::vec3(jumpJson[0].get<float>(), jumpJson[1].get<float>(), jumpJson[2].get<float>());
             std::cout << extForce.jump.g;
+        }
+    }
+    if (json.contains("bvh build method")) {
+        std::string buildMethodStr = json["bvh build method"];
+        if (buildMethodStr == "COOPERATIVE_GROUP") {
+            buildMethod = BVH::BuildMethodType::COOPERATIVE_GROUP;
+        }
+        else if (buildMethodStr == "PARALLEL") {
+            buildMethod = BVH::BuildMethodType::PARALLEL;
+        }
+        else if (buildMethodStr == "SERIAL") {
+            buildMethod = BVH::BuildMethodType::SERIAL;
+        }
+        else {
+            throw std::runtime_error("Invalid bvh build method: " + buildMethodStr);
         }
     }
     if (json.contains("threads per block")) {
@@ -150,7 +166,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());
             namesContexts.push_back(name);
-            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, threadsPerBlock, threadsPerBlockBVH));
+            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, threadsPerBlock, threadsPerBlockBVH, buildMethod));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
         }

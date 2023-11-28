@@ -20,21 +20,6 @@ __inline__ __device__ unsigned int expandBits(unsigned int v)
     return v;
 }
 
-//input the aabb box of a Tetrahedron
-//generate a 30-bit morton code
-__device__ unsigned int genMortonCode(AABB bbox, glm::vec3 geoMin, glm::vec3 geoMax);
-
-
-__device__ unsigned long long expandMorton(int index, unsigned int mortonCode);
-
-/**
-* please sort the morton code first then get split pairs
-thrust::stable_sort_by_key(mortonCodes, mortonCodes + TetrahedronCount, TetrahedronIndex);*/
-
-//total input is a 30 x N matrix
-//currentIndex is between 0 - N-1
-//the input morton codes should be in the reduced form, no same elements are expected to appear twice!
-__device__ int getSplit(unsigned int* mortonCodes, unsigned int currIndex, int nextIndex, unsigned int bound);
 
 __inline__ __device__ int getSign(int tmp)
 {
@@ -45,20 +30,5 @@ __inline__ __device__ int getSign(int tmp)
     //return (tmp > 0) - (tmp < 0);
 }
 
-__device__ void buildBBox(BVHNode& curr, BVHNode left, BVHNode right);
-
-// build the bounding box and morton code for each Tetrahedron
-__global__ void buildLeafMorton(int startIndex, int numTri, float minX, float minY, float minZ,
-    float maxX, float maxY, float maxZ, GLuint* tet, glm::vec3* X, BVHNode* leafNodes,
-    unsigned int* mortonCodes);
-
-//input the unique morton code
-//codeCount is the size of the unique morton code
-//splitList is 30 x N list
-// the size of unique morton is less than 2^30 : [1, 2^30]
-__global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNode* nodes);
-
-// very naive implementation
-__global__ void buildBBoxes(int leafCount, BVHNode* nodes, unsigned char* ready);
 
 __device__ void traverseTree(const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, int tetId, int* hitTetId, int& numHitTet);

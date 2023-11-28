@@ -7,8 +7,8 @@ DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerB
 {
 }
 
-SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json, const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH)
-    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH)
+SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json, const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH, BVH::BuildMethodType buildMethod)
+    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH, buildMethod)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
