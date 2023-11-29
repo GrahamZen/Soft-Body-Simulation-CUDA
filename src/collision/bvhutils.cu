@@ -170,27 +170,7 @@ __global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNod
 
 }
 
-namespace cg = cooperative_groups;
-
-__global__ void buildBBoxesCooperativeKern(int leafCount, BVHNode* nodes, int* ready) {
-    int ind = blockIdx.x * blockDim.x + threadIdx.x;
-    cg::grid_group grid = cg::this_grid();
-
-    if (ind >= leafCount - 1)return;
-    for (int i = 0; i < leafCount; i++) {
-        cg::sync(grid);
-        BVHNode node = nodes[ind];
-        if (ready[ind] != 0)
-            continue;
-        if (ready[node.leftIndex] != 0 && ready[node.rightIndex] != 0)
-        {
-            buildBBox(nodes[ind], nodes[node.leftIndex], nodes[node.rightIndex]);
-            ready[ind] = 1;
-        }
-    }
-}
-
-__global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, int* ready) {
+__global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, unsigned char* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (ind >= leafCount - 1)return;
@@ -202,31 +182,6 @@ __global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, int* ready) {
         buildBBox(nodes[ind], nodes[node.leftIndex], nodes[node.rightIndex]);
         ready[ind] = 1;
     }
-}
-
-__global__ void buildBBoxes(int leafCount, BVHNode* nodes, int* ready) {
-    int ind = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (ind >= leafCount - 1) return;
-
-    BVHNode node = nodes[ind];
-
-    int leftReady = 0;
-    int rightReady = 0;
-    if (ready[ind] != 0)
-        return;
-    while (true) {
-        leftReady = atomicAdd(&ready[node.leftIndex], 0);
-        rightReady = atomicAdd(&ready[node.rightIndex], 0);
-
-        if (leftReady != 0 && rightReady != 0) break;
-    }
-    node = nodes[ind];
-    buildBBox(nodes[ind], nodes[node.leftIndex], nodes[node.rightIndex]);
-
-    atomicExch(&ready[ind], 1);
-    __threadfence();
-    __threadfence_block();
 }
 
 __global__ void setReady(int* ready, const int leafNum)
@@ -241,12 +196,11 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
 {
     cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
     cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
-    cudaMemset(dev_ready, 0, (numTets * 2 - 1) * sizeof(int));
+    cudaMemset(dev_ready, 0, (numTets * 2 - 1) * sizeof(unsigned char));
 
     dim3 numblocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
 
-    setReady << <numblocks, threadsPerBlock >> > (dev_ready, numTets);
-
+    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
     buildLeafMorton << <numblocks, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
         tets, X, XTilt, dev_BVHNodes, dev_mortonCodes);
 
@@ -254,25 +208,9 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
 
     buildSplitList << <numblocks, threadsPerBlock >> > (numTets, dev_mortonCodes, dev_BVHNodes);
 
-    //can use atomic operation for further optimization
-    void* args[] = { &numTets, &dev_BVHNodes, &dev_ready };
-    int treeBuild = 0;
-    switch (buildMethod)
-    {
-    case BVH::BuildMethodType::SERIAL:
-        while (treeBuild == 0) {
-            buildBBoxesSerial << < numblocks, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
-            cudaMemcpy(&treeBuild, dev_ready, sizeof(int), cudaMemcpyDeviceToHost);
-        }
-        break;
-    case BVH::BuildMethodType::PARALLEL:
-        buildBBoxes << < numblocks, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
-        break;
-    case BVH::BuildMethodType::COOPERATIVE_GROUP:
-        cudaLaunchCooperativeKernel((void*)buildBBoxesCooperativeKern, numblocks, threadsPerBlock, args);
-        break;
-    default:
-        throw std::runtime_error("Invalid build method for BVH.");
-        break;
+    unsigned char treeBuild = 0;
+    while (treeBuild == 0) {
+        buildBBoxesSerial << < numblocks, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+        cudaMemcpy(&treeBuild, dev_ready, sizeof(unsigned char), cudaMemcpyDeviceToHost);
     }
 }

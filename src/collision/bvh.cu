@@ -161,7 +161,7 @@ void BVH::PrepareRenderData()
     Wireframe::unMapDevicePtr();
 }
 
-BVH::BVH(const int _threadsPerBlock, BuildMethodType _buildMethod) : threadsPerBlock(_threadsPerBlock), buildMethod(_buildMethod) {
+BVH::BVH(const int _threadsPerBlock) : threadsPerBlock(_threadsPerBlock) {
 }
 
 BVH::~BVH()
@@ -185,6 +185,6 @@ void BVH::Init(int _numTets, int _numVerts)
     cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
     cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
     cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
-    cudaMalloc(&dev_ready, numNodes * sizeof(int));
+    cudaMalloc(&dev_ready, numNodes * sizeof(unsigned char));
     createBVH(numNodes);
 }

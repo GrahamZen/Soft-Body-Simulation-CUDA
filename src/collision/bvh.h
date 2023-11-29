@@ -22,13 +22,7 @@ struct BVHNode {
 
 class BVH : public Wireframe {
 public:
-    enum class BuildMethodType
-    {
-        SERIAL,
-        PARALLEL,
-        COOPERATIVE_GROUP
-    };
-    BVH(const int threadsPerBlock, BuildMethodType buildMethod = BuildMethodType::PARALLEL);
+    BVH(const int threadsPerBlock);
     ~BVH();
     void Init(int numTets, int numVerts);
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
@@ -38,7 +32,7 @@ private:
     BVHNode* dev_BVHNodes = nullptr;
     AABB* dev_bboxes = nullptr;
     unsigned int* dev_mortonCodes = nullptr;
-    int* dev_ready = nullptr;
+    unsigned char* dev_ready = nullptr;
 
     int numNodes;
     int numTets;
@@ -46,5 +40,4 @@ private:
     float* dev_tI;
     int* dev_indicesToReport;
     const int threadsPerBlock;
-    BuildMethodType buildMethod;
 };

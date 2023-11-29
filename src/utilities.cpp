@@ -17,7 +17,18 @@
 #include <utilities.h>
 #include <bitset>
 #include <bvh.h>
+#include <type_traits>
+#include <glm/glm.hpp>
 
+template<typename T, typename = void>
+struct has_glm_to_string : std::false_type {};
+
+template<typename T>
+struct has_glm_to_string<T, std::void_t<decltype(glm::to_string(std::declval<T>()))>> : std::true_type {};
+
+// 类型萃取，用于检测是否为 GLM 类型
+template<typename T>
+struct is_glm_type : has_glm_to_string<T> {};
 namespace fs = std::filesystem;
 
 float utilityCore::clamp(float f, float min, float max) {
@@ -126,18 +137,27 @@ std::istream& utilityCore::safeGetline(std::istream& is, std::string& t) {
     }
 }
 
+#include <iostream>
+
 template <typename T>
 void inspectHost(const T* host_ptr, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size; i++) {
-        std::cout << glm::to_string(host_ptr[i]) << std::endl;
+        if constexpr (is_glm_type<T>::value) {
+            std::cout << glm::to_string(host_ptr[i]) << std::endl;
+        }
+        else {
+            std::cout << host_ptr[i] << std::endl;
+        }
     }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
+
 template void inspectHost<glm::vec3>(const glm::vec3* dev_ptr, int size);
 template void inspectHost<glm::vec4>(const glm::vec4* dev_ptr, int size);
 template void inspectHost<glm::mat3>(const glm::mat3* dev_ptr, int size);
 template void inspectHost<glm::mat4>(const glm::mat4* dev_ptr, int size);
+template void inspectHost<int>(const int*, int);
 
 void inspectHost(const BVHNode* hstBVHNodes, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
