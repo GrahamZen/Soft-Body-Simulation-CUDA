@@ -43,9 +43,8 @@ private:
     int numNodes;
     int numTets;
     int numVerts;
-    float* dev_tIVertTri;
-    float* dev_tIEdgeEdge;
     float* dev_tI;
+    int* dev_indicesToReport;
     const int threadsPerBlock;
     BuildMethodType buildMethod;
 };

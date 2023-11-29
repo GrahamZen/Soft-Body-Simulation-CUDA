@@ -204,28 +204,31 @@ __global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, int* ready) {
     }
 }
 
-__global__ void buildBBoxes(int leafCount, BVHNode* nodes, int* ready)
-{
+__global__ void buildBBoxes(int leafCount, BVHNode* nodes, int* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (ind >= leafCount - 1) return;
+
     BVHNode node = nodes[ind];
 
+    int leftReady = 0;
+    int rightReady = 0;
+    if (ready[ind] != 0)
+        return;
     while (true) {
-        __threadfence();
-        int leftReady = atomicAdd(&ready[node.leftIndex], 0);
-        int rightReady = atomicAdd(&ready[node.rightIndex], 0);
+        leftReady = atomicAdd(&ready[node.leftIndex], 0);
+        rightReady = atomicAdd(&ready[node.rightIndex], 0);
 
         if (leftReady != 0 && rightReady != 0) break;
-
-        __threadfence();
-        __nanosleep(100);
     }
-
+    node = nodes[ind];
     buildBBox(nodes[ind], nodes[node.leftIndex], nodes[node.rightIndex]);
+
     atomicExch(&ready[ind], 1);
     __threadfence();
+    __threadfence_block();
 }
+
 
 void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets)
 {
