@@ -31,4 +31,5 @@ __inline__ __device__ int getSign(int tmp)
 }
 
 
-__device__ void traverseTree(const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, int tetId, int* hitTetId, int& numHitTet);
+__device__ void traverseTreePerVert(const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, int tetId, int* hitTetId, int& numHitTet);
+__device__ void traverseTreePerEdge(const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, int tetId, int* hitTetId, int& numHitTet);

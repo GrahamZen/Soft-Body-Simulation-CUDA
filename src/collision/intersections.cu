@@ -53,6 +53,24 @@ __host__ __device__ bool edgeBboxIntersectionTest(const glm::vec3& X0, const glm
     return (tminMax <= tmaxMin && tmaxMin >= 0.0f) || inside;
 }
 
+__host__ __device__ bool edgeTrajBboxIntersectionTest(const glm::vec3& X0, const glm::vec3& XTilt, const glm::vec3& X1, const glm::vec3& X1Tilt, const AABB& bbox) {
+    glm::vec3 dir = XTilt - X0;
+    glm::vec3 invDir = 1.0f / dir;
+    glm::vec3 t0s = (bbox.min - X0) * invDir;
+    glm::vec3 t1s = (bbox.max - X0) * invDir;
+    glm::vec3 tmin = glm::min(t0s, t1s);
+    glm::vec3 tmax = glm::max(t0s, t1s);
+
+    float tminMax = glm::max(glm::max(tmin.x, tmin.y), tmin.z);
+    float tmaxMin = glm::min(glm::min(tmax.x, tmax.y), tmax.z);
+
+    bool inside =
+        glm::all(glm::greaterThanEqual(X0, bbox.min)) && glm::all(glm::lessThanEqual(X0, bbox.max)) &&
+        glm::all(glm::greaterThanEqual(XTilt, bbox.min)) && glm::all(glm::lessThanEqual(XTilt, bbox.max));
+
+    return (tminMax <= tmaxMin && tmaxMin >= 0.0f) || inside;
+}
+
 
 __host__ __device__ float solveCubic(float a, float b, float c, float d) {
     return 0.f;

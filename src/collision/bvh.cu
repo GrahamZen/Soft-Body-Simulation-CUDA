@@ -60,7 +60,68 @@ bool isCollision(const glm::vec3& v, const AABB& box, float threshold = EPSILON)
     return distanceSquared <= threshold;
 }
 
-__device__ float traverseTree(const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, glm::vec3 X0, glm::vec3 XTilt, int& hitTetId)
+__device__ float traverseTreePerVert(const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, glm::vec3 X0, glm::vec3 XTilt, int& hitTetId)
+{
+    // record the closest intersection
+    float closest = FLT_MAX;
+
+    int bvhStart = 0;
+    int stack[64];
+    int stackPtr = 0;
+    int bvhPtr = bvhStart;
+    stack[stackPtr++] = bvhStart;
+
+    while (stackPtr)
+    {
+        bvhPtr = stack[--stackPtr];
+        BVHNode currentNode = nodes[bvhPtr];
+        // all the left and right indexes are 0
+        BVHNode leftChild = nodes[currentNode.leftIndex + bvhStart];
+        BVHNode rightChild = nodes[currentNode.rightIndex + bvhStart];
+
+        bool hitLeft = edgeBboxIntersectionTest(X0, XTilt, leftChild.bbox);
+        bool hitRight = edgeBboxIntersectionTest(X0, XTilt, rightChild.bbox);
+        if (hitLeft)
+        {
+            // check triangle intersection
+            if (leftChild.isLeaf == 1)
+            {
+                float distance = tetrahedronTrajIntersectionTest(X0, XTilt, Xs, XTilts, leftChild.TetrahedronIndex);
+                if (distance < closest)
+                {
+                    hitTetId = leftChild.TetrahedronIndex;
+                    closest = distance;
+                }
+            }
+            else
+            {
+                stack[stackPtr++] = currentNode.leftIndex + bvhStart;
+            }
+
+        }
+        if (hitRight)
+        {
+            // check triangle intersection
+            if (rightChild.isLeaf == 1)
+            {
+                float distance = tetrahedronTrajIntersectionTest(X0, XTilt, Xs, XTilts, rightChild.TetrahedronIndex);
+                if (distance < closest)
+                {
+                    hitTetId = rightChild.TetrahedronIndex;
+                    closest = distance;
+                }
+            }
+            else
+            {
+                stack[stackPtr++] = currentNode.rightIndex + bvhStart;
+            }
+
+        }
+    }
+    return closest;
+}
+
+__device__ float traverseTreePerEdge(const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, glm::vec3 X0, glm::vec3 XTilt, int& hitTetId)
 {
     // record the closest intersection
     float closest = FLT_MAX;
@@ -122,7 +183,7 @@ __device__ float traverseTree(const BVHNode* nodes, const glm::vec3* Xs, const g
 }
 
 
-__global__ void detectCollisionCandidatesKern(int numVerts, const BVHNode* nodes, const GLuint* tetIds, const glm::vec3* Xs, const glm::vec3* XTilts, int* indicesToReport, float* tI)
+__global__ void detectCollisionCandidatesVertTriangleKern(int numVerts, const BVHNode* nodes, const GLuint* tetIds, const glm::vec3* Xs, const glm::vec3* XTilts, float* tI)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numVerts)
@@ -131,15 +192,33 @@ __global__ void detectCollisionCandidatesKern(int numVerts, const BVHNode* nodes
         const glm::vec3& X = Xs[index];
         const glm::vec3& XTilt = XTilts[index];
         int tetId = tetIds[index];
-        float distance = traverseTree(nodes, Xs, XTilts, X, XTilt, hitTetId);
+        float distance = traverseTreePerVert(nodes, Xs, XTilts, X, XTilt, hitTetId);
         if (distance != -1)
         {
-            indicesToReport[index] = hitTetId;
             tI[index] = distance;
         }
         else {
             tI[index] = 1;
-            indicesToReport[index] = -1;
+        }
+    }
+}
+
+__global__ void detectCollisionCandidatesEdgeEdgeKern(int numVerts, const BVHNode* nodes, const GLuint* tetIds, const glm::vec3* Xs, const glm::vec3* XTilts, float* tI)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < numVerts)
+    {
+        int hitTetId = -1;
+        const glm::vec3& X = Xs[index];
+        const glm::vec3& XTilt = XTilts[index];
+        int tetId = tetIds[index];
+        float distance = traverseTreePerEdge(nodes, Xs, XTilts, X, XTilt, hitTetId);
+        if (distance != -1)
+        {
+            tI[index] = distance;
+        }
+        else {
+            tI[index] = 1;
         }
     }
 }
@@ -148,7 +227,12 @@ float* BVH::DetectCollisionCandidates(const GLuint* Tet, const glm::vec3* Xs, co
 {
     int blockSize1d = 128;
     dim3 numblocks = (numVerts + blockSize1d - 1) / blockSize1d;
-    detectCollisionCandidatesKern << <numblocks, blockSize1d >> > (numVerts, dev_BVHNodes, TetId, Xs, XTilts, dev_indicesToReport, dev_tI);
+    detectCollisionCandidatesVertTriangleKern << <numblocks, blockSize1d >> > (numVerts, dev_BVHNodes, TetId, Xs, XTilts, dev_tIVertTri);
+    detectCollisionCandidatesEdgeEdgeKern << <numblocks, blockSize1d >> > (numVerts, dev_BVHNodes, TetId, Xs, XTilts, dev_tIEdgeEdge);
+    thrust::device_ptr<float> dev_tIVertTriPtr(dev_tIVertTri);
+    thrust::device_ptr<float> dev_tIEdgeEdgePtr(dev_tIEdgeEdge);
+    thrust::device_ptr<float> dev_tIPtr(dev_tI);
+    thrust::transform(dev_tIVertTriPtr, dev_tIVertTriPtr + numVerts, dev_tIEdgeEdgePtr, dev_tIPtr, thrust::minimum<float>());
     return dev_tI;
 }
 
@@ -168,7 +252,8 @@ BVH::~BVH()
 {
     cudaFree(dev_BVHNodes);
     cudaFree(dev_tI);
-    cudaFree(dev_indicesToReport);
+    cudaFree(dev_tIVertTri);
+    cudaFree(dev_tIEdgeEdge);
 
     cudaFree(dev_ready);
     cudaFree(dev_mortonCodes);
@@ -182,8 +267,10 @@ void BVH::Init(int _numTets, int _numVerts)
     cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode));
     cudaMalloc((void**)&dev_tI, numVerts * sizeof(float));
     cudaMemset(dev_tI, 0, numVerts * sizeof(float));
-    cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
-    cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
+    cudaMalloc((void**)&dev_tIVertTri, numVerts * sizeof(float));
+    cudaMemset(dev_tIVertTri, 0, numVerts * sizeof(float));
+    cudaMalloc((void**)&dev_tIEdgeEdge, numVerts * sizeof(float));
+    cudaMemset(dev_tIEdgeEdge, 0, numVerts * sizeof(float));
     cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
     cudaMalloc(&dev_ready, numNodes * sizeof(int));
     createBVH(numNodes);
