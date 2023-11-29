@@ -40,7 +40,7 @@ public:
         glm::vec3 jump = glm::vec3(0.f, 400.f, 0.f);
     };
     SimulationCUDAContext(Context* ctx, const ExternalForce& extForce, nlohmann::json& json,
-        const std::map<std::string, nlohmann::json>& softBodyDefs, int threadsPerBlock, int _threadsPerBlockBVH);
+        const std::map<std::string, nlohmann::json>& softBodyDefs, int threadsPerBlock, int _threadsPerBlockBVH, int maxThreads);
     ~SimulationCUDAContext();
     void Update();
     void Reset();

@@ -83,6 +83,20 @@ Context::~Context()
     delete mpCamera;
 }
 
+int Context::GetMaxCGThreads()
+{
+    int device;
+    cudaGetDevice(&device);
+    cudaDeviceProp props;
+    cudaGetDeviceProperties(&props, device);
+
+    int maxThreadsPerSM = props.maxThreadsPerMultiProcessor;
+    int numSMs = props.multiProcessorCount;
+    int maxThreads = maxThreadsPerSM * numSMs;
+    std::cout << "max supported #ele: " << maxThreads << std::endl;
+    return maxThreads;
+}
+
 void Context::PollEvents() {
     auto& attrs = guiData->softBodyAttr;
     if (attrs.currSoftBodyId == -1) return;
@@ -116,6 +130,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
         std::cerr << "Failed to open JSON file: " << filename << std::endl;
         return nullptr;
     }
+    int maxThreads = GetMaxCGThreads();
     SimulationCUDAContext::ExternalForce extForce;
     nlohmann::json json;
     fileStream >> json;
@@ -126,7 +141,6 @@ SimulationCUDAContext* Context::LoadSimContext() {
         if (externalForceJson.contains("jump")) {
             auto& jumpJson = externalForceJson["jump"];
             extForce.jump = glm::vec3(jumpJson[0].get<float>(), jumpJson[1].get<float>(), jumpJson[2].get<float>());
-            std::cout << extForce.jump.g;
         }
     }
     if (json.contains("threads per block")) {
@@ -150,7 +164,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());
             namesContexts.push_back(name);
-            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, threadsPerBlock, threadsPerBlockBVH));
+            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, threadsPerBlock, threadsPerBlockBVH, maxThreads));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
         }

@@ -7,7 +7,8 @@ DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerB
 {
 }
 
-SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json, const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH)
+SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json,
+    const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads)
     :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH)
 {
     DataLoader dataLoader(threadsPerBlock);
@@ -102,7 +103,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& 
         softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
     }
     m_floor.createQuad(1000, floorY);
-    m_bvh.Init(numTets, numVerts);
+    m_bvh.Init(numTets, numVerts, maxThreads);
 }
 
 void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {
@@ -155,7 +156,6 @@ std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int 
         Tet[tet * 4 + 2] = d - startIndex;
         Tet[tet * 4 + 3] = e - startIndex;
     }
-    std::cout << "number of tetrahedrons: " << numTets << std::endl;
 
     file.close();
     return Tet;
@@ -167,7 +167,7 @@ std::vector<GLuint> DataLoader::loadFaceFile(const std::string& faceFilename, in
     std::ifstream file(faceFilename);
 
     if (!file.is_open()) {
-        std::cerr << "Unable to open file" << std::endl;
+        // std::cerr << "Unable to open face file" << std::endl;
         return std::vector<GLuint>();
     }
 
@@ -186,7 +186,6 @@ std::vector<GLuint> DataLoader::loadFaceFile(const std::string& faceFilename, in
         Triangle[tet * 3 + 1] = c - startIndex;
         Triangle[tet * 3 + 2] = d - startIndex;
     }
-    std::cout << "number of triangles: " << numTris << std::endl;
 
     file.close();
     return Triangle;
@@ -229,7 +228,6 @@ std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename,
             X[i].z = temp;
         }
     }
-    std::cout << "number of nodes: " << numVerts << std::endl;
 
     return X;
 }

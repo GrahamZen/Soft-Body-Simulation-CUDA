@@ -26,7 +26,6 @@ struct has_glm_to_string : std::false_type {};
 template<typename T>
 struct has_glm_to_string<T, std::void_t<decltype(glm::to_string(std::declval<T>()))>> : std::true_type {};
 
-// 类型萃取，用于检测是否为 GLM 类型
 template<typename T>
 struct is_glm_type : has_glm_to_string<T> {};
 namespace fs = std::filesystem;
@@ -142,11 +141,13 @@ std::istream& utilityCore::safeGetline(std::istream& is, std::string& t) {
 template <typename T>
 void inspectHost(const T* host_ptr, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
-    for (int i = 0; i < size; i++) {
-        if constexpr (is_glm_type<T>::value) {
+    if constexpr (is_glm_type<T>::value) {
+        for (int i = 0; i < size; i++) {
             std::cout << glm::to_string(host_ptr[i]) << std::endl;
         }
-        else {
+    }
+    else {
+        for (int i = 0; i < size; i++) {
             std::cout << host_ptr[i] << std::endl;
         }
     }

@@ -184,23 +184,82 @@ __global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, unsigned char* 
     }
 }
 
-__global__ void setReady(int* ready, const int leafNum)
-{
+namespace cg = cooperative_groups;
+
+__global__ void buildBBoxesCG(int leafCount, BVHNode* nodes, unsigned char* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (ind > leafNum - 1)
-        return;
-    ready[ind + leafNum - 1] = 1;
+    cg::grid_group grid = cg::this_grid();
+
+    if (ind >= leafCount - 1)return;
+    bool done = false;
+    while (!done) {
+        BVHNode node = nodes[ind];
+        if (ready[ind] != 0) {}
+        else if (ready[node.leftIndex] != 0 && ready[node.rightIndex] != 0)
+        {
+            buildBBox(nodes[ind], nodes[node.leftIndex], nodes[node.rightIndex]);
+            ready[ind] = 1;
+        }
+        cg::sync(grid);
+        done = ready[0] == 1;
+        cg::sync(grid);
+    }
+}
+
+void BVH::Init(int _numTets, int _numVerts, int maxThreads)
+{
+    numTets = _numTets;
+    numVerts = _numVerts;
+    numNodes = numTets * 2 - 1;
+    cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode));
+    cudaMalloc((void**)&dev_tI, numVerts * sizeof(float));
+    cudaMemset(dev_tI, 0, numVerts * sizeof(float));
+    cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
+    cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
+    cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
+    cudaMalloc(&dev_ready, numNodes * sizeof(unsigned char));
+    createBVH(numNodes);
+    cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
+    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(unsigned char));
+    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
+    int minGridSize;
+
+    cudaOccupancyMaxPotentialBlockSize(&minGridSize, &suggestedBlocksize, buildBBoxesCG, 0, 0);
+
+    if (numTets < maxThreads) {
+        std::cout << "Using cooperative group." << std::endl;
+        isBuildBBCG = true;
+    }
+    else {
+        std::cout << "Not using cooperative group." << std::endl;
+    }
+    numblocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
+    suggestedCGNumblocks = (numTets + suggestedBlocksize - 1) / suggestedBlocksize;
+}
+
+void BVH::BuildBBoxes() {
+    if (isBuildBBCG) {
+        void* args[] = { &numTets, &dev_BVHNodes, &dev_ready };
+        cudaError_t error = cudaLaunchCooperativeKernel((void*)buildBBoxesCG, suggestedCGNumblocks, suggestedBlocksize, args);
+        if (error != cudaSuccess) {
+            std::cerr << "cudaLaunchCooperativeKernel failed: " << cudaGetErrorString(error) << std::endl;
+        }
+    }
+    else {
+        unsigned char treeBuild = 0;
+        while (treeBuild == 0) {
+            buildBBoxesSerial << < numblocks, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+            cudaMemcpy(&treeBuild, dev_ready, sizeof(unsigned char), cudaMemcpyDeviceToHost);
+        }
+    }
 }
 
 void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets)
 {
     cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
-    cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
-    cudaMemset(dev_ready, 0, (numTets * 2 - 1) * sizeof(unsigned char));
 
     dim3 numblocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
 
-    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
     buildLeafMorton << <numblocks, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
         tets, X, XTilt, dev_BVHNodes, dev_mortonCodes);
 
@@ -208,9 +267,9 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
 
     buildSplitList << <numblocks, threadsPerBlock >> > (numTets, dev_mortonCodes, dev_BVHNodes);
 
-    unsigned char treeBuild = 0;
-    while (treeBuild == 0) {
-        buildBBoxesSerial << < numblocks, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
-        cudaMemcpy(&treeBuild, dev_ready, sizeof(unsigned char), cudaMemcpyDeviceToHost);
-    }
+    BuildBBoxes();
+
+    cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
+    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(unsigned char));
+    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
 }

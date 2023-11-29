@@ -173,18 +173,3 @@ BVH::~BVH()
     cudaFree(dev_ready);
     cudaFree(dev_mortonCodes);
 }
-
-void BVH::Init(int _numTets, int _numVerts)
-{
-    numTets = _numTets;
-    numVerts = _numVerts;
-    numNodes = numTets * 2 - 1;
-    cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode));
-    cudaMalloc((void**)&dev_tI, numVerts * sizeof(float));
-    cudaMemset(dev_tI, 0, numVerts * sizeof(float));
-    cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
-    cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
-    cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
-    cudaMalloc(&dev_ready, numNodes * sizeof(unsigned char));
-    createBVH(numNodes);
-}

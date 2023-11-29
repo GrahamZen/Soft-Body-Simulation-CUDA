@@ -24,11 +24,12 @@ class BVH : public Wireframe {
 public:
     BVH(const int threadsPerBlock);
     ~BVH();
-    void Init(int numTets, int numVerts);
+    void Init(int numTets, int numVerts, int maxThreads);
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
     float* DetectCollisionCandidates(const GLuint* Tet, const glm::vec3* Xs, const glm::vec3* XTilts, const GLuint* TetId) const;
     void PrepareRenderData();
 private:
+    void BuildBBoxes();
     BVHNode* dev_BVHNodes = nullptr;
     AABB* dev_bboxes = nullptr;
     unsigned int* dev_mortonCodes = nullptr;
@@ -40,4 +41,8 @@ private:
     float* dev_tI;
     int* dev_indicesToReport;
     const int threadsPerBlock;
+    dim3 numblocks;
+    dim3 suggestedCGNumblocks;
+    int suggestedBlocksize;
+    bool isBuildBBCG = false;
 };

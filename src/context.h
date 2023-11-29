@@ -75,6 +75,7 @@ public:
     std::vector<SimulationCUDAContext*> mpSimContexts;
 
 private:
+    int GetMaxCGThreads();
     void PollEvents();
     std::string filename = "context.json";
     SimulationCUDAContext* LoadSimContext();
