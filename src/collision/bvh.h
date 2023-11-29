@@ -31,8 +31,8 @@ public:
 private:
     BVHNode* dev_BVHNodes = nullptr;
     AABB* dev_bboxes = nullptr;
-    unsigned int* dev_mortonCodes = NULL;
-    unsigned char* dev_ready = NULL;
+    unsigned int* dev_mortonCodes = nullptr;
+    unsigned char* dev_ready = nullptr;
 
     int numNodes;
     int numTets;

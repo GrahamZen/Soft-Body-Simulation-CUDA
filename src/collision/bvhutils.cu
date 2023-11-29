@@ -62,7 +62,7 @@ __device__ int getSplit(unsigned int* mortonCodes, unsigned int currIndex, int n
     return commonPrefix;
 }
 
-__device__ void buildBBox(BVHNode& curr, BVHNode left, BVHNode right)
+__device__ void buildBBox(BVHNode& curr, const BVHNode& left, const BVHNode& right)
 {
     glm::vec3 newMin;
     glm::vec3 newMax;
@@ -170,34 +170,37 @@ __global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNod
 
 }
 
-namespace cg = cooperative_groups;
-
-__global__ void buildBBoxes(int leafCount, BVHNode* nodes, unsigned char* ready) {
+__global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, unsigned char* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
-    cg::grid_group grid = cg::this_grid();
 
     if (ind >= leafCount - 1)return;
-    for (int i = 0; i < leafCount; i++) {
-        cg::sync(grid);
-        BVHNode node = nodes[ind];
-        if (ready[ind] != 0)
-            continue;
-        if (ready[node.leftIndex] != 0 && ready[node.rightIndex] != 0)
-        {
-            buildBBox(nodes[ind], nodes[node.leftIndex], nodes[node.rightIndex]);
-            ready[ind] = 1;
-        }
+    BVHNode node = nodes[ind];
+    if (ready[ind] != 0)
+        return;
+    if (ready[node.leftIndex] != 0 && ready[node.rightIndex] != 0)
+    {
+        buildBBox(nodes[ind], nodes[node.leftIndex], nodes[node.rightIndex]);
+        ready[ind] = 1;
     }
+}
+
+__global__ void setReady(int* ready, const int leafNum)
+{
+    int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ind > leafNum - 1)
+        return;
+    ready[ind + leafNum - 1] = 1;
 }
 
 void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets)
 {
     cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
     cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
-    cudaMemset(dev_ready, 0, numTets * sizeof(unsigned char));
-    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
+    cudaMemset(dev_ready, 0, (numTets * 2 - 1) * sizeof(unsigned char));
 
     dim3 numblocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
+
+    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
     buildLeafMorton << <numblocks, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
         tets, X, XTilt, dev_BVHNodes, dev_mortonCodes);
 
@@ -205,7 +208,9 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
 
     buildSplitList << <numblocks, threadsPerBlock >> > (numTets, dev_mortonCodes, dev_BVHNodes);
 
-    //can use atomic operation for further optimization
-    void* args[] = { &numTets, &dev_BVHNodes, &dev_ready };
-    cudaLaunchCooperativeKernel((void*)buildBBoxes, numblocks, threadsPerBlock, args);
+    unsigned char treeBuild = 0;
+    while (treeBuild == 0) {
+        buildBBoxesSerial << < numblocks, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+        cudaMemcpy(&treeBuild, dev_ready, sizeof(unsigned char), cudaMemcpyDeviceToHost);
+    }
 }
