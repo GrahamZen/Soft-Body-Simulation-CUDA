@@ -229,15 +229,24 @@ __global__ void buildBBoxes(int leafCount, BVHNode* nodes, int* ready) {
     __threadfence_block();
 }
 
+__global__ void setReady(int* ready, const int leafNum)
+{
+    int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ind > leafNum - 1)
+        return;
+    ready[ind + leafNum - 1] = 1;
+}
 
 void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets)
 {
     cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
     cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
-    cudaMemset(dev_ready, 0, numTets * sizeof(int));
-    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(int));
+    cudaMemset(dev_ready, 0, (numTets * 2 - 1) * sizeof(int));
 
     dim3 numblocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
+
+    setReady << <numblocks, threadsPerBlock >> > (dev_ready, numTets);
+
     buildLeafMorton << <numblocks, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
         tets, X, XTilt, dev_BVHNodes, dev_mortonCodes);
 
@@ -247,11 +256,13 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
 
     //can use atomic operation for further optimization
     void* args[] = { &numTets, &dev_BVHNodes, &dev_ready };
+    int treeBuild = 0;
     switch (buildMethod)
     {
     case BVH::BuildMethodType::SERIAL:
-        for (int i = 0; i < numTets; i++) {
+        while (treeBuild == 0) {
             buildBBoxesSerial << < numblocks, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+            cudaMemcpy(&treeBuild, dev_ready, sizeof(int), cudaMemcpyDeviceToHost);
         }
         break;
     case BVH::BuildMethodType::PARALLEL:
