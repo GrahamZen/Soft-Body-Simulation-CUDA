@@ -75,7 +75,7 @@ private:
     glm::vec3* dev_Vs;
     glm::vec3* dev_Fs;
     GLuint* dev_Tets;
-    GLuint* dev_TetIds;
+    GLuint* dev_Edges;
     int numVerts = 0;
     int numTets = 0;
     std::vector<const char*> namesSoftBodies;

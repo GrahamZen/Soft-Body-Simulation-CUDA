@@ -124,7 +124,7 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
 
 void SimulationCUDAContext::CCD()
 {
-    float* tIs = m_bvh.DetectCollisionCandidates(dev_Tets, dev_Xs, dev_XTilts, dev_TetIds);
+    float* tIs = m_bvh.DetectCollisionCandidates(dev_Tets, dev_Xs, dev_XTilts);
     int blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     //CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, tIs, numVerts);
 }

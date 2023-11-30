@@ -122,7 +122,7 @@ __device__ float traverseTree(const BVHNode* nodes, const glm::vec3* Xs, const g
 }
 
 
-__global__ void detectCollisionCandidatesKern(int numVerts, const BVHNode* nodes, const GLuint* tetIds, const glm::vec3* Xs, const glm::vec3* XTilts, int* indicesToReport, float* tI)
+__global__ void detectCollisionCandidatesKern(int numVerts, const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, float* tI)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numVerts)
@@ -130,25 +130,22 @@ __global__ void detectCollisionCandidatesKern(int numVerts, const BVHNode* nodes
         int hitTetId = -1;
         const glm::vec3& X = Xs[index];
         const glm::vec3& XTilt = XTilts[index];
-        int tetId = tetIds[index];
         float distance = traverseTree(nodes, Xs, XTilts, X, XTilt, hitTetId);
         if (distance != -1)
         {
-            indicesToReport[index] = hitTetId;
             tI[index] = distance;
         }
         else {
             tI[index] = 1;
-            indicesToReport[index] = -1;
         }
     }
 }
 
-float* BVH::DetectCollisionCandidates(const GLuint* Tet, const glm::vec3* Xs, const glm::vec3* XTilts, const GLuint* TetId) const
+float* BVH::DetectCollisionCandidates(const GLuint* edges, const glm::vec3* Xs, const glm::vec3* XTilts) const
 {
     int blockSize1d = 128;
     dim3 numblocks = (numVerts + blockSize1d - 1) / blockSize1d;
-    detectCollisionCandidatesKern << <numblocks, blockSize1d >> > (numVerts, dev_BVHNodes, TetId, Xs, XTilts, dev_indicesToReport, dev_tI);
+    detectCollisionCandidatesKern << <numblocks, blockSize1d >> > (numVerts, dev_BVHNodes, Xs, XTilts, dev_tI);
     return dev_tI;
 }
 
