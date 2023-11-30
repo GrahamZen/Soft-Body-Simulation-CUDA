@@ -58,12 +58,10 @@ private:
 
     GLuint* Tet;
     GLuint* Tri;
-    GLuint* Edge;
 
     int numTets; // The number of tetrahedra
     int numVerts; // The number of vertices
     int numTris; // The number of triangles
-    int numEdges; // The number of edges
     int nnzNumber;
 
     bool solverReady = false;

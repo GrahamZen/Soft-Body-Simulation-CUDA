@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <map>
+#include <set>
 
 DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
 {
@@ -98,7 +99,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& 
                 SoftBody::SoftBodyAttribute{ mass, stiffness_0, stiffness_1, constraints });
         }
     }
-    dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_XTilts, dev_Vs, dev_Fs, dev_Tets, numVerts, numTets);
+    dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_XTilts, dev_Vs, dev_Fs, dev_Edges, dev_Tets, numVerts, numTets);
     for (auto softBodyData : dataLoader.m_softBodyData) {
         softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
     }
@@ -190,6 +191,7 @@ std::vector<GLuint> DataLoader::loadFaceFile(const std::string& faceFilename, in
     file.close();
     return Triangle;
 }
+
 std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
 {
     std::ifstream file(nodeFilename);
@@ -230,4 +232,31 @@ std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename,
     }
 
     return X;
+}
+
+void DataLoader::CollectEdges(const std::vector<GLuint>& triIdx) {
+    std::set<std::pair<GLuint, GLuint>> uniqueEdges;
+    std::vector<GLuint> edges;
+
+    for (size_t i = 0; i < triIdx.size(); i += 3) {
+        GLuint v0 = triIdx[i];
+        GLuint v1 = triIdx[i + 1];
+        GLuint v2 = triIdx[i + 2];
+
+        std::pair<GLuint, GLuint> edge1 = std::minmax(v0, v1);
+        std::pair<GLuint, GLuint> edge2 = std::minmax(v1, v2);
+        std::pair<GLuint, GLuint> edge3 = std::minmax(v2, v0);
+
+        uniqueEdges.insert(edge1);
+        uniqueEdges.insert(edge2);
+        uniqueEdges.insert(edge3);
+    }
+
+    for (const auto& edge : uniqueEdges) {
+        edges.push_back(edge.first);
+        edges.push_back(edge.second);
+    }
+
+    m_edges.push_back(edges);
+    totalNumEdges += edges.size() / 2;
 }

@@ -81,13 +81,15 @@ void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, 
         softBodyData.Tris = nullptr;
         softBodyData.numTris = 0;
     }
+    CollectEdges(triIdx);
     totalNumVerts += softBodyData.numVerts;
     totalNumTets += softBodyData.numTets;
 
     m_softBodyData.push_back({ softBodyData, attrib });
 }
 
-void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilt, glm::vec3*& gV, glm::vec3*& gF, GLuint*& gTet, int& numVerts, int& numTets)
+void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilt,
+    glm::vec3*& gV, glm::vec3*& gF, GLuint*& gEdges, GLuint*& gTet, int& numVerts, int& numTets)
 {
     numVerts = totalNumVerts;
     numTets = totalNumTets;
@@ -98,15 +100,23 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
     cudaMalloc((void**)&gF, sizeof(glm::vec3) * totalNumVerts);
     cudaMemset(gV, 0, sizeof(glm::vec3) * totalNumVerts);
     cudaMemset(gF, 0, sizeof(glm::vec3) * totalNumVerts);
+    cudaMalloc((void**)&gEdges, sizeof(GLuint) * totalNumEdges * 2);
     cudaMalloc((void**)&gTet, sizeof(GLuint) * totalNumTets * 4);
-    int vertOffset = 0, tetOffset = 0;
-    thrust::device_ptr<GLuint> dev_ptr(gTet);
-    for (auto& softBodyData : m_softBodyData)
+    int vertOffset = 0, tetOffset = 0, edgeOffset = 0;
+    thrust::device_ptr<GLuint> dev_gTetPtr(gTet);
+    thrust::device_ptr<GLuint> dev_gEdgesPtr(gEdges);
+    for (int i = 0; i < m_softBodyData.size(); i++)
     {
+        auto& softBodyData = m_softBodyData[i];
         startIndices.push_back(vertOffset);
         auto& data = softBodyData.first;
         cudaMemcpy(gX + vertOffset, data.dev_X, sizeof(glm::vec3) * data.numVerts, cudaMemcpyDeviceToDevice);
-        thrust::transform(data.Tets, data.Tets + data.numTets * 4, dev_ptr + tetOffset, [vertOffset] __device__(GLuint x) {
+        thrust::transform(data.Tets, data.Tets + data.numTets * 4, dev_gTetPtr + tetOffset, [vertOffset] __device__(GLuint x) {
+            return x + vertOffset;
+        });
+        cudaMemcpy(gEdges + edgeOffset, m_edges[i].data(), sizeof(GLuint) * m_edges[i].size(), cudaMemcpyHostToDevice);
+        thrust::transform(dev_gEdgesPtr + edgeOffset, dev_gEdgesPtr + edgeOffset + m_edges[i].size(), dev_gEdgesPtr + edgeOffset,
+            [vertOffset] __device__(GLuint x) {
             return x + vertOffset;
         });
         cudaFree(data.dev_X);
@@ -117,6 +127,7 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
         data.dev_F = gF + vertOffset;
         vertOffset += data.numVerts;
         tetOffset += data.numTets * 4;
+        edgeOffset += m_edges[i].size();
     }
     cudaMemcpy(gX0, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(gXTilt, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
