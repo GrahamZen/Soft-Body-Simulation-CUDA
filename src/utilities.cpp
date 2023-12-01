@@ -159,6 +159,7 @@ template void inspectHost<glm::vec4>(const glm::vec4* dev_ptr, int size);
 template void inspectHost<glm::mat3>(const glm::mat3* dev_ptr, int size);
 template void inspectHost<glm::mat4>(const glm::mat4* dev_ptr, int size);
 template void inspectHost<int>(const int*, int);
+template void inspectHost<dataType>(const dataType*, int);
 
 void inspectHost(const BVHNode* hstBVHNodes, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;

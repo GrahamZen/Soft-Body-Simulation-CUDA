@@ -12,18 +12,18 @@
 
 //input the aabb box of a Tetrahedron
 //generate a 30-bit morton code
-__device__ unsigned int genMortonCode(AABB bbox, glm::vec3 geoMin, glm::vec3 geoMax)
+__device__ unsigned int genMortonCode(AABB bbox, glmVec3 geoMin, glmVec3 geoMax)
 {
-    float x = (bbox.min.x + bbox.max.x) * 0.5f;
-    float y = (bbox.min.y + bbox.max.y) * 0.5f;
-    float z = (bbox.min.y + bbox.max.y) * 0.5f;
-    float normalizedX = (x - geoMin.x) / (geoMax.x - geoMin.x);
-    float normalizedY = (y - geoMin.y) / (geoMax.y - geoMin.y);
-    float normalizedZ = (z - geoMin.z) / (geoMax.z - geoMin.z);
+    dataType x = (bbox.min.x + bbox.max.x) * 0.5f;
+    dataType y = (bbox.min.y + bbox.max.y) * 0.5f;
+    dataType z = (bbox.min.y + bbox.max.y) * 0.5f;
+    dataType normalizedX = (x - geoMin.x) / (geoMax.x - geoMin.x);
+    dataType normalizedY = (y - geoMin.y) / (geoMax.y - geoMin.y);
+    dataType normalizedZ = (z - geoMin.z) / (geoMax.z - geoMin.z);
 
-    normalizedX = glm::min(glm::max(normalizedX * 1024.0f, 0.0f), 1023.0f);
-    normalizedY = glm::min(glm::max(normalizedY * 1024.0f, 0.0f), 1023.0f);
-    normalizedZ = glm::min(glm::max(normalizedZ * 1024.0f, 0.0f), 1023.0f);
+    normalizedX = glm::min(glm::max(normalizedX * 1024.0, 0.0), 1023.0);
+    normalizedY = glm::min(glm::max(normalizedY * 1024.0, 0.0), 1023.0);
+    normalizedZ = glm::min(glm::max(normalizedZ * 1024.0, 0.0), 1023.0);
 
     unsigned int xx = expandBits((unsigned int)normalizedX);
     unsigned int yy = expandBits((unsigned int)normalizedY);
@@ -64,8 +64,8 @@ __device__ int getSplit(unsigned int* mortonCodes, unsigned int currIndex, int n
 
 __device__ void buildBBox(BVHNode& curr, const BVHNode& left, const BVHNode& right)
 {
-    glm::vec3 newMin;
-    glm::vec3 newMax;
+    glmVec3 newMin;
+    glmVec3 newMax;
     newMin.x = glm::min(left.bbox.min.x, right.bbox.min.x);
     newMax.x = glm::max(left.bbox.max.x, right.bbox.max.x);
     newMin.y = glm::min(left.bbox.min.y, right.bbox.min.y);
@@ -78,8 +78,8 @@ __device__ void buildBBox(BVHNode& curr, const BVHNode& left, const BVHNode& rig
 }
 
 // build the bounding box and morton code for each SoftBody
-__global__ void buildLeafMorton(int startIndex, int numTri, float minX, float minY, float minZ,
-    float maxX, float maxY, float maxZ, const GLuint* tet, const glm::vec3* X, const glm::vec3* XTilt, BVHNode* leafNodes,
+__global__ void buildLeafMorton(int startIndex, int numTri, dataType minX, dataType minY, dataType minZ,
+    dataType maxX, dataType maxY, dataType maxZ, const GLuint* tet, const glm::vec3* X, const glm::vec3* XTilt, BVHNode* leafNodes,
     unsigned int* mortonCodes)
 {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
@@ -92,7 +92,7 @@ __global__ void buildLeafMorton(int startIndex, int numTri, float minX, float mi
         leafNodes[leafPos].leftIndex = -1;
         leafNodes[leafPos].rightIndex = -1;
         leafNodes[leafPos].TetrahedronIndex = ind;
-        mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glm::vec3(minX, minY, minZ), glm::vec3(maxX, maxY, maxZ));
+        mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glmVec3(minX, minY, minZ), glmVec3(maxX, maxY, maxZ));
     }
 }
 
@@ -212,8 +212,8 @@ void BVH::Init(int _numTets, int _numVerts, int maxThreads)
     numVerts = _numVerts;
     numNodes = numTets * 2 - 1;
     cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode));
-    cudaMalloc((void**)&dev_tI, numVerts * sizeof(float));
-    cudaMemset(dev_tI, 0, numVerts * sizeof(float));
+    cudaMalloc((void**)&dev_tI, numVerts * sizeof(dataType));
+    cudaMemset(dev_tI, 0, numVerts * sizeof(dataType));
     cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
     cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
     cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));

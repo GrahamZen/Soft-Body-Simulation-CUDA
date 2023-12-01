@@ -8,8 +8,8 @@
 
 AABB computeBoundingBox(const thrust::device_ptr<glm::vec3>& begin, const thrust::device_ptr<glm::vec3>& end);
 
-__device__ AABB computeTetTrajBBox(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3,
-    const glm::vec3& v4, const glm::vec3& v5, const glm::vec3& v6, const glm::vec3& v7);
+__device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
+    const glmVec3& v4, const glmVec3& v5, const glmVec3& v6, const glmVec3& v7);
 
 __inline__ __device__ unsigned int expandBits(unsigned int v)
 {
@@ -31,4 +31,4 @@ __inline__ __device__ int getSign(int tmp)
 }
 
 
-__device__ void traverseTree(const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, int tetId, int* hitTetId, int& numHitTet);
+__device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const GLuint* tets, const glmVec3* Xs, const glmVec3* XTilts, int& hitTetId);

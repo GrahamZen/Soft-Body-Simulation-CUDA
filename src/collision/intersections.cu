@@ -20,43 +20,41 @@ __host__ __device__ inline unsigned int utilhash(unsigned int a) {
     return a;
 }
 
-// CHECKITOUT
-/**
- * Compute a point at parameter value `t` on ray `r`.
- * Falls slightly short so that it doesn't intersect the object it's hitting.
- */
-__host__ __device__ glm::vec3 getPointOnRay(Ray r, float t) {
-    return r.origin + (t - .0001f) * glm::normalize(r.direction);
-}
-
 /**
  * Multiplies a mat4 and a vec4 and returns a vec3 clipped from the vec4.
  */
-__host__ __device__ glm::vec3 multiplyMV(glm::mat4 m, glm::vec4 v) {
-    return glm::vec3(m * v);
+__host__ __device__ glmVec3 multiplyMV(glmMat4 m, glmVec4 v) {
+    return glmVec3(m * v);
 }
 
-__host__ __device__ bool edgeBboxIntersectionTest(const glm::vec3& X0, const glm::vec3& XTilt, const AABB& bbox) {
-    glm::vec3 dir = XTilt - X0;
-    glm::vec3 invDir = 1.0f / dir;
-    glm::vec3 t0s = (bbox.min - X0) * invDir;
-    glm::vec3 t1s = (bbox.max - X0) * invDir;
-    glm::vec3 tmin = glm::min(t0s, t1s);
-    glm::vec3 tmax = glm::max(t0s, t1s);
+__host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilt, const AABB& bbox) {
+    const dataType eps = glm::epsilon<dataType>();
+    glmVec3 d = XTilt - X0;
+    glmVec3 ood = 1.0 / d;
+    dataType tmin = 0.0;
+    dataType tmax = 1.0;
+#pragma unroll
+    for (int i = 0; i < 3; i++) {
+        if (glm::abs<dataType>(d[i]) < eps) {
+            if (X0[i] < bbox.min[i] || X0[i] > bbox.max[i]) return false;
+        }
+        else {
+            dataType t1 = (bbox.min[i] - X0[i]) * ood[i];
+            dataType t2 = (bbox.max[i] - X0[i]) * ood[i];
+            if (t1 > t2) std::swap(t1, t2);
 
-    float tminMax = glm::max(glm::max(tmin.x, tmin.y), tmin.z);
-    float tmaxMin = glm::min(glm::min(tmax.x, tmax.y), tmax.z);
+            tmin = glm::max(tmin, t1);
+            tmax = glm::min(tmax, t2);
 
-    bool inside =
-        glm::all(glm::greaterThanEqual(X0, bbox.min)) && glm::all(glm::lessThanEqual(X0, bbox.max)) &&
-        glm::all(glm::greaterThanEqual(XTilt, bbox.min)) && glm::all(glm::lessThanEqual(XTilt, bbox.max));
-
-    return (tminMax <= tmaxMin && tmaxMin >= 0.0f) || inside;
+            if (tmin > tmax) return false;
+        }
+    }
+    return true;
 }
 
 template<typename T>
 __host__ __device__ int solveQuadratic(T a, T b, T c, T* x) {
-    // http://en.wikipedia.org/wiki/Quadratic_formula#Floating_point_implementation
+    // http://en.wikipedia.org/wiki/Quadratic_formula#dataTypeing_point_implementation
     T d = b * b - 4 * a * c;
     if (d < 0) {
         x[0] = -b / (2 * a);
@@ -138,9 +136,9 @@ __host__ __device__ T solveCubicRange01(T a, T b, T c, T d, T* x) {
     return j;
 }
 
-__host__ __device__ float solveCubicMinGtZero(float a, float b, float c, float d, float defaultVal = -1.0f) {
+__host__ __device__ dataType solveCubicMinGtZero(dataType a, dataType b, dataType c, dataType d, dataType defaultVal) {
     double roots[3];
-    float minRoot = FLT_MAX;
+    dataType minRoot = FLT_MAX;
     int numRoots = solveCubic<double>((double)a, (double)b, (double)c, (double)d, roots);
     for (int i = 0; i < numRoots; i++) {
         if (roots[i] > 0.0 && roots[i] < 1.0) {
@@ -153,88 +151,50 @@ __host__ __device__ float solveCubicMinGtZero(float a, float b, float c, float d
     return minRoot;
 }
 
-__host__ __device__ bool ccdTriangleIntersectionPreTest(const glm::vec3& x0, const glm::vec3& xTilt0,
-    const glm::vec3& x1, const glm::vec3& xTilt1,
-    const glm::vec3& x2, const glm::vec3& xTilt2,
-    const glm::vec3& x3, const glm::vec3& xTilt3,
-    const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3)
-{
-    glm::vec3 n0 = glm::cross(x2 - x1, x3 - x1);
-    glm::vec3 n1 = glm::cross(xTilt2 - xTilt1, xTilt3 - xTilt1);
-    glm::vec3 term = glm::cross(v2 - v1, v3 - v1);
-    glm::vec3 nhat = (n0 + n1 - term) * 0.5f;
-    float A = glm::dot(x0 - x1, n0);
-    float B = glm::dot(xTilt0 - xTilt1, n1);
-    float C = glm::dot(x0 - x1, nhat);
-    float D = glm::dot(xTilt0 - xTilt1, nhat);
-    float E = glm::dot(x0 - x1, n1);
-    float F = glm::dot(xTilt0 - xTilt1, n0);
-    bool NonCoplanar = false;
-    if (A * B > 0.0f && A * (2.0f * C + F) > 0.0f && A * (2.0f * D + E) > 0.0f) {
-        NonCoplanar = true;
-    }
-    return NonCoplanar;
+__host__ __device__ dataType stp(const glmVec3& u, const glmVec3& v, const glmVec3& w) { return glm::dot(u, glm::cross(v, w)); }
+__host__ __device__ dataType norm(const glmVec3& x) {
+    return glm::sqrt(glm::dot(x, x));
+}
+__host__ __device__ dataType ccdTriangleIntersectionTest(const glmVec3& x0, const glmVec3& v0,
+    const glmVec3& x1, const glmVec3& x2, const glmVec3& x3, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3) {
+    glmVec3 x01 = x1 - x0;
+    glmVec3 x02 = x2 - x0;
+    glmVec3 x03 = x3 - x0;
+    glmVec3 v01 = v1 - v0;
+    glmVec3 v02 = v2 - v0;
+    glmVec3 v03 = v3 - v0;
+    dataType a0 = stp(x01, x02, x03);
+    dataType a1 = stp(v01, x02, x03) + stp(x01, v02, x03) + stp(x01, x02, v03);
+    dataType a2 = stp(x01, v02, v03) + stp(v01, x02, v03) + stp(v01, v02, x03);
+    dataType a3 = stp(v01, v02, v03);
+    if (abs(a0) < 1e-6 * norm(x01) * norm(x02) * norm(x03))
+        return 1.0; // initially coplanar
+    return solveCubicMinGtZero(a3, a2, a1, a0);
 }
 
-// triangle intersection test
-// x1, x2, x3 are the vertices of the triangle, x0 is the point
-// v1, v2, v3 are the velocities of the vertices of the triangle, v0 is the velocity of the point
-// return the time of intersection, FLT_MAX if no intersection
-__host__ __device__ float ccdTriangleIntersectionTest(const glm::vec3& x0, const glm::vec3& v0,
-    const glm::vec3& x1, const glm::vec3& x2, const glm::vec3& x3, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3) {
-    const glm::vec3 x01 = x0 - x1;
-    const glm::vec3 x21 = x2 - x1;
-    const glm::vec3 x31 = x3 - x1;
-    const glm::vec3 v01 = v0 - v1;
-    const glm::vec3 v21 = v2 - v1;
-    const glm::vec3 v31 = v3 - v1;
-    float a = glm::dot(v01, glm::cross(v21, v31));
-    float b = glm::dot(x01, glm::cross(v21, v31)) + glm::dot(v01, glm::cross(v21, x31)) + glm::dot(v01, glm::cross(x21, v31));
-    float c = glm::dot(x01, glm::cross(v21, x31)) + glm::dot(x01, glm::cross(x21, v31)) + glm::dot(v01, glm::cross(x21, x31));
-    float d = glm::dot(x01, glm::cross(x21, x31));
-    return solveCubicMinGtZero(a, b, c, d);
-}
+__host__ __device__ dataType tetrahedronTrajIntersectionTest(const GLuint* tets, const glmVec3& X0, const glmVec3& XTilt, const glm::vec3* Xs, const glm::vec3* XTilts, GLuint tetId) {
+    const glmVec3& V0 = XTilt - X0;
 
-__host__ __device__ float tetrahedronTrajIntersectionTest(const glm::vec3& X0, const glm::vec3& XTilt, const glm::vec3* Xs, const glm::vec3* XTilts, GLuint tetId) {
-    const glm::vec3& V0 = XTilt - X0;
+    const glmVec3& x0 = Xs[tets[tetId * 4 + 0]];
+    const glmVec3& x1 = Xs[tets[tetId * 4 + 1]];
+    const glmVec3& x2 = Xs[tets[tetId * 4 + 2]];
+    const glmVec3& x3 = Xs[tets[tetId * 4 + 3]];
 
-    const glm::vec3& x0 = Xs[tetId * 4 + 0];
-    const glm::vec3& x1 = Xs[tetId * 4 + 1];
-    const glm::vec3& x2 = Xs[tetId * 4 + 2];
-    const glm::vec3& x3 = Xs[tetId * 4 + 3];
+    const glmVec3& xTilt0 = XTilts[tets[tetId * 4 + 0]];
+    const glmVec3& xTilt1 = XTilts[tets[tetId * 4 + 1]];
+    const glmVec3& xTilt2 = XTilts[tets[tetId * 4 + 2]];
+    const glmVec3& xTilt3 = XTilts[tets[tetId * 4 + 3]];
 
-    const glm::vec3& xTilt0 = XTilts[tetId * 4 + 0];
-    const glm::vec3& xTilt1 = XTilts[tetId * 4 + 1];
-    const glm::vec3& xTilt2 = XTilts[tetId * 4 + 2];
-    const glm::vec3& xTilt3 = XTilts[tetId * 4 + 3];
-
-    const glm::vec3 v0 = xTilt0 - x0;
-    const glm::vec3 v1 = xTilt1 - x1;
-    const glm::vec3 v2 = xTilt2 - x2;
-    const glm::vec3 v3 = xTilt3 - x3;
-
-    // check if the current point is one of the vertices of the tetrahedron, if so, there is no intersection
-    // check both the original and the tilted vertices, use epsilon to avoid floating point error
-    if ((glm::all(glm::equal(X0, x0)) && glm::all(glm::equal(XTilt, xTilt0))) ||
-        glm::all(glm::equal(X0, x1)) && glm::all(glm::equal(XTilt, xTilt1)) ||
-        glm::all(glm::equal(X0, x2)) && glm::all(glm::equal(XTilt, xTilt2)) ||
-        glm::all(glm::equal(X0, x3)) && glm::all(glm::equal(XTilt, xTilt3))) {
-        return -1.0f;
-    }
-    float t = FLT_MAX;
+    const glmVec3 v0 = xTilt0 - x0;
+    const glmVec3 v1 = xTilt1 - x1;
+    const glmVec3 v2 = xTilt2 - x2;
+    const glmVec3 v3 = xTilt3 - x3;
+    dataType t = 1.f;
     // pre-test to check if the point is in the same plane as the triangle
-    if (ccdTriangleIntersectionPreTest(x0, xTilt0, x1, xTilt1, x2, xTilt2, x3, xTilt3, v0, v1, v2, v3)) {
         // check if the trajectory intersects with the triangle formed by the first three vertices
-        t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x0, x1, x2, v0, v1, v2));
-    }
-    if (ccdTriangleIntersectionPreTest(x0, xTilt0, x1, xTilt1, x3, xTilt3, x2, xTilt2, v0, v1, v3, v2)) {
-        t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x0, x1, x3, v0, v1, v3));
-    }
-    if (ccdTriangleIntersectionPreTest(x0, xTilt0, x2, xTilt2, x3, xTilt3, x1, xTilt1, v0, v2, v3, v1)) {
-        t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x0, x2, x3, v0, v2, v3));
-    }
-    if (ccdTriangleIntersectionPreTest(x1, xTilt1, x2, xTilt2, x3, xTilt3, x0, xTilt0, v1, v2, v3, v0)) {
-        t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x1, x2, x3, v1, v2, v3));
-    }
+    t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x0, x1, x2, v0, v1, v2));
+    t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x0, x1, x3, v0, v1, v3));
+    t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x0, x2, x3, v0, v2, v3));
+    t = glm::min(t, ccdTriangleIntersectionTest(X0, V0, x1, x2, x3, v1, v2, v3));
     return t;
 }

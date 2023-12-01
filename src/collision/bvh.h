@@ -6,6 +6,14 @@
 
 class SoftBody;
 
+using dataType = double;
+using glmVec4 = glm::tvec4<dataType>;
+using glmVec3 = glm::tvec3<dataType>;
+using glmVec2 = glm::tvec2<dataType>;
+using glmMat4 = glm::tmat4x4<dataType>;
+using glmMat3 = glm::tmat3x3<dataType>;
+using glmMat2 = glm::tmat2x2<dataType>;
+
 struct AABB {
     glm::vec3 min = glm::vec3{ FLT_MAX };
     glm::vec3 max = glm::vec3{ -FLT_MAX };
@@ -22,11 +30,12 @@ struct BVHNode {
 
 class BVH : public Wireframe {
 public:
+
     BVH(const int threadsPerBlock);
     ~BVH();
     void Init(int numTets, int numVerts, int maxThreads);
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
-    float* DetectCollisionCandidates(const GLuint* edges, const glm::vec3* Xs, const glm::vec3* XTilts) const;
+    dataType* DetectCollisionCandidates(const GLuint* edges, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts) const;
     void PrepareRenderData();
 private:
     void BuildBBoxes();
@@ -38,7 +47,8 @@ private:
     int numNodes;
     int numTets;
     int numVerts;
-    float* dev_tI;
+    int numEdges;
+    dataType* dev_tI;
     int* dev_indicesToReport;
     const int threadsPerBlock;
     dim3 numblocks;

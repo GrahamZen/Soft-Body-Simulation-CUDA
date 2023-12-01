@@ -8,10 +8,10 @@
 #include <cuda_runtime.h>
 #include <utilities.cuh>
 
-__device__ AABB computeTetTrajBBox(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3,
-    const glm::vec3& v4, const glm::vec3& v5, const glm::vec3& v6, const glm::vec3& v7)
+__device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
+    const glmVec3& v4, const glmVec3& v5, const glmVec3& v6, const glmVec3& v7)
 {
-    glm::vec3 min, max;
+    glmVec3 min, max;
     min.x = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.x, v1.x), v2.x), v3.x), v4.x), v5.x), v6.x), v7.x);
     min.y = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.y, v1.y), v2.y), v3.y), v4.y), v5.y), v6.y), v7.y);
     min.z = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.z, v1.z), v2.z), v3.z), v4.z), v5.z), v6.z), v7.z);
@@ -50,21 +50,22 @@ AABB AABB::expand(const AABB& aabb)const {
     };
 }
 
-bool isCollision(const glm::vec3& v, const AABB& box, float threshold = EPSILON) {
+bool isCollision(const glm::vec3& v, const AABB& box, dataType threshold = EPSILON) {
     glm::vec3 nearestPoint;
     nearestPoint.x = std::max(box.min.x, std::min(v.x, box.max.x));
     nearestPoint.y = std::max(box.min.y, std::min(v.y, box.max.y));
     nearestPoint.z = std::max(box.min.z, std::min(v.z, box.max.z));
-    glm::vec3 diff = v - nearestPoint;
-    float distanceSquared = glm::dot(diff, diff);
+    glmVec3 diff = v - nearestPoint;
+    dataType distanceSquared = glm::dot(diff, diff);
     return distanceSquared <= threshold;
 }
 
-__device__ float traverseTree(const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, glm::vec3 X0, glm::vec3 XTilt, int& hitTetId)
+__device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, int& hitTetId)
 {
     // record the closest intersection
-    float closest = FLT_MAX;
-
+    dataType closest = 1;
+    const glmVec3 x0 = Xs[vertIdx];
+    const glmVec3 xTilt = XTilts[vertIdx];
     int bvhStart = 0;
     int stack[64];
     int stackPtr = 0;
@@ -79,18 +80,21 @@ __device__ float traverseTree(const BVHNode* nodes, const glm::vec3* Xs, const g
         BVHNode leftChild = nodes[currentNode.leftIndex + bvhStart];
         BVHNode rightChild = nodes[currentNode.rightIndex + bvhStart];
 
-        bool hitLeft = edgeBboxIntersectionTest(X0, XTilt, leftChild.bbox);
-        bool hitRight = edgeBboxIntersectionTest(X0, XTilt, rightChild.bbox);
+        bool hitLeft = edgeBboxIntersectionTest(x0, xTilt, leftChild.bbox);
+        bool hitRight = edgeBboxIntersectionTest(x0, xTilt, rightChild.bbox);
         if (hitLeft)
         {
             // check triangle intersection
             if (leftChild.isLeaf == 1)
             {
-                float distance = tetrahedronTrajIntersectionTest(X0, XTilt, Xs, XTilts, leftChild.TetrahedronIndex);
-                if (distance < closest)
-                {
-                    hitTetId = leftChild.TetrahedronIndex;
-                    closest = distance;
+                if (tets[leftChild.TetrahedronIndex * 4 + 0] != vertIdx && tets[leftChild.TetrahedronIndex * 4 + 1] != vertIdx &&
+                    tets[leftChild.TetrahedronIndex * 4 + 2] != vertIdx && tets[leftChild.TetrahedronIndex * 4 + 3] != vertIdx) {
+                    dataType distance = tetrahedronTrajIntersectionTest(tets, x0, xTilt, Xs, XTilts, leftChild.TetrahedronIndex);
+                    if (distance < closest)
+                    {
+                        hitTetId = leftChild.TetrahedronIndex;
+                        closest = distance;
+                    }
                 }
             }
             else
@@ -104,11 +108,14 @@ __device__ float traverseTree(const BVHNode* nodes, const glm::vec3* Xs, const g
             // check triangle intersection
             if (rightChild.isLeaf == 1)
             {
-                float distance = tetrahedronTrajIntersectionTest(X0, XTilt, Xs, XTilts, rightChild.TetrahedronIndex);
-                if (distance < closest)
-                {
-                    hitTetId = rightChild.TetrahedronIndex;
-                    closest = distance;
+                if (tets[rightChild.TetrahedronIndex * 4 + 0] != vertIdx && tets[rightChild.TetrahedronIndex * 4 + 1] != vertIdx &&
+                    tets[rightChild.TetrahedronIndex * 4 + 2] != vertIdx && tets[rightChild.TetrahedronIndex * 4 + 3] != vertIdx) {
+                    dataType distance = tetrahedronTrajIntersectionTest(tets, x0, xTilt, Xs, XTilts, rightChild.TetrahedronIndex);
+                    if (distance < closest)
+                    {
+                        hitTetId = rightChild.TetrahedronIndex;
+                        closest = distance;
+                    }
                 }
             }
             else
@@ -122,30 +129,20 @@ __device__ float traverseTree(const BVHNode* nodes, const glm::vec3* Xs, const g
 }
 
 
-__global__ void detectCollisionCandidatesKern(int numVerts, const BVHNode* nodes, const glm::vec3* Xs, const glm::vec3* XTilts, float* tI)
+__global__ void detectCollisionCandidatesKern(int numVerts, const BVHNode* nodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numVerts)
     {
         int hitTetId = -1;
-        const glm::vec3& X = Xs[index];
-        const glm::vec3& XTilt = XTilts[index];
-        float distance = traverseTree(nodes, Xs, XTilts, X, XTilt, hitTetId);
-        if (distance != -1)
-        {
-            tI[index] = distance;
-        }
-        else {
-            tI[index] = 1;
-        }
+        tI[index] = traverseTree(index, nodes, tets, Xs, XTilts, hitTetId);
     }
 }
 
-float* BVH::DetectCollisionCandidates(const GLuint* edges, const glm::vec3* Xs, const glm::vec3* XTilts) const
+dataType* BVH::DetectCollisionCandidates(const GLuint* edges, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts) const
 {
-    int blockSize1d = 128;
-    dim3 numblocks = (numVerts + blockSize1d - 1) / blockSize1d;
-    detectCollisionCandidatesKern << <numblocks, blockSize1d >> > (numVerts, dev_BVHNodes, Xs, XTilts, dev_tI);
+    dim3 numblocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    detectCollisionCandidatesKern << <numblocks, threadsPerBlock >> > (numVerts, dev_BVHNodes, tets, Xs, XTilts, dev_tI);
     return dev_tI;
 }
 

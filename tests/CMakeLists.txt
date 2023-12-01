@@ -15,6 +15,8 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     SET_PROPERTY(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
+find_package(CUDAToolkit REQUIRED)
+
 ########################################
 # Catch2 Setup
 ########################################
@@ -33,6 +35,7 @@ FetchContent_MakeAvailable(Catch2)
 # Catch2 Tests
 ########################################
 file(GLOB_RECURSE TEST_SOURCES "./*.cpp")
-add_executable(tests ${TEST_SOURCES})
-target_link_libraries(tests PUBLIC Catch2::Catch2)
+add_executable(tests ${TEST_SOURCES} ${CMAKE_SOURCE_DIR}/src/collision/intersections.cu)
+target_include_directories(tests PUBLIC ${CMAKE_SOURCE_DIR}/src/collision/intersections)
+target_link_libraries(tests PUBLIC CUDA::cudart Catch2::Catch2)
 ########################################

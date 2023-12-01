@@ -136,6 +136,9 @@ SimulationCUDAContext* Context::LoadSimContext() {
     fileStream >> json;
     fileStream.close();
     int threadsPerBlock = 128, threadsPerBlockBVH = threadsPerBlock;
+    if (json.contains("pause")) {
+        pause = json["pause"].get<bool>();
+    }
     if (json.contains("external force")) {
         auto& externalForceJson = json["external force"];
         if (externalForceJson.contains("jump")) {
@@ -179,7 +182,7 @@ void Context::InitDataContainer() {
     guiData->cameraLookAt = ogLookAt;
     guiData->zoom = zoom;
     guiData->Dt = mcrpSimContext->GetDt();
-    guiData->Pause = pause;
+    guiData->Pause = false;
     guiData->UseEigen = mcrpSimContext->IsEigenGlobalSolver();
     guiData->softBodyAttr.currSoftBodyId = 0;
     guiData->currSimContextId = 0;

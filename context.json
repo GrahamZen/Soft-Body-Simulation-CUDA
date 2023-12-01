@@ -1,5 +1,5 @@
 {
-    "pause": false,
+    "pause": true,
     "threads per block": 128,
     "threads per block(bvh)": 128,
     "default camera": {
@@ -48,7 +48,6 @@
             "name": "bunny",
             "nodeFile": "../assets/bunny/bunny.1.node",
             "eleFile": "../assets/bunny/bunny.1.ele",
-            "jump": true,
             "mass": 10.0,
             "stiffness_0": 20000.0,
             "stiffness_1": 5000.0,
@@ -56,6 +55,34 @@
             "pos": [ 0.0, 25.0, 25.0 ],
             "rot": [ 0.0, 180.0, 0.0 ],
             "scale": [ 25, 25, 25 ],
+            "centralize": false,
+            "start index": 1
+          },
+          {
+            "name": "cube",
+            "nodeFile": "../assets/cube/cube.1.node",
+            "eleFile": "../assets/cube/cube.1.ele",
+            "mass": 10.0,
+            "stiffness_0": 20000.0,
+            "stiffness_1": 5000.0,
+            "constraints": 0,
+            "pos": [ 0.0, 10.0, 25.0 ],
+            "rot": [ 0.0, 0.0, 0.0 ],
+            "scale": [ 4, 4, 4 ],
+            "centralize": false,
+            "start index": 1
+          },
+          {
+            "name": "tet",
+            "nodeFile": "../assets/tet/tet.node",
+            "eleFile": "../assets/tet/tet.ele",
+            "mass": 10.0,
+            "stiffness_0": 20000.0,
+            "stiffness_1": 5000.0,
+            "constraints": 0,
+            "pos": [ 0.0, 10.0, 25.0 ],
+            "rot": [ 0.0, 0.0, 0.0 ],
+            "scale": [ 4, 4, 4 ],
             "centralize": false,
             "start index": 1
           }
@@ -71,67 +98,12 @@
             "muT": 0.5,
             "softBodies": [
                 {
-                    "name": "house1"
+                    "name": "tet",
+                    "pos": [ 0.0, 50.0, 0.0 ]
                 },
                 {
-                    "name": "house1",
-                    "pos": [ 25.0, 25.0, 25.0 ],
-                    "scale": [ 3.0, 3.0, 3.0 ]
-                },
-                {
-                    "name": "house1",
-                    "pos": [ -25.0, 25.0, 25.0 ]
-                },
-                {
-                    "name": "house1",
-                    "pos": [ -25.0, 25.0, -25.0 ]
-                },
-                {
-                    "name": "house1",
-                    "pos": [ -25.0, 25.0, -25.0 ]
-                },
-                {
-                    "name": "house1",
-                    "pos": [ 25.0, 25.0, -25.0 ]
-                }
-            ]
-        },
-        {
-            "name": "house & 3 bunnies",
-            "load": true,
-            "dt": 0.1,
-            "gravity": 2000,
-            "damp": 0.999,
-            "muN": 0.5,
-            "muT": 0.5,
-            "softBodies": [
-                {
-                    "name": "house1"
-                },
-                {
-                    "name": "bunny"
-                },
-                {
-                    "name": "bunny",
-                    "pos": [ 25.0, 25.0, 25.0 ]
-                },
-                {
-                    "name": "bunny",
-                    "pos": [ -25.0, 25.0, 25.0 ]
-                }
-            ]
-        },
-        {
-            "name": "armadillo0 only",
-            "load": true,
-            "dt": 0.1,
-            "gravity": 980,
-            "damp": 0.999,
-            "muN": 0.5,
-            "muT": 0.5,
-            "softBodies": [
-                {
-                    "name": "armadillo0"
+                    "name": "tet",
+                    "pos": [ 0.0, 25.0, 0.0 ]
                 }
             ]
         }
