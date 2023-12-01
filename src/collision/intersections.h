@@ -20,6 +20,4 @@ __host__ __device__ glm::vec3 getPointOnRay(Ray r, float t);
  */
 __host__ __device__ glm::vec3 multiplyMV(glm::mat4 m, glm::vec4 v);
 __host__ __device__ bool edgeBboxIntersectionTest(const glm::vec3& X0, const glm::vec3& XTilt, const AABB& bbox);
-__host__ __device__ bool isPointInParallelogram(const glm::vec3& p, const glm::vec3& a, const glm::vec3& b, const glm::vec3& aTilt, const glm::vec3& bTilt);
-__host__ __device__ void lineParallelogramIntersection(const glm::vec3& X0, const glm::vec3& XTilt, const glm::vec3& a, const glm::vec3& b, const glm::vec3& aTilt, const glm::vec3& bTilt, float& minT);
 __host__ __device__ float tetrahedronTrajIntersectionTest(const glm::vec3& X0, const glm::vec3& XTilt, const glm::vec3* Xs, const glm::vec3* XTilts, GLuint tetId);

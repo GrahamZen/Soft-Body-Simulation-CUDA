@@ -110,7 +110,13 @@ include_directories(
     ${GLEW_INCLUDE_DIR} 
     ${GLFW_INCLUDE_DIR})
 
-
+########################################
+# Catch2 Tests
+########################################
+include(CTest)
+enable_testing()
+add_subdirectory(tests)
+########################################
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES} ${IMGUI_SOURCES})
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui" "${EXTERNAL}/svd3_cuda")
 target_link_libraries(${CMAKE_PROJECT_NAME}

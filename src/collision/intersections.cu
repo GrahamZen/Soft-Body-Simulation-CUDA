@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtx/intersect.hpp>
+#include <glm/gtc/constants.hpp>
 
 #include <intersections.h>
 #include <utilities.h>
@@ -53,9 +54,103 @@ __host__ __device__ bool edgeBboxIntersectionTest(const glm::vec3& X0, const glm
     return (tminMax <= tmaxMin && tmaxMin >= 0.0f) || inside;
 }
 
+template<typename T>
+__host__ __device__ int solveQuadratic(T a, T b, T c, T* x) {
+    // http://en.wikipedia.org/wiki/Quadratic_formula#Floating_point_implementation
+    T d = b * b - 4 * a * c;
+    if (d < 0) {
+        x[0] = -b / (2 * a);
+        return 0;
+    }
+    T q = -(b + glm::sign(b) * sqrt(d)) / 2;
+    int i = 0;
+    if (abs(a) > 1e-12 * abs(q))
+        x[i++] = q / a;
+    if (abs(q) > 1e-12 * abs(c))
+        x[i++] = c / q;
+    if (i == 2 && x[0] > x[1]) {
+        T tmp = x[0];
+        x[0] = x[1];
+        x[1] = tmp;
+    }
+    return i;
+}
 
-__host__ __device__ float solveCubic(float a, float b, float c, float d) {
-    return 0.f;
+template<typename T>
+__host__ __device__ int solveCubic(T a, T b, T c, T d, T* x) {
+    T xc[2];
+    int ncrit = solveQuadratic(3 * a, 2 * b, c, xc);
+    if (ncrit == 0) {
+        x[0] = newtonsMethod(a, b, c, d, xc[0], 0);
+        return 1;
+    }
+    else if (ncrit == 1) {// cubic is actually quadratic
+        return solveQuadratic(b, c, d, x);
+    }
+    else {
+        T yc[2] = { d + xc[0] * (c + xc[0] * (b + xc[0] * a)),
+                        d + xc[1] * (c + xc[1] * (b + xc[1] * a)) };
+        int i = 0;
+        if (yc[0] * a >= 0)
+            x[i++] = newtonsMethod(a, b, c, d, xc[0], -1);
+        if (yc[0] * yc[1] <= 0) {
+            int closer = abs(yc[0]) < abs(yc[1]) ? 0 : 1;
+            x[i++] = newtonsMethod(a, b, c, d, xc[closer], closer == 0 ? 1 : -1);
+        }
+        if (yc[1] * a <= 0)
+            x[i++] = newtonsMethod(a, b, c, d, xc[1], 1);
+        return i;
+    }
+}
+
+template<typename T>
+__host__ __device__ T newtonsMethod(T a, T b, T c, T d, T x0,
+    int init_dir) {
+    if (init_dir != 0) {
+        // quadratic approximation around x0, assuming y' = 0
+        T y0 = d + x0 * (c + x0 * (b + x0 * a)),
+            ddy0 = 2 * b + x0 * (6 * a);
+        x0 += init_dir * sqrt(abs(2 * y0 / ddy0));
+    }
+    for (int iter = 0; iter < 100; iter++) {
+        T y = d + x0 * (c + x0 * (b + x0 * a));
+        T dy = c + x0 * (2 * b + x0 * 3 * a);
+        if (dy == 0)
+            return x0;
+        T x1 = x0 - y / dy;
+        if (abs(x0 - x1) < 1e-6)
+            return x0;
+        x0 = x1;
+    }
+    return x0;
+}
+
+template<typename T>
+__host__ __device__ T solveCubicRange01(T a, T b, T c, T d, T* x) {
+    T roots[3];
+    int j = 0;
+    int numRoots = solveCubic(a, b, c, d, roots);
+    for (int i = 0; i < numRoots; i++) {
+        if (roots[i] >= 0 && roots[i] <= 1) {
+            x[j++] = roots[i];
+        }
+    }
+    return j;
+}
+
+__host__ __device__ float solveCubicMinGtZero(float a, float b, float c, float d, float defaultVal = -1.0f) {
+    double roots[3];
+    float minRoot = FLT_MAX;
+    int numRoots = solveCubic<double>((double)a, (double)b, (double)c, (double)d, roots);
+    for (int i = 0; i < numRoots; i++) {
+        if (roots[i] > 0.0 && roots[i] < 1.0) {
+            minRoot = glm::min((double)minRoot, roots[i]);
+        }
+    }
+    if (minRoot == FLT_MAX) {
+        return defaultVal;
+    }
+    return minRoot;
 }
 
 __host__ __device__ bool ccdTriangleIntersectionPreTest(const glm::vec3& x0, const glm::vec3& xTilt0,
@@ -97,11 +192,7 @@ __host__ __device__ float ccdTriangleIntersectionTest(const glm::vec3& x0, const
     float b = glm::dot(x01, glm::cross(v21, v31)) + glm::dot(v01, glm::cross(v21, x31)) + glm::dot(v01, glm::cross(x21, v31));
     float c = glm::dot(x01, glm::cross(v21, x31)) + glm::dot(x01, glm::cross(x21, v31)) + glm::dot(v01, glm::cross(x21, x31));
     float d = glm::dot(x01, glm::cross(x21, x31));
-    float t = solveCubic(a, b, c, d);
-    if (t < 0.0f || t > 1.0f) {
-        return FLT_MAX;
-    }
-    return t;
+    return solveCubicMinGtZero(a, b, c, d);
 }
 
 __host__ __device__ float tetrahedronTrajIntersectionTest(const glm::vec3& X0, const glm::vec3& XTilt, const glm::vec3* Xs, const glm::vec3* XTilts, GLuint tetId) {
