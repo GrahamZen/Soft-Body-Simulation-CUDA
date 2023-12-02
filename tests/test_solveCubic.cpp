@@ -197,7 +197,7 @@ TEST_CASE("Tet collision test", "[Tet]")
         << "ly2 = " << XTilt.y
         << std::endl
         << "lz2 = " << XTilt.z << std::endl;
-
-    dataType t = tetrahedronTrajIntersectionTest(tets.data(), X0, XTilt, Xs.data(), XTilts.data(), tetId);
+    glm::vec3 nor;
+    dataType t = tetrahedronTrajIntersectionTest(tets.data(), X0, XTilt, Xs.data(), XTilts.data(), tetId, nor);
     REQUIRE(t < 1.0f);
 }

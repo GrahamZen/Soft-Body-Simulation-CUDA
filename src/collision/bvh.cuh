@@ -29,6 +29,3 @@ __inline__ __device__ int getSign(int tmp)
         return -1;
     //return (tmp > 0) - (tmp < 0);
 }
-
-
-__device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const GLuint* tets, const glmVec3* Xs, const glmVec3* XTilts, int& hitTetId);

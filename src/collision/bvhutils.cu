@@ -235,6 +235,14 @@ void BVH::Init(int _numTets, int _numVerts, int maxThreads)
     }
     numblocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
     suggestedCGNumblocks = (numTets + suggestedBlocksize - 1) / suggestedBlocksize;
+
+
+    cudaMalloc(&deviceQueries, maxQueries * sizeof(Query));
+
+    cudaMalloc(&deviceQueryCount, sizeof(int));
+    cudaMemset(deviceQueryCount, 0, sizeof(int));
+
+    cudaMalloc(&deviceOverflowFlag, sizeof(bool));
 }
 
 void BVH::BuildBBoxes() {

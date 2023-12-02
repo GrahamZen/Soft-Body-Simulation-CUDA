@@ -13,6 +13,7 @@ void checkCUDAErrorFn(const char* msg, const char* file, int line);
 #define _sstar 0.3826834323 // sin(p/8)
 
 class BVHNode;
+class Query;
 template <typename T>
 void inspectGLM(T* dev_ptr, int size) {
     std::vector<T> host_ptr(size);
@@ -23,6 +24,7 @@ void inspectGLM(T* dev_ptr, int size) {
 void inspectMortonCodes(int* dev_mortonCodes, int numTets);
 void inspectBVHNode(BVHNode* dev_BVHNodes, int numTets);
 void inspectBVH(AABB* dev_aabbs, int size);
+void inspectQuerys(Query* dev_query, int size);
 
 template <typename T1, typename T2>
 bool compareDevVSHost(const T1* dev_ptr, const T2* host_ptr2, int size) {

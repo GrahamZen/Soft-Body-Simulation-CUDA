@@ -36,6 +36,7 @@ SimulationCUDAContext::~SimulationCUDAContext()
     for (auto softbody : softBodies) {
         delete softbody;
     }
+    cudaFree(dev_Normals);
 }
 
 AABB SimulationCUDAContext::GetAABB() const
@@ -138,12 +139,13 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
 
 void SimulationCUDAContext::CCD()
 {
-    dataType* tIs = m_bvh.DetectCollisionCandidates(dev_Edges, dev_Tets, dev_Xs, dev_XTilts);
+    dataType* tIs = m_bvh.DetectCollisionCandidates(dev_Edges, dev_Tets, dev_Xs, dev_XTilts, dev_Normals);
     // inspectGLM(dev_Xs, numVerts);
     // inspectGLM(dev_XTilts, numVerts);
     // inspectGLM(tIs, numVerts);
     int blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, tIs, numVerts);
+    //CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, tIs, numVerts);
+    cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
 }
 
 void SimulationCUDAContext::Update()
@@ -153,6 +155,7 @@ void SimulationCUDAContext::Update()
     }
     if (context->guiData->handleCollision)
         m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
+    inspectGLM(dev_Vs, numVerts);
     HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_XTilts, dev_Vs, numVerts, glm::vec3(0.f, floorY, 0.f), floorUp, muT, muN);
     if (context->guiData->handleCollision)
         CCD();

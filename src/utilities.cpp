@@ -181,6 +181,17 @@ void inspectHost(const AABB* aabb, int size) {
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
+void inspectHost(const Query* query, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+    for (int i = 0; i < size; i++) {
+        if (query->type == QueryType::EE)
+            std::cout << "EE:" << query->v0 << "," << query->v1 << "," << query->v2 << "," << query->v3 << std::endl;
+        if (query->type == QueryType::VF)
+            std::cout << "VF:" << query->v0 << "," << query->v1 << "," << query->v2 << "," << query->v3 << std::endl;
+    }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
+}
+
 
 template <typename T>
 bool compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int size) {

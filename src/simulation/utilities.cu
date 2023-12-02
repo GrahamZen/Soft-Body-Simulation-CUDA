@@ -44,6 +44,13 @@ void inspectBVH(AABB* dev_aabbs, int size)
     inspectHost(hstAABB.data(), size);
 }
 
+void inspectQuerys(Query* dev_query, int size)
+{
+    std::vector<Query> hstAABB(size);
+    cudaMemcpy(hstAABB.data(), dev_query, sizeof(Query) * size, cudaMemcpyDeviceToHost);
+    inspectHost(hstAABB.data(), size);
+}
+
 __global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int numVerts)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;

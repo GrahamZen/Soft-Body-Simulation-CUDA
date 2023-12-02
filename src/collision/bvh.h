@@ -28,14 +28,26 @@ struct BVHNode {
     int TetrahedronIndex;
 };
 
+enum class QueryType {
+    VF,
+    EE
+};
+struct Query {
+    QueryType type;
+    GLuint v0;
+    GLuint v1;
+    GLuint v2;
+    GLuint v3;
+};
+
 class BVH : public Wireframe {
 public:
 
-    BVH(const int threadsPerBlock);
+    BVH(const int threadsPerBlock, int maxQueries);
     ~BVH();
     void Init(int numTets, int numVerts, int maxThreads);
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
-    dataType* DetectCollisionCandidates(const GLuint* edges, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts) const;
+    dataType* DetectCollisionCandidates(const GLuint* edges, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, glm::vec3* nors);
     void PrepareRenderData();
 private:
     void BuildBBoxes();
@@ -55,4 +67,9 @@ private:
     dim3 suggestedCGNumblocks;
     int suggestedBlocksize;
     bool isBuildBBCG = false;
+
+    Query* deviceQueries;
+    int* deviceQueryCount;
+    size_t maxQueries = 1<<15;
+    bool* deviceOverflowFlag;
 };

@@ -77,6 +77,7 @@ private:
     glm::vec3* dev_XTilts;
     glm::vec3* dev_Vs;
     glm::vec3* dev_Fs;
+    glm::vec3* dev_Normals;
     GLuint* dev_Tets;
     GLuint* dev_Edges;
     int numVerts = 0;

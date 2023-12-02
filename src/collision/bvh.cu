@@ -62,7 +62,7 @@ bool isCollision(const glm::vec3& v, const AABB& box, dataType threshold = EPSIL
     return distanceSquared <= threshold;
 }
 
-__device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, int& hitTetId)
+__device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, int& hitTetId, glm::vec3& nor)
 {
     // record the closest intersection
     dataType closest = 1;
@@ -91,7 +91,7 @@ __device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const GLuint
             {
                 if (tets[leftChild.TetrahedronIndex * 4 + 0] != vertIdx && tets[leftChild.TetrahedronIndex * 4 + 1] != vertIdx &&
                     tets[leftChild.TetrahedronIndex * 4 + 2] != vertIdx && tets[leftChild.TetrahedronIndex * 4 + 3] != vertIdx) {
-                    dataType distance = tetrahedronTrajIntersectionTest(tets, x0, xTilt, Xs, XTilts, leftChild.TetrahedronIndex);
+                    dataType distance = tetrahedronTrajIntersectionTest(tets, x0, xTilt, Xs, XTilts, leftChild.TetrahedronIndex, nor);
                     if (distance < closest)
                     {
                         hitTetId = leftChild.TetrahedronIndex;
@@ -112,7 +112,7 @@ __device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const GLuint
             {
                 if (tets[rightChild.TetrahedronIndex * 4 + 0] != vertIdx && tets[rightChild.TetrahedronIndex * 4 + 1] != vertIdx &&
                     tets[rightChild.TetrahedronIndex * 4 + 2] != vertIdx && tets[rightChild.TetrahedronIndex * 4 + 3] != vertIdx) {
-                    dataType distance = tetrahedronTrajIntersectionTest(tets, x0, xTilt, Xs, XTilts, rightChild.TetrahedronIndex);
+                    dataType distance = tetrahedronTrajIntersectionTest(tets, x0, xTilt, Xs, XTilts, rightChild.TetrahedronIndex, nor);
                     if (distance < closest)
                     {
                         hitTetId = rightChild.TetrahedronIndex;
@@ -130,21 +130,199 @@ __device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const GLuint
     return closest;
 }
 
+__constant__ int edgeIndicesTable[12] = {
+    0, 1, 0, 2, 0, 3, 1, 2, 1, 3, 2, 3
+};
+__device__ void fillQuery(Query* query, int tetId, int tet2Id, const GLuint* tets) {
+    for (int i = 0; i < 4; i++) {
+        query[i * 4].type = QueryType::VF;
+        query[i * 4].v0 = tets[tetId * 4 + i];
+        query[i * 4].v1 = tets[tet2Id * 4 + 0];
+        query[i * 4].v2 = tets[tet2Id * 4 + 1];
+        query[i * 4].v3 = tets[tet2Id * 4 + 2];
+        query[i * 4 + 1].type = QueryType::VF;
+        query[i * 4 + 1].v0 = tets[tetId * 4 + i];
+        query[i * 4 + 1].v1 = tets[tet2Id * 4 + 0];
+        query[i * 4 + 1].v2 = tets[tet2Id * 4 + 1];
+        query[i * 4 + 1].v3 = tets[tet2Id * 4 + 3];
+        query[i * 4 + 2].type = QueryType::VF;
+        query[i * 4 + 2].v0 = tets[tetId * 4 + i];
+        query[i * 4 + 2].v1 = tets[tet2Id * 4 + 0];
+        query[i * 4 + 2].v2 = tets[tet2Id * 4 + 1];
+        query[i * 4 + 2].v3 = tets[tet2Id * 4 + 3];
+        query[i * 4 + 3].type = QueryType::VF;
+        query[i * 4 + 3].v0 = tets[tetId * 4 + i];
+        query[i * 4 + 3].v1 = tets[tet2Id * 4 + 1];
+        query[i * 4 + 3].v2 = tets[tet2Id * 4 + 2];
+        query[i * 4 + 3].v3 = tets[tet2Id * 4 + 3];
+    }
+    for (int i = 0; i < 6; i++) {
+        int v0 = tets[tetId * 4 + edgeIndicesTable[i * 2 + 0]];
+        int v1 = tets[tetId * 4 + edgeIndicesTable[i * 2 + 1]];
+        query[i * 6 + 16].type = QueryType::EE;
+        query[i * 6 + 16].v0 = v0;
+        query[i * 6 + 16].v1 = v1;
+        query[i * 6 + 16].v2 = tets[tet2Id * 4 + 0];
+        query[i * 6 + 16].v3 = tets[tet2Id * 4 + 1];
+        query[i * 6 + 17].type = QueryType::EE;
+        query[i * 6 + 17].v0 = v0;
+        query[i * 6 + 17].v1 = v1;
+        query[i * 6 + 17].v2 = tets[tet2Id * 4 + 0];
+        query[i * 6 + 17].v3 = tets[tet2Id * 4 + 2];
+        query[i * 6 + 18].type = QueryType::EE;
+        query[i * 6 + 18].v0 = v0;
+        query[i * 6 + 18].v1 = v1;
+        query[i * 6 + 18].v2 = tets[tet2Id * 4 + 0];
+        query[i * 6 + 18].v3 = tets[tet2Id * 4 + 3];
+        query[i * 6 + 19].type = QueryType::EE;
+        query[i * 6 + 19].v0 = v0;
+        query[i * 6 + 19].v1 = v1;
+        query[i * 6 + 19].v2 = tets[tet2Id * 4 + 1];
+        query[i * 6 + 19].v3 = tets[tet2Id * 4 + 2];
+        query[i * 6 + 20].type = QueryType::EE;
+        query[i * 6 + 20].v0 = v0;
+        query[i * 6 + 20].v1 = v1;
+        query[i * 6 + 20].v2 = tets[tet2Id * 4 + 1];
+        query[i * 6 + 20].v3 = tets[tet2Id * 4 + 3];
+        query[i * 6 + 21].type = QueryType::EE;
+        query[i * 6 + 21].v0 = v0;
+        query[i * 6 + 21].v1 = v1;
+        query[i * 6 + 21].v2 = tets[tet2Id * 4 + 2];
+        query[i * 6 + 21].v3 = tets[tet2Id * 4 + 3];;
+    }
+}
 
-__global__ void detectCollisionCandidatesKern(int numVerts, const BVHNode* nodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI)
+
+__global__ void traverseTree(int numTets, const BVHNode* nodes, const GLuint* tets, Query* queries, int* queryCount, int maxQueries, bool* overflowFlag)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    int leafIdx = index + numTets - 1;
+    const BVHNode myNode = nodes[leafIdx];
+    // record the closest intersection
+    dataType closest = 1;
+    int bvhStart = 0;
+    int stack[64];
+    int stackPtr = 0;
+    int bvhPtr = bvhStart;
+    stack[stackPtr++] = bvhStart;
+
+    while (stackPtr)
+    {
+        bvhPtr = stack[--stackPtr];
+        BVHNode currentNode = nodes[bvhPtr];
+        // all the left and right indexes are 0
+        BVHNode leftChild = nodes[currentNode.leftIndex + bvhStart];
+        BVHNode rightChild = nodes[currentNode.rightIndex + bvhStart];
+
+        bool hitLeft = bboxIntersectionTest(myNode.bbox, leftChild.bbox);
+        bool hitRight = bboxIntersectionTest(myNode.bbox, rightChild.bbox);
+        if (hitLeft)
+        {
+            // check triangle intersection
+            if (leftChild.isLeaf == 1)
+            {
+                // 4 faces * 4 verts + 6 edges * 6 edges
+                if (myNode.TetrahedronIndex != leftChild.TetrahedronIndex) {
+                    int qIdx = atomicAdd(queryCount, 36 + 16);
+                    Query* qBegin = &queries[*queryCount - 52];
+                    printf("--------------------------------\ntet%d hit tet%d\n", myNode.TetrahedronIndex, rightChild.TetrahedronIndex);
+                    printf("mybbox = AABB{glmVec3(%f, %f, %f), glmVec3(%f, %f, %f)}; bbox = AABB{glmVec3(%f, %f, %f), glmVec3(%f, %f, %f)};\n--------------------------------\n",
+                        myNode.bbox.min.x, myNode.bbox.min.y, myNode.bbox.min.z,
+                        myNode.bbox.max.x, myNode.bbox.max.y, myNode.bbox.max.z,
+                        rightChild.bbox.min.x, rightChild.bbox.min.y, rightChild.bbox.min.z,
+                        rightChild.bbox.max.x, rightChild.bbox.max.y, rightChild.bbox.max.z);
+                    if (qIdx < maxQueries) {
+                        fillQuery(qBegin, myNode.TetrahedronIndex, leftChild.TetrahedronIndex, tets);
+                    }
+                    else {
+                        *overflowFlag = true;
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                stack[stackPtr++] = currentNode.leftIndex + bvhStart;
+            }
+
+        }
+        if (hitRight)
+        {
+            // check triangle intersection
+            if (rightChild.isLeaf == 1)
+            {
+                if (myNode.TetrahedronIndex != rightChild.TetrahedronIndex) {
+                    int qIdx = atomicAdd(queryCount, 36 + 16);
+                    Query* qBegin = &queries[*queryCount - 52];
+                    printf("--------------------------------\ntet%d hit tet%d\n", myNode.TetrahedronIndex, rightChild.TetrahedronIndex);
+                    printf("mybbox = AABB{glmVec3(%f, %f, %f), glmVec3(%f, %f, %f)}; bbox = AABB{glmVec3(%f, %f, %f), glmVec3(%f, %f, %f)};\n--------------------------------\n",
+                        myNode.bbox.min.x, myNode.bbox.min.y, myNode.bbox.min.z,
+                        myNode.bbox.max.x, myNode.bbox.max.y, myNode.bbox.max.z,
+                        rightChild.bbox.min.x, rightChild.bbox.min.y, rightChild.bbox.min.z,
+                        rightChild.bbox.max.x, rightChild.bbox.max.y, rightChild.bbox.max.z);
+                    if (qIdx < maxQueries && myNode.TetrahedronIndex != rightChild.TetrahedronIndex) {
+                        fillQuery(qBegin, myNode.TetrahedronIndex, rightChild.TetrahedronIndex, tets);
+                    }
+                    else {
+                        *overflowFlag = true;
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                stack[stackPtr++] = currentNode.rightIndex + bvhStart;
+            }
+
+        }
+    }
+}
+
+
+__global__ void detectCollisionCandidatesKern(int numVerts, const BVHNode* nodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numVerts)
     {
         int hitTetId = -1;
-        tI[index] = traverseTree(index, nodes, tets, Xs, XTilts, hitTetId);
+        tI[index] = traverseTree(index, nodes, tets, Xs, XTilts, hitTetId, nors[index]);
     }
 }
 
-dataType* BVH::DetectCollisionCandidates(const GLuint* edges, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts) const
+dataType* BVH::DetectCollisionCandidates(const GLuint* edges, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, glm::vec3* nors)
 {
     dim3 numblocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    detectCollisionCandidatesKern << <numblocks, threadsPerBlock >> > (numVerts, dev_BVHNodes, tets, Xs, XTilts, dev_tI);
+    dim3 numblocksTets = (numTets + threadsPerBlock - 1) / threadsPerBlock;
+    bool overflowHappened = false;
+    bool overflow;
+    cudaMemset(deviceQueryCount, 0, sizeof(int)); // 重置计数器
+    do {
+        cudaMemset(deviceOverflowFlag, 0, sizeof(bool));
+        traverseTree << <numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, tets, deviceQueries, deviceQueryCount, maxQueries, deviceOverflowFlag);
+        // 检查是否溢出
+        cudaMemcpy(&overflow, deviceOverflowFlag, sizeof(bool), cudaMemcpyDeviceToHost);
+        if (overflow) {
+            std::cerr << "overflow" << std::endl;
+            overflowHappened = true;
+            maxQueries *= 2; // 或选择其他增长策略
+            cudaFree(deviceQueries);
+            cudaMalloc(&deviceQueries, maxQueries * sizeof(Query));
+            cudaMemset(deviceQueryCount, 0, sizeof(int)); // 重置计数器
+        }
+    } while (overflow);
+
+    // 从 deviceQueryCount 中读取实际的查询数量
+    int actualQueryCount;
+    cudaMemcpy(&actualQueryCount, deviceQueryCount, sizeof(int), cudaMemcpyDeviceToHost);
+    inspectQuerys(deviceQueries, actualQueryCount);
+
+    // 如果发生溢出，你可能需要重新处理数据
+    if (overflowHappened) {
+        // 处理溢出情况...
+    }
+
+
+    detectCollisionCandidatesKern << <numblocks, threadsPerBlock >> > (numVerts, dev_BVHNodes, tets, Xs, XTilts, dev_tI, nors);
     return dev_tI;
 }
 
@@ -157,7 +335,7 @@ void BVH::PrepareRenderData()
     Wireframe::unMapDevicePtr();
 }
 
-BVH::BVH(const int _threadsPerBlock) : threadsPerBlock(_threadsPerBlock) {
+BVH::BVH(const int _threadsPerBlock, int _maxQueries) : threadsPerBlock(_threadsPerBlock), maxQueries(_maxQueries) {
 }
 
 BVH::~BVH()
@@ -168,4 +346,11 @@ BVH::~BVH()
 
     cudaFree(dev_ready);
     cudaFree(dev_mortonCodes);
+
+    cudaFree(deviceQueries);
+
+    cudaFree(deviceQueryCount);
+
+    cudaFree(deviceOverflowFlag);
+
 }

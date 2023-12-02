@@ -11,6 +11,7 @@
 
 class BVHNode;
 class AABB;
+class Query;
 
 namespace utilityCore
 {
@@ -30,6 +31,7 @@ void inspectHost(const unsigned int*, int);
 void inspectHostMorton(const unsigned int* host_ptr, int size);
 void inspectHost(const BVHNode* hstBVHNodes, int size);
 void inspectHost(const AABB*, int);
+void inspectHost(const Query* query, int size);
 
 template <typename T>
 bool compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int size);

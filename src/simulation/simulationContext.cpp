@@ -10,7 +10,7 @@ DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerB
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json,
     const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads)
-    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH)
+    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH, 1 << 15)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
@@ -105,6 +105,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& 
     }
     m_floor.createQuad(1000, floorY);
     m_bvh.Init(numTets, numVerts, maxThreads);
+    cudaMalloc((void**) & dev_Normals, numVerts);
 }
 
 void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {
