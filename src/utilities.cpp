@@ -143,7 +143,7 @@ void inspectHost(const T* host_ptr, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     if constexpr (is_glm_type<T>::value) {
         for (int i = 0; i < size; i++) {
-            std::cout << glm::to_string(host_ptr[i]) << std::endl;
+            std::cout << "glm::" << glm::to_string(host_ptr[i]) << "," << std::endl;
         }
     }
     else {

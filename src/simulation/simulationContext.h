@@ -66,7 +66,7 @@ public:
 private:
     ExternalForce extForce;
     Mesh m_floor;
-    float floorY = -4.0f;
+    float floorY = 0.f;
     glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     void PrepareRenderData();
     int threadsPerBlock = 64;

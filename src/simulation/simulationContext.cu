@@ -131,6 +131,7 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
         tetOffset += data.numTets * 4;
         edgeOffset += m_edges[i].size();
     }
+    // inspectGLM(gTet, numTets * 4);
     cudaMemcpy(gX0, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(gXTilt, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
@@ -138,8 +139,9 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
 void SimulationCUDAContext::CCD()
 {
     dataType* tIs = m_bvh.DetectCollisionCandidates(dev_Edges, dev_Tets, dev_Xs, dev_XTilts);
-    inspectGLM(dev_Xs, numVerts);
-    inspectGLM(tIs, numVerts);
+    // inspectGLM(dev_Xs, numVerts);
+    // inspectGLM(dev_XTilts, numVerts);
+    // inspectGLM(tIs, numVerts);
     int blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, tIs, numVerts);
 }

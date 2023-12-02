@@ -8,6 +8,8 @@
 #include <cuda_runtime.h>
 #include <utilities.cuh>
 
+__constant__ dataType AABBThreshold = 0.01;
+
 __device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
     const glmVec3& v4, const glmVec3& v5, const glmVec3& v6, const glmVec3& v7)
 {
@@ -19,7 +21,7 @@ __device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const g
     max.y = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.y, v1.y), v2.y), v3.y), v4.y), v5.y), v6.y), v7.y);
     max.z = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.z, v1.z), v2.z), v3.z), v4.z), v5.z), v6.z), v7.z);
 
-    return AABB{ min, max };
+    return AABB{ min - AABBThreshold, max + AABBThreshold };
 }
 
 struct MinOp {

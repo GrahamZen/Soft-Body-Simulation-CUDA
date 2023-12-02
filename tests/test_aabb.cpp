@@ -7,11 +7,11 @@
 #include <intersections.h>
 #include <iostream>
 
-TEST_CASE("AABB Tests", "[AABB]") {
-    glm::vec3 x0;
-    glm::vec3 xTilt;
+TEST_CASE("AABB Tests impossible", "[AABB]") {
+    glm::vec3 x0, xTilt;
     AABB bbox;
-    x0 = glm::vec3(3.990862, 4.531781, -3.997540), xTilt = glm::vec3(4.005919, 1.919091, -3.993216), bbox = AABB{ glm::vec3(-3.995214, -4.082155, -4.012133), glm::vec3(4.005711, 3.912421, 3.997659) };
+    x0 = glmVec3(4.000087, 9.568024, -3.996036), xTilt = glmVec3(4.004138, 7.104599, -4.006201);
+    bbox = AABB{ glmVec3(-3.995531, -0.089164, -3.999941), glmVec3(4.010788, 7.908782, 4.006889) };
     bool res = edgeBboxIntersectionTest(x0, xTilt, bbox);
-    REQUIRE(res == true);
+    REQUIRE(res == false);
 }
