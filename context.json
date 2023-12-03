@@ -1,5 +1,5 @@
 {
-    "pause": true,
+    "pause": false,
     "threads per block": 128,
     "threads per block(bvh)": 128,
     "default camera": {
@@ -92,18 +92,15 @@
             "name": "5 houses",
             "load": true,
             "dt": 0.01,
-            "gravity": 9800,
+            "gravity": 980,
             "damp": 0.999,
             "muN": 0.5,
             "muT": 0.5,
             "softBodies": [
                 {
-                    "name": "tet",
-                    "pos": [ 0.0, 50.0, 0.0 ]
-                },
-                {
-                    "name": "tet",
-                    "pos": [ 0.0, 25.0, 0.0 ]
+                    "name": "cube",
+                    "pos": [ 0.0, 50.0, 0.0 ],
+                    "rot": [ 0.0, 0.0, 20.0 ]
                 }
             ]
         }

@@ -104,7 +104,7 @@ void SoftBody::_Update()
         model.velocity() = velocitiesFloat.cast<double>();
         PdSolver();
         positionsFloat = model.positions().cast<float>().transpose();
-        cudaMemcpy(X, positionsFloat.data(), numVerts * sizeof(glm::vec3), cudaMemcpyHostToDevice);
+        cudaMemcpy(XTilt, positionsFloat.data(), numVerts * sizeof(glm::vec3), cudaMemcpyHostToDevice);
         velocitiesFloat = model.velocity().cast<float>();
         cudaMemcpy(V, velocitiesFloat.data(), numVerts * sizeof(glm::vec3), cudaMemcpyHostToDevice);
     }
