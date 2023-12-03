@@ -105,7 +105,8 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& 
     }
     m_floor.createQuad(1000, floorY);
     m_bvh.Init(numTets, numVerts, maxThreads);
-    cudaMalloc((void**) & dev_Normals, numVerts);
+    cudaMalloc((void**)&dev_Normals, numVerts);
+    cudaMalloc((void**)&dev_tIs, numVerts);
 }
 
 void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {

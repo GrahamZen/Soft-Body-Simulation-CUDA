@@ -29,26 +29,48 @@ struct BVHNode {
 };
 
 enum class QueryType {
+    UNKNOWN,
     VF,
     EE
 };
+
 struct Query {
     QueryType type;
     GLuint v0;
     GLuint v1;
     GLuint v2;
     GLuint v3;
+    float toi;
+    glm::vec3 normal;
+};
+
+class CollisionDetection {
+public:
+    CollisionDetection(const int threadsPerBlock, int maxQueries);
+    ~CollisionDetection();
+    int DetectCollisionCandidates(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets);
+    void BroadPhase(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets);
+    void DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors);
+    void NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors);
+private:
+    Query* deviceQueries;
+    int* deviceQueryCount;
+    int actualQueryCount;
+    size_t maxQueries = 1 << 15;
+    bool* deviceOverflowFlag;
+    const int threadsPerBlock;
 };
 
 class BVH : public Wireframe {
 public:
 
-    BVH(const int threadsPerBlock, int maxQueries);
+    BVH(const int threadsPerBlock, int _maxQueries);
     ~BVH();
     void Init(int numTets, int numVerts, int maxThreads);
-    void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
-    dataType* DetectCollisionCandidates(const GLuint* edges, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, glm::vec3* nors);
     void PrepareRenderData();
+    void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
+    void DetectCollision(const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors);
+
 private:
     void BuildBBoxes();
     BVHNode* dev_BVHNodes = nullptr;
@@ -63,13 +85,11 @@ private:
     dataType* dev_tI;
     int* dev_indicesToReport;
     const int threadsPerBlock;
-    dim3 numblocks;
+    dim3 numblocksTets;
+    dim3 numblocksVerts;
     dim3 suggestedCGNumblocks;
     int suggestedBlocksize;
     bool isBuildBBCG = false;
 
-    Query* deviceQueries;
-    int* deviceQueryCount;
-    size_t maxQueries = 1<<15;
-    bool* deviceOverflowFlag;
+    CollisionDetection collisionDetection;
 };

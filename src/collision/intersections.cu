@@ -28,13 +28,6 @@ __host__ __device__ glmVec3 multiplyMV(glmMat4 m, glmVec4 v) {
     return glmVec3(m * v);
 }
 
-template<typename T>
-__host__ __device__ void swap(T& lhs, T& rhs) {
-    T tmp = lhs;
-    lhs = rhs;
-    rhs = tmp;
-}
-
 __host__ __device__ dataType signed_vf_distance(const glmVec3& x,
     const glmVec3& y0, const glmVec3& y1, const glmVec3& y2,
     glmVec3* n, glmVec4& w) {
@@ -269,6 +262,48 @@ __host__ __device__ dataType ccdTriangleIntersectionTest(const glmVec3& x0, cons
     dataType a1 = stp(v01, x02, x03) + stp(x01, v02, x03) + stp(x01, x02, v03);
     dataType a2 = stp(x01, v02, v03) + stp(v01, x02, v03) + stp(v01, v02, x03);
     dataType a3 = stp(v01, v02, v03);
+    if (abs(a0) < 1e-6 * length(x01) * length(x02) * length(x03))
+        return 1.0; // initially coplanar
+    dataType t[3];
+    dataType minRoot = FLT_MAX;
+    int nsol = solveCubic<dataType>(a3, a2, a1, a0, t);
+    for (int i = 0; i < nsol; i++) {
+        if (t[i] < -1e-3 || t[i] > 1)
+            continue;
+        glmVec3 xt0 = x0 + t[i] * v0, xt1 = x1 + t[i] * v1,
+            xt2 = x2 + t[i] * v2, xt3 = x3 + t[i] * v3;
+        glmVec4 w;
+        dataType d;
+        bool inside;
+        d = signed_vf_distance(xt0, xt1, xt2, xt3, &n, w);
+        inside = (glm::min(-w[1], glm::min(-w[2], -w[3])) >= -1e-3);
+        if (glm::dot(n, w[1] * v1 + w[2] * v2 + w[3] * v3) > 0)
+            n = -n;
+        if (abs(d) < 1e-6 && inside)
+            return t[i];
+    }
+    return 1.0;
+}
+
+__host__ __device__ dataType ccdCollisionTest(const Query& query, const glm::vec3* Xs, const glm::vec3* XTilts, glmVec3& n) {
+    const glmVec3 x0 = Xs[query.v0];
+    const glmVec3 x1 = Xs[query.v1];
+    const glmVec3 x2 = Xs[query.v2];
+    const glmVec3 x3 = Xs[query.v3];
+    const glmVec3 v0 = glmVec3{ XTilts[query.v0] } - x0;
+    const glmVec3 v1 = glmVec3{ XTilts[query.v1] } - x1;
+    const glmVec3 v2 = glmVec3{ XTilts[query.v2] } - x2;
+    const glmVec3 v3 = glmVec3{ XTilts[query.v3] } - x3;
+    const glmVec3 x01 = x1 - x0;
+    const glmVec3 x02 = x2 - x0;
+    const glmVec3 x03 = x3 - x0;
+    const glmVec3 v01 = v1 - v0;
+    const glmVec3 v02 = v2 - v0;
+    const glmVec3 v03 = v3 - v0;
+    const dataType a0 = stp(x01, x02, x03);
+    const dataType a1 = stp(v01, x02, x03) + stp(x01, v02, x03) + stp(x01, x02, v03);
+    const dataType a2 = stp(x01, v02, v03) + stp(v01, x02, v03) + stp(v01, v02, x03);
+    const dataType a3 = stp(v01, v02, v03);
     if (abs(a0) < 1e-6 * length(x01) * length(x02) * length(x03))
         return 1.0; // initially coplanar
     dataType t[3];

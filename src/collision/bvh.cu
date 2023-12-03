@@ -2,355 +2,273 @@
 
 #include <glm/glm.hpp>
 #include <bvh.cuh>
+#include <cuda_runtime.h>
+#include <cooperative_groups.h>
+#include <thrust/sort.h>
+#include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
-#include <intersections.h>
-#include <cuda_runtime.h>
 #include <utilities.cuh>
 
-__constant__ dataType AABBThreshold = 0.01;
-
-__device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
-    const glmVec3& v4, const glmVec3& v5, const glmVec3& v6, const glmVec3& v7)
+//input the aabb box of a Tetrahedron
+//generate a 30-bit morton code
+__device__ unsigned int genMortonCode(AABB bbox, glmVec3 geoMin, glmVec3 geoMax)
 {
-    glmVec3 min, max;
-    min.x = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.x, v1.x), v2.x), v3.x), v4.x), v5.x), v6.x), v7.x);
-    min.y = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.y, v1.y), v2.y), v3.y), v4.y), v5.y), v6.y), v7.y);
-    min.z = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.z, v1.z), v2.z), v3.z), v4.z), v5.z), v6.z), v7.z);
-    max.x = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.x, v1.x), v2.x), v3.x), v4.x), v5.x), v6.x), v7.x);
-    max.y = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.y, v1.y), v2.y), v3.y), v4.y), v5.y), v6.y), v7.y);
-    max.z = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.z, v1.z), v2.z), v3.z), v4.z), v5.z), v6.z), v7.z);
+    dataType x = (bbox.min.x + bbox.max.x) * 0.5f;
+    dataType y = (bbox.min.y + bbox.max.y) * 0.5f;
+    dataType z = (bbox.min.y + bbox.max.y) * 0.5f;
+    dataType normalizedX = (x - geoMin.x) / (geoMax.x - geoMin.x);
+    dataType normalizedY = (y - geoMin.y) / (geoMax.y - geoMin.y);
+    dataType normalizedZ = (z - geoMin.z) / (geoMax.z - geoMin.z);
 
-    return AABB{ min - AABBThreshold, max + AABBThreshold };
+    normalizedX = glm::min(glm::max(normalizedX * 1024.0, 0.0), 1023.0);
+    normalizedY = glm::min(glm::max(normalizedY * 1024.0, 0.0), 1023.0);
+    normalizedZ = glm::min(glm::max(normalizedZ * 1024.0, 0.0), 1023.0);
+
+    unsigned int xx = expandBits((unsigned int)normalizedX);
+    unsigned int yy = expandBits((unsigned int)normalizedY);
+    unsigned int zz = expandBits((unsigned int)normalizedZ);
+
+    return xx * 4 + yy * 2 + zz;
 }
 
-struct MinOp {
-    __host__ __device__
-        glm::vec3 operator()(const glm::vec3& a, const glm::vec3& b) const {
-        return glm::min(a, b);
-    }
-};
 
-struct MaxOp {
-    __host__ __device__
-        glm::vec3 operator()(const glm::vec3& a, const glm::vec3& b) const {
-        return glm::max(a, b);
-    }
-};
-
-AABB computeBoundingBox(const thrust::device_ptr<glm::vec3>& begin, const thrust::device_ptr<glm::vec3>& end) {
-    glm::vec3 min = thrust::reduce(begin, end, glm::vec3(FLT_MAX), MinOp());
-    glm::vec3 max = thrust::reduce(begin, end, glm::vec3(-FLT_MAX), MaxOp());
-
-    return AABB{ min, max };
-}
-
-AABB AABB::expand(const AABB& aabb)const {
-    return AABB{
-        glm::min(min, aabb.min),
-        glm::max(max, aabb.max)
-    };
-}
-
-bool isCollision(const glm::vec3& v, const AABB& box, dataType threshold = EPSILON) {
-    glm::vec3 nearestPoint;
-    nearestPoint.x = std::max(box.min.x, std::min(v.x, box.max.x));
-    nearestPoint.y = std::max(box.min.y, std::min(v.y, box.max.y));
-    nearestPoint.z = std::max(box.min.z, std::min(v.z, box.max.z));
-    glmVec3 diff = v - nearestPoint;
-    dataType distanceSquared = glm::dot(diff, diff);
-    return distanceSquared <= threshold;
-}
-
-__device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, int& hitTetId, glm::vec3& nor)
+__device__ unsigned long long expandMorton(int index, unsigned int mortonCode)
 {
-    // record the closest intersection
-    dataType closest = 1;
-    const glmVec3 x0 = Xs[vertIdx];
-    const glmVec3 xTilt = XTilts[vertIdx];
-    int bvhStart = 0;
-    int stack[64];
-    int stackPtr = 0;
-    int bvhPtr = bvhStart;
-    stack[stackPtr++] = bvhStart;
+    unsigned long long exMortonCode = mortonCode;
+    exMortonCode <<= 32;
+    exMortonCode += index;
+    return exMortonCode;
+}
 
-    while (stackPtr)
+/**
+* please sort the morton code first then get split pairs
+thrust::stable_sort_by_key(mortonCodes, mortonCodes + TetrahedronCount, TetrahedronIndex);*/
+
+//total input is a 30 x N matrix
+//currentIndex is between 0 - N-1
+//the input morton codes should be in the reduced form, no same elements are expected to appear twice!
+__device__ int getSplit(unsigned int* mortonCodes, unsigned int currIndex, int nextIndex, unsigned int bound)
+{
+    if (nextIndex < 0 || nextIndex >= bound)
+        return -1;
+    //NOTE: if use small size model, this step can be skipped
+    // just to ensure the morton codes are unique!
+    //unsigned int mask = mortonCodes[currIndex] ^ mortonCodes[nextIndex];
+    unsigned long long mask = expandMorton(currIndex, mortonCodes[currIndex]) ^ expandMorton(nextIndex, mortonCodes[nextIndex]);
+    // __clzll gives the number of consecutive zero bits in that number
+    // this gives us the index of the most significant bit between the two numbers
+    int commonPrefix = __clzll(mask);
+    return commonPrefix;
+}
+
+__device__ void buildBBox(BVHNode& curr, const BVHNode& left, const BVHNode& right)
+{
+    glmVec3 newMin;
+    glmVec3 newMax;
+    newMin.x = glm::min(left.bbox.min.x, right.bbox.min.x);
+    newMax.x = glm::max(left.bbox.max.x, right.bbox.max.x);
+    newMin.y = glm::min(left.bbox.min.y, right.bbox.min.y);
+    newMax.y = glm::max(left.bbox.max.y, right.bbox.max.y);
+    newMin.z = glm::min(left.bbox.min.z, right.bbox.min.z);
+    newMax.z = glm::max(left.bbox.max.z, right.bbox.max.z);
+
+    curr.bbox = AABB{ newMin, newMax };
+    curr.isLeaf = 0;
+}
+
+// build the bounding box and morton code for each SoftBody
+__global__ void buildLeafMorton(int startIndex, int numTri, dataType minX, dataType minY, dataType minZ,
+    dataType maxX, dataType maxY, dataType maxZ, const GLuint* tet, const glm::vec3* X, const glm::vec3* XTilt, BVHNode* leafNodes,
+    unsigned int* mortonCodes)
+{
+    int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ind < numTri)
     {
-        bvhPtr = stack[--stackPtr];
-        BVHNode currentNode = nodes[bvhPtr];
-        // all the left and right indexes are 0
-        BVHNode leftChild = nodes[currentNode.leftIndex + bvhStart];
-        BVHNode rightChild = nodes[currentNode.rightIndex + bvhStart];
-
-        bool hitLeft = edgeBboxIntersectionTest(x0, xTilt, leftChild.bbox);
-        bool hitRight = edgeBboxIntersectionTest(x0, xTilt, rightChild.bbox);
-        if (hitLeft)
-        {
-            // check triangle intersection
-            if (leftChild.isLeaf == 1)
-            {
-                if (tets[leftChild.TetrahedronIndex * 4 + 0] != vertIdx && tets[leftChild.TetrahedronIndex * 4 + 1] != vertIdx &&
-                    tets[leftChild.TetrahedronIndex * 4 + 2] != vertIdx && tets[leftChild.TetrahedronIndex * 4 + 3] != vertIdx) {
-                    dataType distance = tetrahedronTrajIntersectionTest(tets, x0, xTilt, Xs, XTilts, leftChild.TetrahedronIndex, nor);
-                    if (distance < closest)
-                    {
-                        hitTetId = leftChild.TetrahedronIndex;
-                        closest = distance;
-                    }
-                }
-            }
-            else
-            {
-                stack[stackPtr++] = currentNode.leftIndex + bvhStart;
-            }
-
-        }
-        if (hitRight)
-        {
-            // check triangle intersection
-            if (rightChild.isLeaf == 1)
-            {
-                if (tets[rightChild.TetrahedronIndex * 4 + 0] != vertIdx && tets[rightChild.TetrahedronIndex * 4 + 1] != vertIdx &&
-                    tets[rightChild.TetrahedronIndex * 4 + 2] != vertIdx && tets[rightChild.TetrahedronIndex * 4 + 3] != vertIdx) {
-                    dataType distance = tetrahedronTrajIntersectionTest(tets, x0, xTilt, Xs, XTilts, rightChild.TetrahedronIndex, nor);
-                    if (distance < closest)
-                    {
-                        hitTetId = rightChild.TetrahedronIndex;
-                        closest = distance;
-                    }
-                }
-            }
-            else
-            {
-                stack[stackPtr++] = currentNode.rightIndex + bvhStart;
-            }
-
-        }
-    }
-    return closest;
-}
-
-__constant__ int edgeIndicesTable[12] = {
-    0, 1, 0, 2, 0, 3, 1, 2, 1, 3, 2, 3
-};
-__device__ void fillQuery(Query* query, int tetId, int tet2Id, const GLuint* tets) {
-    for (int i = 0; i < 4; i++) {
-        query[i * 4].type = QueryType::VF;
-        query[i * 4].v0 = tets[tetId * 4 + i];
-        query[i * 4].v1 = tets[tet2Id * 4 + 0];
-        query[i * 4].v2 = tets[tet2Id * 4 + 1];
-        query[i * 4].v3 = tets[tet2Id * 4 + 2];
-        query[i * 4 + 1].type = QueryType::VF;
-        query[i * 4 + 1].v0 = tets[tetId * 4 + i];
-        query[i * 4 + 1].v1 = tets[tet2Id * 4 + 0];
-        query[i * 4 + 1].v2 = tets[tet2Id * 4 + 1];
-        query[i * 4 + 1].v3 = tets[tet2Id * 4 + 3];
-        query[i * 4 + 2].type = QueryType::VF;
-        query[i * 4 + 2].v0 = tets[tetId * 4 + i];
-        query[i * 4 + 2].v1 = tets[tet2Id * 4 + 0];
-        query[i * 4 + 2].v2 = tets[tet2Id * 4 + 1];
-        query[i * 4 + 2].v3 = tets[tet2Id * 4 + 3];
-        query[i * 4 + 3].type = QueryType::VF;
-        query[i * 4 + 3].v0 = tets[tetId * 4 + i];
-        query[i * 4 + 3].v1 = tets[tet2Id * 4 + 1];
-        query[i * 4 + 3].v2 = tets[tet2Id * 4 + 2];
-        query[i * 4 + 3].v3 = tets[tet2Id * 4 + 3];
-    }
-    for (int i = 0; i < 6; i++) {
-        int v0 = tets[tetId * 4 + edgeIndicesTable[i * 2 + 0]];
-        int v1 = tets[tetId * 4 + edgeIndicesTable[i * 2 + 1]];
-        query[i * 6 + 16].type = QueryType::EE;
-        query[i * 6 + 16].v0 = v0;
-        query[i * 6 + 16].v1 = v1;
-        query[i * 6 + 16].v2 = tets[tet2Id * 4 + 0];
-        query[i * 6 + 16].v3 = tets[tet2Id * 4 + 1];
-        query[i * 6 + 17].type = QueryType::EE;
-        query[i * 6 + 17].v0 = v0;
-        query[i * 6 + 17].v1 = v1;
-        query[i * 6 + 17].v2 = tets[tet2Id * 4 + 0];
-        query[i * 6 + 17].v3 = tets[tet2Id * 4 + 2];
-        query[i * 6 + 18].type = QueryType::EE;
-        query[i * 6 + 18].v0 = v0;
-        query[i * 6 + 18].v1 = v1;
-        query[i * 6 + 18].v2 = tets[tet2Id * 4 + 0];
-        query[i * 6 + 18].v3 = tets[tet2Id * 4 + 3];
-        query[i * 6 + 19].type = QueryType::EE;
-        query[i * 6 + 19].v0 = v0;
-        query[i * 6 + 19].v1 = v1;
-        query[i * 6 + 19].v2 = tets[tet2Id * 4 + 1];
-        query[i * 6 + 19].v3 = tets[tet2Id * 4 + 2];
-        query[i * 6 + 20].type = QueryType::EE;
-        query[i * 6 + 20].v0 = v0;
-        query[i * 6 + 20].v1 = v1;
-        query[i * 6 + 20].v2 = tets[tet2Id * 4 + 1];
-        query[i * 6 + 20].v3 = tets[tet2Id * 4 + 3];
-        query[i * 6 + 21].type = QueryType::EE;
-        query[i * 6 + 21].v0 = v0;
-        query[i * 6 + 21].v1 = v1;
-        query[i * 6 + 21].v2 = tets[tet2Id * 4 + 2];
-        query[i * 6 + 21].v3 = tets[tet2Id * 4 + 3];;
+        int leafPos = ind + numTri - 1;
+        leafNodes[leafPos].bbox = computeTetTrajBBox(X[tet[ind * 4]], X[tet[ind * 4 + 1]], X[tet[ind * 4 + 2]], X[tet[ind * 4 + 3]],
+            XTilt[tet[ind * 4]], XTilt[tet[ind * 4 + 1]], XTilt[tet[ind * 4 + 2]], XTilt[tet[ind * 4 + 3]]);
+        leafNodes[leafPos].isLeaf = 1;
+        leafNodes[leafPos].leftIndex = -1;
+        leafNodes[leafPos].rightIndex = -1;
+        leafNodes[leafPos].TetrahedronIndex = ind;
+        mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glmVec3(minX, minY, minZ), glmVec3(maxX, maxY, maxZ));
     }
 }
 
 
-__global__ void traverseTree(int numTets, const BVHNode* nodes, const GLuint* tets, Query* queries, int* queryCount, int maxQueries, bool* overflowFlag)
+//input the unique morton code
+//codeCount is the size of the unique morton code
+//splitList is 30 x N list
+// the size of unique morton is less than 2^30 : [1, 2^30]
+__global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNode* nodes)
 {
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    int leafIdx = index + numTets - 1;
-    const BVHNode myNode = nodes[leafIdx];
-    // record the closest intersection
-    dataType closest = 1;
-    int bvhStart = 0;
-    int stack[64];
-    int stackPtr = 0;
-    int bvhPtr = bvhStart;
-    stack[stackPtr++] = bvhStart;
-
-    while (stackPtr)
+    int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ind < codeCount - 1)
     {
-        bvhPtr = stack[--stackPtr];
-        BVHNode currentNode = nodes[bvhPtr];
-        // all the left and right indexes are 0
-        BVHNode leftChild = nodes[currentNode.leftIndex + bvhStart];
-        BVHNode rightChild = nodes[currentNode.rightIndex + bvhStart];
-
-        bool hitLeft = bboxIntersectionTest(myNode.bbox, leftChild.bbox);
-        bool hitRight = bboxIntersectionTest(myNode.bbox, rightChild.bbox);
-        if (hitLeft)
+        int sign = getSign(getSplit(uniqueMorton, ind, ind + 1, codeCount) - getSplit(uniqueMorton, ind, ind - 1, codeCount));
+        int dMin = getSplit(uniqueMorton, ind, ind - sign, codeCount);
+        int lenMax = 2;
+        int k = getSplit(uniqueMorton, ind, ind + lenMax * sign, codeCount);
+        while (k > dMin)
         {
-            // check triangle intersection
-            if (leftChild.isLeaf == 1)
-            {
-                // 4 faces * 4 verts + 6 edges * 6 edges
-                if (myNode.TetrahedronIndex != leftChild.TetrahedronIndex) {
-                    int qIdx = atomicAdd(queryCount, 36 + 16);
-                    Query* qBegin = &queries[*queryCount - 52];
-                    printf("--------------------------------\ntet%d hit tet%d\n", myNode.TetrahedronIndex, rightChild.TetrahedronIndex);
-                    printf("mybbox = AABB{glmVec3(%f, %f, %f), glmVec3(%f, %f, %f)}; bbox = AABB{glmVec3(%f, %f, %f), glmVec3(%f, %f, %f)};\n--------------------------------\n",
-                        myNode.bbox.min.x, myNode.bbox.min.y, myNode.bbox.min.z,
-                        myNode.bbox.max.x, myNode.bbox.max.y, myNode.bbox.max.z,
-                        rightChild.bbox.min.x, rightChild.bbox.min.y, rightChild.bbox.min.z,
-                        rightChild.bbox.max.x, rightChild.bbox.max.y, rightChild.bbox.max.z);
-                    if (qIdx < maxQueries) {
-                        fillQuery(qBegin, myNode.TetrahedronIndex, leftChild.TetrahedronIndex, tets);
-                    }
-                    else {
-                        *overflowFlag = true;
-                        return;
-                    }
-                }
-            }
-            else
-            {
-                stack[stackPtr++] = currentNode.leftIndex + bvhStart;
-            }
-
+            lenMax *= 2;
+            k = getSplit(uniqueMorton, ind, ind + lenMax * sign, codeCount);
         }
-        if (hitRight)
-        {
-            // check triangle intersection
-            if (rightChild.isLeaf == 1)
-            {
-                if (myNode.TetrahedronIndex != rightChild.TetrahedronIndex) {
-                    int qIdx = atomicAdd(queryCount, 36 + 16);
-                    Query* qBegin = &queries[*queryCount - 52];
-                    printf("--------------------------------\ntet%d hit tet%d\n", myNode.TetrahedronIndex, rightChild.TetrahedronIndex);
-                    printf("mybbox = AABB{glmVec3(%f, %f, %f), glmVec3(%f, %f, %f)}; bbox = AABB{glmVec3(%f, %f, %f), glmVec3(%f, %f, %f)};\n--------------------------------\n",
-                        myNode.bbox.min.x, myNode.bbox.min.y, myNode.bbox.min.z,
-                        myNode.bbox.max.x, myNode.bbox.max.y, myNode.bbox.max.z,
-                        rightChild.bbox.min.x, rightChild.bbox.min.y, rightChild.bbox.min.z,
-                        rightChild.bbox.max.x, rightChild.bbox.max.y, rightChild.bbox.max.z);
-                    if (qIdx < maxQueries && myNode.TetrahedronIndex != rightChild.TetrahedronIndex) {
-                        fillQuery(qBegin, myNode.TetrahedronIndex, rightChild.TetrahedronIndex, tets);
-                    }
-                    else {
-                        *overflowFlag = true;
-                        return;
-                    }
-                }
-            }
-            else
-            {
-                stack[stackPtr++] = currentNode.rightIndex + bvhStart;
-            }
 
+        int len = 0;
+        int last = lenMax >> 1;
+        while (last > 0)
+        {
+            int tmp = ind + (len + last) * sign;
+            int diff = getSplit(uniqueMorton, ind, tmp, codeCount);
+            if (diff > dMin)
+            {
+                len = len + last;
+            }
+            last >>= 1;
+        }
+        //last in range
+        int j = ind + len * sign;
+
+        int currRange = getSplit(uniqueMorton, ind, j, codeCount);
+        int split = 0;
+        do {
+            len = (len + 1) >> 1;
+            if (getSplit(uniqueMorton, ind, ind + (split + len) * sign, codeCount) > currRange)
+            {
+                split += len;
+            }
+        } while (len > 1);
+
+        int tmp = ind + split * sign + glm::min(sign, 0);
+
+        if (glm::min(ind, j) == tmp)
+        {
+            //leaf node
+            // the number of internal nodes is N - 1
+            nodes[ind].leftIndex = tmp + codeCount - 1;
+            nodes[tmp + codeCount - 1].parent = ind;
+        }
+        else
+        {
+            // internal node
+            nodes[ind].leftIndex = tmp;
+            nodes[tmp].parent = ind;
+        }
+        if (glm::max(ind, j) == tmp + 1)
+        {
+            nodes[ind].rightIndex = tmp + codeCount;
+            nodes[tmp + codeCount].parent = ind;
+        }
+        else
+        {
+            nodes[ind].rightIndex = tmp + 1;
+            nodes[tmp + 1].parent = ind;
         }
     }
+
 }
 
+__global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, unsigned char* ready) {
+    int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
-__global__ void detectCollisionCandidatesKern(int numVerts, const BVHNode* nodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors)
-{
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (index < numVerts)
+    if (ind >= leafCount - 1)return;
+    BVHNode node = nodes[ind];
+    if (ready[ind] != 0)
+        return;
+    if (ready[node.leftIndex] != 0 && ready[node.rightIndex] != 0)
     {
-        int hitTetId = -1;
-        tI[index] = traverseTree(index, nodes, tets, Xs, XTilts, hitTetId, nors[index]);
+        buildBBox(nodes[ind], nodes[node.leftIndex], nodes[node.rightIndex]);
+        ready[ind] = 1;
     }
 }
 
-dataType* BVH::DetectCollisionCandidates(const GLuint* edges, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, glm::vec3* nors)
-{
-    dim3 numblocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    dim3 numblocksTets = (numTets + threadsPerBlock - 1) / threadsPerBlock;
-    bool overflowHappened = false;
-    bool overflow;
-    cudaMemset(deviceQueryCount, 0, sizeof(int)); // 重置计数器
-    do {
-        cudaMemset(deviceOverflowFlag, 0, sizeof(bool));
-        traverseTree << <numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, tets, deviceQueries, deviceQueryCount, maxQueries, deviceOverflowFlag);
-        // 检查是否溢出
-        cudaMemcpy(&overflow, deviceOverflowFlag, sizeof(bool), cudaMemcpyDeviceToHost);
-        if (overflow) {
-            std::cerr << "overflow" << std::endl;
-            overflowHappened = true;
-            maxQueries *= 2; // 或选择其他增长策略
-            cudaFree(deviceQueries);
-            cudaMalloc(&deviceQueries, maxQueries * sizeof(Query));
-            cudaMemset(deviceQueryCount, 0, sizeof(int)); // 重置计数器
+namespace cg = cooperative_groups;
+
+__global__ void buildBBoxesCG(int leafCount, BVHNode* nodes, unsigned char* ready) {
+    int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    cg::grid_group grid = cg::this_grid();
+
+    if (ind >= leafCount - 1)return;
+    bool done = false;
+    while (!done) {
+        BVHNode node = nodes[ind];
+        if (ready[ind] != 0) {}
+        else if (ready[node.leftIndex] != 0 && ready[node.rightIndex] != 0)
+        {
+            buildBBox(nodes[ind], nodes[node.leftIndex], nodes[node.rightIndex]);
+            ready[ind] = 1;
         }
-    } while (overflow);
-
-    // 从 deviceQueryCount 中读取实际的查询数量
-    int actualQueryCount;
-    cudaMemcpy(&actualQueryCount, deviceQueryCount, sizeof(int), cudaMemcpyDeviceToHost);
-    inspectQuerys(deviceQueries, actualQueryCount);
-
-    // 如果发生溢出，你可能需要重新处理数据
-    if (overflowHappened) {
-        // 处理溢出情况...
+        cg::sync(grid);
+        done = ready[0] == 1;
+        cg::sync(grid);
     }
-
-
-    detectCollisionCandidatesKern << <numblocks, threadsPerBlock >> > (numVerts, dev_BVHNodes, tets, Xs, XTilts, dev_tI, nors);
-    return dev_tI;
 }
 
-void BVH::PrepareRenderData()
+void BVH::Init(int _numTets, int _numVerts, int maxThreads)
 {
-    glm::vec3* pos;
-    Wireframe::mapDevicePosPtr(&pos);
-    dim3 numThreadsPerBlock(numNodes / threadsPerBlock + 1);
-    populateBVHNodeAABBPos << <numThreadsPerBlock, threadsPerBlock >> > (dev_BVHNodes, pos, numNodes);
-    Wireframe::unMapDevicePtr();
+    numTets = _numTets;
+    numVerts = _numVerts;
+    numNodes = numTets * 2 - 1;
+    cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode));
+    cudaMalloc((void**)&dev_tI, numVerts * sizeof(dataType));
+    cudaMemset(dev_tI, 0, numVerts * sizeof(dataType));
+    cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
+    cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
+    cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
+    cudaMalloc(&dev_ready, numNodes * sizeof(unsigned char));
+    createBVH(numNodes);
+    cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
+    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(unsigned char));
+    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
+    int minGridSize;
+
+    cudaOccupancyMaxPotentialBlockSize(&minGridSize, &suggestedBlocksize, buildBBoxesCG, 0, 0);
+
+    if (numTets < maxThreads) {
+        std::cout << "Using cooperative group." << std::endl;
+        isBuildBBCG = true;
+    }
+    else {
+        std::cout << "Not using cooperative group." << std::endl;
+    }
+    numblocksTets = (numTets + threadsPerBlock - 1) / threadsPerBlock;
+    numblocksVerts = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    suggestedCGNumblocks = (numTets + suggestedBlocksize - 1) / suggestedBlocksize;
 }
 
-BVH::BVH(const int _threadsPerBlock, int _maxQueries) : threadsPerBlock(_threadsPerBlock), maxQueries(_maxQueries) {
+void BVH::BuildBBoxes() {
+    if (isBuildBBCG) {
+        void* args[] = { &numTets, &dev_BVHNodes, &dev_ready };
+        cudaError_t error = cudaLaunchCooperativeKernel((void*)buildBBoxesCG, suggestedCGNumblocks, suggestedBlocksize, args);
+        if (error != cudaSuccess) {
+            std::cerr << "cudaLaunchCooperativeKernel failed: " << cudaGetErrorString(error) << std::endl;
+        }
+    }
+    else {
+        unsigned char treeBuild = 0;
+        while (treeBuild == 0) {
+            buildBBoxesSerial << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+            cudaMemcpy(&treeBuild, dev_ready, sizeof(unsigned char), cudaMemcpyDeviceToHost);
+        }
+    }
 }
 
-BVH::~BVH()
+void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets)
 {
-    cudaFree(dev_BVHNodes);
-    cudaFree(dev_tI);
-    cudaFree(dev_indicesToReport);
+    cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
 
-    cudaFree(dev_ready);
-    cudaFree(dev_mortonCodes);
+    buildLeafMorton << <numblocksTets, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
+        tets, X, XTilt, dev_BVHNodes, dev_mortonCodes);
 
-    cudaFree(deviceQueries);
+    thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTets, dev_BVHNodes + numTets - 1);
 
-    cudaFree(deviceQueryCount);
+    buildSplitList << <numblocksTets, threadsPerBlock >> > (numTets, dev_mortonCodes, dev_BVHNodes);
 
-    cudaFree(deviceOverflowFlag);
+    BuildBBoxes();
 
+    cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
+    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(unsigned char));
+    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
 }

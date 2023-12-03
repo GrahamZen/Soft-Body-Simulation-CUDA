@@ -139,7 +139,7 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
 
 void SimulationCUDAContext::CCD()
 {
-    dataType* tIs = m_bvh.DetectCollisionCandidates(dev_Edges, dev_Tets, dev_Xs, dev_XTilts, dev_Normals);
+    m_bvh.DetectCollision(dev_Tets, dev_Xs, dev_XTilts, dev_tIs, dev_Normals);
     // inspectGLM(dev_Xs, numVerts);
     // inspectGLM(dev_XTilts, numVerts);
     // inspectGLM(tIs, numVerts);
@@ -157,7 +157,7 @@ void SimulationCUDAContext::Update()
         m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
     inspectGLM(dev_Vs, numVerts);
     HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_XTilts, dev_Vs, numVerts, glm::vec3(0.f, floorY, 0.f), floorUp, muT, muN);
-    if (false)
+    if (context->guiData->handleCollision)
         CCD();
     else
         cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
