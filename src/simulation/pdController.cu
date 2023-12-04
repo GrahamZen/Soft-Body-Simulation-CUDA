@@ -139,7 +139,7 @@ void SoftBody::PDSolverStep()
     int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
 
-    glm::vec3 gravity = glm::vec3(0.0f, -mcrpSimContext->GetGravity(), 0.0f);
+    glm::vec3 gravity = glm::vec3(0.0f, -mcrpSimContext->GetGravity() * attrib.mass, 0.0f);
     setExtForce << < vertBlocks, threadsPerBlock >> > (ExtForce, gravity, numVerts);
     computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, X, V, ExtForce, numVerts);
     computeM_h2Sn << < vertBlocks, threadsPerBlock >> > (masses, sn, m_1_dt2, numVerts);

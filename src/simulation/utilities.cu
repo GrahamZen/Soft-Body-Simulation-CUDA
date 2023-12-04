@@ -334,48 +334,40 @@ __global__ void computeLocal(float* V0, float wi, float* xProj, glm::mat3* DmInv
         glm::vec3 v3 = glm::vec3(qn__1[v3Ind + 0], qn__1[v3Ind + 1], qn__1[v3Ind + 2]);
 
         float weight = glm::abs(V0[index]) * wi;
+        glm::mat3 Dm_1 = DmInv[index];
 
         glm::mat3 Dl = glm::mat3();
-
         Dl[0] = v0 - v3;
         Dl[1] = v1 - v3;
         Dl[2] = v2 - v3;
-        Dl = glm::transpose(Dl);
-
-        glm::mat3 Dm_1 = glm::transpose(DmInv[index]);
 
         glm::mat3 A = Dl * Dm_1;
 
-        //glm::mat3 A = Dl * glm::transpose(Dm_1);
-        //glm::mat3 A = glm::transpose(Dl) * glm::transpose(Dm_1);
-        //glm::mat3 A = Dl * Dm_1;
-        //A = glm::transpose(A);
-        glm::mat3x3 U;
-        glm::mat3x3 V;
-        glm::mat3x3 S;
-
-        //glmSVD(A, U, S, V);
+        glm::mat3x3 U1;
+        glm::mat3x3 V1;
+        glm::mat3x3 S1;
+        glm::mat3x3 R1;
 
         svd(A[0][0], A[1][0], A[2][0], A[0][1], A[1][1], A[2][1], A[0][2], A[1][2], A[2][2],
-            U[0][0], U[1][0], U[2][0], U[0][1], U[1][1], U[2][1], U[0][2], U[1][2], U[2][2],
-            S[0][0], S[1][0], S[2][0], S[0][1], S[1][1], S[2][1], S[0][2], S[1][2], S[2][2],
-            V[0][0], V[1][0], V[2][0], V[0][1], V[1][1], V[2][1], V[0][2], V[1][2], V[2][2]);
+            U1[0][0], U1[1][0], U1[2][0], U1[0][1], U1[1][1], U1[2][1], U1[0][2], U1[1][2], U1[2][2],
+            S1[0][0], S1[1][0], S1[2][0], S1[0][1], S1[1][1], S1[2][1], S1[0][2], S1[1][2], S1[2][2],
+            V1[0][0], V1[1][0], V1[2][0], V1[0][1], V1[1][1], V1[2][1], V1[0][2], V1[1][2], V1[2][2]);
 
-        glm::mat3 R = U * glm::transpose(V);
-        if (glm::determinant(R) < 0)
+        R1 = U1 * glm::transpose(V1);
+
+
+        if (glm::determinant(R1) < 0)
         {
-            R[2] = -R[2];
+            R1[2] = -R1[2];
         }
 
         glm::mat4x3 DmP;
-        DmP[0] = Dm_1[0];
-        DmP[1] = Dm_1[1];
-        DmP[2] = Dm_1[2];
-        glm::vec3 ptt = glm::vec3(-Dm_1[0][0] - Dm_1[1][0] - Dm_1[2][0], -Dm_1[0][1] - Dm_1[1][1] - Dm_1[2][1], -Dm_1[0][2] - Dm_1[1][2] - Dm_1[2][2]);
+        DmP[0] = glm::transpose(Dm_1)[0];
+        DmP[1] = glm::transpose(Dm_1)[1];
+        DmP[2] = glm::transpose(Dm_1)[2];
+        glm::vec3 ptt = glm::vec3(-Dm_1[0][0] - Dm_1[0][1] - Dm_1[0][2], -Dm_1[1][0] - Dm_1[1][1] - Dm_1[1][2], -Dm_1[2][0] - Dm_1[2][1] - Dm_1[2][2]);
         DmP[3] = ptt;
-
-        glm::mat3x3 rrr = glm::transpose(R);
-        glm::mat4x3 Dm_1r = rrr * DmP;
+        glm::mat4x3 Dm_1r = R1 * DmP;
 
         for (int i = 0; i < 4; i++)
         {
