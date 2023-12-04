@@ -66,31 +66,10 @@ __host__ __device__ dataType signed_ve_distance(const glmVec3& x, const glmVec3&
 
 __host__ __device__ dataType signed_ee_distance(const glmVec3& x0, const glmVec3& x1,
     const glmVec3& y0, const glmVec3& y1,
-    glmVec3* n, dataType* w) {
-    glmVec3 _n; if (!n) n = &_n;
-    dataType _w[4]; if (!w) w = _w;
+    glmVec3* n, glmVec4& w) {
     *n = cross(normalize(x1 - x0), normalize(y1 - y0));
-    if (glm::length2(*n) < 1e-8) {
-        // special case: parallel lines
-        glmVec3 e0 = normalize(x1 - x0), e1 = normalize(y1 - y0);
-
-        dataType p0min = dot(x0, e0), p0max = dot(x1, e0), p1min = dot(y0, e0), p1max = dot(y1, e0);
-        if (p1max < p1min) swap(p1max, p1min);
-
-        dataType a = glm::max(p0min, p1min), b = glm::min(p0max, p1max), c = 0.5 * (a + b);
-        if (a > b) return FLT_MAX;
-
-        glmVec3 d = (y0 - x0) - dot(y0 - x0, e0) * e0;
-
-        if (n) *n = normalize(-d);
-        if (w) {
-            w[1] = (c - dot(x0, e0)) / glm::length(x1 - x0);
-            w[0] = 1.0 - w[1];
-            w[3] = -(dot(e0, e1) * c - dot(y0, e1)) / glm::length(y1 - y0);
-            w[2] = -1.0 - w[3];
-        }
-        return glm::length(d);
-    }
+    if (length2(*n) < 1e-6)
+        return FLT_MAX;
     *n = normalize(*n);
     dataType h = dot(x0 - y0, *n);
     dataType a0 = stp(y1 - x1, y0 - x1, *n), a1 = stp(y0 - x0, y1 - x0, *n),
@@ -317,8 +296,16 @@ __host__ __device__ dataType ccdCollisionTest(const Query& query, const glm::vec
         glmVec4 w;
         dataType d;
         bool inside;
-        d = signed_vf_distance(xt0, xt1, xt2, xt3, &n, w);
-        inside = (glm::min(-w[1], glm::min(-w[2], -w[3])) >= -1e-3);
+        if (query.type == QueryType::VF)
+        {
+            d = signed_vf_distance(xt0, xt1, xt2, xt3, &n, w);
+            inside = (glm::min(-w[1], glm::min(-w[2], -w[3])) >= -1e-3);
+        }
+        else if(query.type == QueryType::EE)
+        {
+            d = signed_ee_distance(xt0, xt1, xt2, xt3, &n, w);
+            inside = (glm::min(w[0], glm::min(w[1], glm::min(-w[2], -w[3]))) >= -1e-3);
+        }
         if (glm::dot(n, w[1] * v1 + w[2] * v2 + w[3] * v3) > 0)
             n = -n;
         if (abs(d) < 1e-6 && inside)
