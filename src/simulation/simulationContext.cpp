@@ -12,7 +12,7 @@ DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerB
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json,
     const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads)
-    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH, 1 << 25)
+    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH, 1 << 11)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
@@ -135,8 +135,9 @@ void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram, ShaderProgram* fl
             shaderProgram->draw(m_bvh, 0);
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
-        if (context->guiData->handleCollision)
+        if (context->guiData->handleCollision && context->guiData->QueryVis) {
             flatShaderProgram->drawPoints(m_bvh.GetQueryDrawable());
+        }
     }
 }
 

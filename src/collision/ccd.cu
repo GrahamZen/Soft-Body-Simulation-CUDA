@@ -69,9 +69,10 @@ CollisionDetection::~CollisionDetection()
 
 void CollisionDetection::DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors)
 {
-    BroadPhase(numTets, dev_BVHNodes, tets, tetFathers);
-    PrepareRenderData(Xs);
-    NarrowPhase(Xs, XTilts, tI, nors);
+    if (BroadPhase(numTets, dev_BVHNodes, tets, tetFathers)) {
+        PrepareRenderData(Xs);
+        NarrowPhase(Xs, XTilts, tI, nors);
+    }
 }
 
 BVH::BVH(const int _threadsPerBlock, size_t _maxQueries) : threadsPerBlock(_threadsPerBlock), collisionDetection(_threadsPerBlock, _maxQueries) {}

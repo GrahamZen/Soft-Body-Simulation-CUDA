@@ -100,11 +100,8 @@ __global__ void detectCollisionNarrow(int numQueries, Query* queries, const glm:
     {
         glmVec3 normal;
         Query& q = queries[index];
-        if (q.type == QueryType::VF) {
-            GLuint targetVIdx = q.v0;
-            q.toi = ccdCollisionTest(q, Xs, XTilts, normal);
-            q.normal = normal;
-        }
+        q.toi = ccdCollisionTest(q, Xs, XTilts, normal);
+        q.normal = normal;
     }
 }
 

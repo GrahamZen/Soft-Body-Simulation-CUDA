@@ -93,6 +93,7 @@ void RenderImGui()
     ImGui::Checkbox("Enable BVH", &imguiData->BVHEnabled);
     ImGui::Checkbox("Enable Detection", &imguiData->handleCollision);
     ImGui::Checkbox("Visualize BVH", &imguiData->BVHVis);
+    ImGui::Checkbox("Visualize Queries", &imguiData->QueryVis);
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
     bool globalSolverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
     bool solverChanged = ImGui::Checkbox("Use CUDA Solver", &imguiData->UseCUDASolver);

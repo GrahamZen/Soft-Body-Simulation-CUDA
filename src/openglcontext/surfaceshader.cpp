@@ -79,6 +79,7 @@ void SurfaceShader::draw(Drawable& d, int textureSlot)
 
 void SurfaceShader::drawPoints(Drawable& d)
 {
+    if (d.elemCount() == 0) return;
     float pointSize = 5.0f;
     glPointSize(pointSize);
     useMe();

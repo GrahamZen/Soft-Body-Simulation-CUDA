@@ -17,6 +17,7 @@ public:
     bool BVHVis = false;
     bool BVHEnabled = true;
     bool handleCollision = true;
+    bool QueryVis = true;
     bool ObjectVis = true;
     bool Reset = false;
     bool Pause = false;
