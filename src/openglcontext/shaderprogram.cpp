@@ -4,11 +4,14 @@
 #include <sstream>
 #include <fstream>
 #include <string>
+#include <filesystem> 
+namespace fs = std::filesystem;
 
 std::string readShaderSource(const char* filePath) {
     std::ifstream file(filePath);
     if (!file.good()) {
-        std::cerr << "Cannot open shader file: " << filePath << std::endl;
+        fs::path absolutePath = fs::absolute(filePath);
+        std::cerr << "Cannot open shader file: " << absolutePath << std::endl;
         return "";
     }
 

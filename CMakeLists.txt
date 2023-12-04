@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.18)
 
-project(softbody_simulation)
+project(softbody_simulation LANGUAGES CXX CUDA)
 
 set_property(GLOBAL PROPERTY USE_FOLDERS ON)
 
@@ -10,9 +10,27 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
+include(FetchContent)
+FetchContent_Declare(
+  Eigen
+  GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
+  GIT_TAG 3.4
+  GIT_SHALLOW TRUE
+  GIT_PROGRESS TRUE)
+set(EIGEN_BUILD_DOC OFF)
+
+set(BUILD_TESTING OFF)
+set(EIGEN_BUILD_PKGCONFIG OFF)
+FetchContent_MakeAvailable(Eigen)
+
 # Enable C++11 for host code
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_ARCHITECTURES 86)
+
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
+set(CUDA_NVCC_FLAGS_DEBUG "${CUDA_NVCC_FLAGS_DEBUG} -G -g")
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -24,18 +42,9 @@ endif()
 ########################################
 # CUDA Setup
 ########################################
-find_package(CUDA 10 REQUIRED)
-include(${CMAKE_MODULE_PATH}/CUDAComputesList.cmake)
-
-list(APPEND CUDA_NVCC_FLAGS ${CUDA_GENERATE_CODE})
-list(APPEND CUDA_NVCC_FLAGS_DEBUG "-g -G")
-set(CUDA_VERBOSE_BUILD ON)
-
-if(WIN32)
-    # Set up include and lib paths
-    set(CUDA_HOST_COMPILER ${CMAKE_CXX_COMPILER} CACHE FILEPATH "Host side compiler used by NVCC" FORCE)
-endif(WIN32)
+find_package(CUDAToolkit REQUIRED)
 ########################################
+
 
 find_package(OpenGL REQUIRED)
 
@@ -68,59 +77,59 @@ include_directories(${EXTERNAL}/include)
 
 find_package(OpenMP)
 
-set(headers
-    src/main.h
-    src/intersections.h
-    src/simulation/simulationContext.h
-    src/simulation/softBody.h
-    src/simulation/utilities.cuh
-    src/sceneStructs.h
-    src/preview.h
-    src/utilities.h
-    src/context.h
-    src/openglcontext/surfaceshader.h
-    src/openglcontext/shaderprogram.h
-    src/openglcontext/drawable.h
-    src/openglcontext/texture.h
-    src/mesh.h
-    )
+file(GLOB_RECURSE HEADER_FILES 
+     "${PROJECT_SOURCE_DIR}/src/*.h"
+     "${PROJECT_SOURCE_DIR}/src/*.cuh")
+file(GLOB_RECURSE SOURCE_FILES 
+     "${PROJECT_SOURCE_DIR}/src/*.cpp"
+     "${PROJECT_SOURCE_DIR}/src/*.cu")
 
-set(sources
-    src/main.cpp
-    src/stb.cpp
-    src/simulation/softBody.cpp
-    src/simulation/utilities.cu
-    src/simulation/simulationContext.cu
-    src/simulation/simulationContext.cpp
-    src/preview.cpp
-    src/utilities.cpp
-    src/context.cpp
-    src/openglcontext/surfaceshader.cpp
-    src/openglcontext/shaderprogram.cpp
-    src/openglcontext/drawable.cpp
-    src/openglcontext/texture.cpp
-    src/mesh.cpp
-    )
+foreach(FILE ${HEADER_FILES} ${SOURCE_FILES}) 
+    get_filename_component(PARENT_DIR "${FILE}" DIRECTORY)
 
-list(SORT headers)
-list(SORT sources)
+    string(REPLACE "${PROJECT_SOURCE_DIR}/src" "" GROUP "${PARENT_DIR}")
 
-source_group(Headers FILES ${headers})
-source_group(Sources FILES ${sources})
+    string(REPLACE "/" "\\" GROUP "${GROUP}")
+
+    source_group("${GROUP}" FILES "${FILE}")
+endforeach()
+
 
 #add_subdirectory(src/ImGui)
-set(PROJECT_INCLUDE_DIR ${PROJECT_SOURCE_DIR}/src ${PROJECT_SOURCE_DIR}/src/ImGui ${PROJECT_SOURCE_DIR}/src/openglcontext ${PROJECT_SOURCE_DIR}/src/simulation ${PROJECT_SOURCE_DIR}/src/utilities ${PROJECT_SOURCE_DIR}/src/sceneStructs ${PROJECT_SOURCE_DIR}/src/openglcontext ${PROJECT_SOURCE_DIR}/src/simulation)
+set(PROJECT_INCLUDE_DIR 
+${PROJECT_SOURCE_DIR}/src 
+${PROJECT_SOURCE_DIR}/src/openglcontext 
+${PROJECT_SOURCE_DIR}/src/simulation 
+${PROJECT_SOURCE_DIR}/src/simulation/eigen
+${PROJECT_SOURCE_DIR}/src/collision 
+)
+
 include_directories(
     ${PROJECT_INCLUDE_DIR} 
     ${GLM_INCLUDE_DIRS} 
     ${GLEW_INCLUDE_DIR} 
     ${GLFW_INCLUDE_DIR})
 
-
-cuda_add_executable(${CMAKE_PROJECT_NAME} ${sources} ${headers} ${IMGUI_SOURCES})
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui")
+########################################
+# Catch2 Tests
+########################################
+include(CTest)
+enable_testing()
+add_subdirectory(tests)
+########################################
+add_executable(${CMAKE_PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES} ${IMGUI_SOURCES})
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui" "${EXTERNAL}/svd3_cuda")
 target_link_libraries(${CMAKE_PROJECT_NAME}
-    ${LIBRARIES}
-    OpenMP::OpenMP_CXX
-    #stream_compaction  # TODO: uncomment if using your stream compaction
-    )
+${LIBRARIES}
+CUDA::cudart
+Eigen3::Eigen
+OpenMP::OpenMP_CXX
+CUDA::cusolver
+#stream_compaction  # TODO: uncomment if using your stream compaction
+)
+set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+)
+target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda -lineinfo>
+)

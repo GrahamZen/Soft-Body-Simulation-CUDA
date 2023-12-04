@@ -5,17 +5,25 @@
 //  A collection/kitchen sink of generally useful functions
 
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
-#include <cstdio>
-#include <vector>
 #include <sstream>
 #include <string>
 #include <fstream>
 #include <filesystem>
 #include <utilities.h>
+#include <bitset>
+#include <bvh.h>
+#include <type_traits>
 
+template<typename T, typename = void>
+struct has_glm_to_string : std::false_type {};
+
+template<typename T>
+struct has_glm_to_string<T, std::void_t<decltype(glm::to_string(std::declval<T>()))>> : std::true_type {};
+
+template<typename T>
+struct is_glm_type : has_glm_to_string<T> {};
 namespace fs = std::filesystem;
 
 float utilityCore::clamp(float f, float min, float max) {
@@ -124,21 +132,102 @@ std::istream& utilityCore::safeGetline(std::istream& is, std::string& t) {
     }
 }
 
+#include <iostream>
+
 template <typename T>
-void inspectHost(T* host_ptr, int size) {
-    for (int i = 0; i < size; i++) {
-        std::cout << glm::to_string(host_ptr[i]) << std::endl;
+void inspectHost(const T* host_ptr, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+    if constexpr (is_glm_type<T>::value) {
+        for (int i = 0; i < size; i++) {
+            std::cout << "glm::" << glm::to_string(host_ptr[i]) << "," << std::endl;
+        }
     }
+    else {
+        for (int i = 0; i < size; i++) {
+            std::cout << host_ptr[i] << std::endl;
+        }
+    }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
-template void inspectHost<glm::vec3>(glm::vec3* dev_ptr, int size);
-template void inspectHost<glm::vec4>(glm::vec4* dev_ptr, int size);
-template void inspectHost<glm::mat3>(glm::mat3* dev_ptr, int size);
-template void inspectHost<glm::mat4>(glm::mat4* dev_ptr, int size);
-void inspectHost(unsigned int* host_ptr, int size) {
+template void inspectHost<glm::vec3>(const glm::vec3* dev_ptr, int size);
+template void inspectHost<glm::vec4>(const glm::vec4* dev_ptr, int size);
+template void inspectHost<glm::mat3>(const glm::mat3* dev_ptr, int size);
+template void inspectHost<glm::mat4>(const glm::mat4* dev_ptr, int size);
+template void inspectHost<int>(const int*, int);
+template void inspectHost<dataType>(const dataType*, int);
+
+void inspectHost(const BVHNode* hstBVHNodes, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+    for (int i = 0; i < size; i++)
+    {
+        std::cout << i << ": " << hstBVHNodes[i].leftIndex << "," << hstBVHNodes[i].rightIndex << "  parent:" << hstBVHNodes[i].parent << std::endl;
+        std::cout << i << ": " << hstBVHNodes[i].bbox.max.x << "," << hstBVHNodes[i].bbox.max.y << "," << hstBVHNodes[i].bbox.max.z << std::endl;
+        //cout << i << ": " << hstBVHNodes[i].bbox.min.x << "," << hstBVHNodes[i].bbox.min.y << "," << hstBVHNodes[i].bbox.min.z << endl;
+    }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
+}
+
+void inspectHost(const AABB* aabb, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+    for (int i = 0; i < size; i++)
+    {
+        std::cout << "min: " << glm::to_string(aabb[i].min) << ", max:" << glm::to_string(aabb[i].max) << std::endl;
+    }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
+}
+
+void inspectHost(const Query* query, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+    for (int i = 0; i < size; i++) {
+        if (query[i].type == QueryType::EE)
+            std::cout << "EE:";
+        if (query[i].type == QueryType::VF)
+            std::cout << "VF:";
+        if (query[i].type == QueryType::UNKNOWN)
+            std::cout << "UNKNOWN:";
+        std::cout << query[i].v0 << "," << query[i].v1 << "," << query[i].v2 << "," << query[i].v3 << ", t:" << query[i].toi << ", n:" << glm::to_string(query[i].normal) << std::endl;
+    }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
+}
+
+
+template <typename T>
+bool compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int size) {
+    for (int i = 0; i < size; i++) {
+        if (host_ptr1[i] != host_ptr2[i]) {
+            std::cout << "Failed:" << std::endl
+                << "host_ptr1[" << i << "] = " << glm::to_string(host_ptr1[i]) << ", "
+                << "host_ptr2[" << i << "] = " << glm::to_string(host_ptr2[i]) << std::endl;
+            return false;
+        }
+    }
+    return true;
+}
+template bool compareHostVSHost<glm::vec3>(const glm::vec3*, const glm::vec3*, int size);
+
+void inspectHost(const unsigned int* host_ptr, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size / 4; i++) {
         std::cout << host_ptr[i * 4] << " " << host_ptr[i * 4 + 1] << " " << host_ptr[i * 4 + 2] << " " << host_ptr[i * 4 + 3] << std::endl;
     }
+    int remain = size % 4;
+    if (remain != 0) {
+        for (int i = size - remain; i < size; i++) {
+            std::cout << host_ptr[i] << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
+}
+
+void inspectHostMorton(const unsigned int* host_ptr, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+    for (int i = 0; i < 20; i++)
+    {
+        std::cout << std::bitset<30>(host_ptr[i]) << std::endl;
+    }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
 std::ifstream findFile(const std::string& fileName) {

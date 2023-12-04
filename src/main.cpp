@@ -1,11 +1,14 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/transform.hpp>
 
-#include <main.h>
-#include <preview.h>
+#include <iostream>
 #include <cstring>
+#include <main.h>
+#include <sceneStructs.h>
+#include <preview.h>
 #include <surfaceshader.h>
-
+#include <Eigen/Dense>
+#include <cuda_runtime.h>
 
 static std::string startTimeString;
 
@@ -43,6 +46,7 @@ int main(int argc, char** argv) {
 
     context->InitCuda();
     context->LoadShaders();
+    context->LoadFlatShaders();
     // Initialize ImGui Data
     InitImguiData(context->guiData);
     context->InitDataContainer();
@@ -60,21 +64,22 @@ int main(int argc, char** argv) {
 
 void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     Camera& cam = *context->mpCamera;
-    if (context->guiData->softBodyAttr.jump.first == true)
-        context->guiData->softBodyAttr.jump = { false, true };
     if (action == GLFW_PRESS) {
         switch (key) {
         case GLFW_KEY_ESCAPE:
             glfwSetWindowShouldClose(window, GL_TRUE);
             break;
-        case GLFW_KEY_S:
+        case GLFW_KEY_R:
             context->ResetCamera();
             break;
         case GLFW_KEY_SPACE:
             if (context->guiData->softBodyAttr.currSoftBodyId != -1)
-                context->guiData->softBodyAttr.jump = { true, true };
+                context->guiData->softBodyAttr.setJump(true);
             break;
         }
+    }
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        context->guiData->Step = true;
     }
 }
 

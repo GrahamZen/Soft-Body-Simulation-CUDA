@@ -29,6 +29,7 @@ public:
     void useMe();
     // Draw the given object to our screen using this ShaderProgram's shaders
     virtual void draw(Drawable& d, int textureSlot) = 0;
+    virtual void drawPoints(Drawable& d) = 0;
     // Utility function used in create()
     char* textFileRead(const char*);
     // Utility function that prints any shader compilation errors to the console

@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <mesh.h>
+#include <bvh.h>
 
 Mesh::Mesh()
     : Drawable(),
@@ -14,6 +15,50 @@ Mesh::~Mesh()
     // unregister this buffer object with CUDA
     cudaGLUnregisterBufferObject(bufPos);
     cudaGLUnregisterBufferObject(bufNor);
+}
+void Mesh::createQuad(float length, float y) {
+    std::vector<glm::vec3> pos{
+        glm::vec3(-length, y, -length),
+        glm::vec3(-length, y, length),
+        glm::vec3(length, y, -length),
+        glm::vec3(length, y, length),
+    };
+
+    std::vector<glm::vec4> nor{
+        glm::vec4(0, 1, 0, 0),
+        glm::vec4(0, 1, 0, 0),
+        glm::vec4(0, 1, 0, 0),
+        glm::vec4(0, 1, 0, 0)
+    };
+    // each uvs corresponds to a pos vec3, which corresponds to a normal.
+    std::vector<glm::vec2> uvs{
+        glm::vec2(0, 0),
+        glm::vec2(0, 1),
+        glm::vec2(1, 0),
+        glm::vec2(1, 1)
+    };
+
+    std::vector<GLuint> idx{ 0, 1, 2, 2, 1, 3 };
+
+    count = 6; // TODO: Set "count" to the number of indices in your index VBO
+
+    generateIdx();
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufIdx);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size() * sizeof(GLuint), idx.data(), GL_STATIC_DRAW);
+
+    generatePos();
+    glBindBuffer(GL_ARRAY_BUFFER, bufPos);
+    glBufferData(GL_ARRAY_BUFFER, pos.size() * sizeof(glm::vec3), pos.data(), GL_DYNAMIC_DRAW);
+
+    generateNor();
+    glBindBuffer(GL_ARRAY_BUFFER, bufNor);
+    glBufferData(GL_ARRAY_BUFFER, nor.size() * sizeof(glm::vec4), nor.data(), GL_DYNAMIC_DRAW);
+
+    generateUV();
+    glBindBuffer(GL_ARRAY_BUFFER, bufUV);
+    glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(glm::vec2), uvs.data(), GL_STATIC_DRAW);
+
+    numTris = 2;
 }
 
 void Mesh::createCube(const char* textureFile, const char* bgTextureFile)
@@ -148,9 +193,9 @@ void Mesh::createCube(const char* textureFile, const char* bgTextureFile)
 void Mesh::createTetrahedron()
 {
     // TODO: Create VBO data for positions, normals, UVs, and indices
-    count = tet_number * 12; // TODO: Set "count" to the number of indices in your index VBO
+    count = numTets * 12; // TODO: Set "count" to the number of indices in your index VBO
     std::vector<GLuint> triangles(count);
-    for (int t = 0; t < tet_number * 4; t++)
+    for (int t = 0; t < numTets * 4; t++)
     {
         triangles[t * 3 + 0] = t * 3 + 0;
         triangles[t * 3 + 1] = t * 3 + 1;
@@ -162,13 +207,55 @@ void Mesh::createTetrahedron()
 
     generatePos();
     glBindBuffer(GL_ARRAY_BUFFER, bufPos);
-    glBufferData(GL_ARRAY_BUFFER, tet_number * 12 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, numTets * 12 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
     cudaGraphicsGLRegisterBuffer(&cuda_bufPos_resource, bufPos, cudaGraphicsMapFlagsWriteDiscard);
 
     generateNor();
     glBindBuffer(GL_ARRAY_BUFFER, bufNor);
-    glBufferData(GL_ARRAY_BUFFER, tet_number * 12 * sizeof(glm::vec4), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, numTets * 12 * sizeof(glm::vec4), nullptr, GL_DYNAMIC_DRAW);
     cudaGraphicsGLRegisterBuffer(&cuda_bufNor_resource, bufNor, cudaGraphicsMapFlagsWriteDiscard);
+}
+
+void Mesh::createMesh()
+{
+    // TODO: Create VBO data for positions, normals, UVs, and indices
+    count = numTris * 3; // TODO: Set "count" to the number of indices in your index VBO
+    std::vector<GLuint> triangles(count);
+    for (int t = 0; t < numTris; t++)
+    {
+        triangles[t * 3 + 0] = t * 3 + 0;
+        triangles[t * 3 + 1] = t * 3 + 1;
+        triangles[t * 3 + 2] = t * 3 + 2;
+    }
+    generateIdx();
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufIdx);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(GLuint), triangles.data(), GL_STATIC_DRAW);
+
+    generatePos();
+    glBindBuffer(GL_ARRAY_BUFFER, bufPos);
+    glBufferData(GL_ARRAY_BUFFER, numTets * 9 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+    cudaGraphicsGLRegisterBuffer(&cuda_bufPos_resource, bufPos, cudaGraphicsMapFlagsWriteDiscard);
+
+    generateNor();
+    glBindBuffer(GL_ARRAY_BUFFER, bufNor);
+    glBufferData(GL_ARRAY_BUFFER, numTets * 9 * sizeof(glm::vec4), nullptr, GL_DYNAMIC_DRAW);
+    cudaGraphicsGLRegisterBuffer(&cuda_bufNor_resource, bufNor, cudaGraphicsMapFlagsWriteDiscard);
+}
+
+void Mesh::mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr)
+{
+    size_t size;
+    cudaGraphicsMapResources(1, &cuda_bufPos_resource, 0);
+    cudaGraphicsResourceGetMappedPointer((void**)bufPosDevPtr, &size, cuda_bufPos_resource);
+
+    cudaGraphicsMapResources(1, &cuda_bufNor_resource, 0);
+    cudaGraphicsResourceGetMappedPointer((void**)bufNorDevPtr, &size, cuda_bufNor_resource);
+}
+
+void Mesh::unMapDevicePtr()
+{
+    cudaGraphicsUnmapResources(1, &cuda_bufPos_resource, 0);
+    cudaGraphicsUnmapResources(1, &cuda_bufNor_resource, 0);
 }
 
 void Mesh::create()

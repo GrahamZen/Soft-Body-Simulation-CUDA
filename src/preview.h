@@ -1,7 +1,5 @@
 #pragma once
 
-extern GLuint vbo;
-
 std::string currentTimeString();
 bool initOpenGL();
 void mainLoop();

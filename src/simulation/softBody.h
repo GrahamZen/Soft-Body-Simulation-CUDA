@@ -3,47 +3,86 @@
 #include <vector>
 #include <mesh.h>
 #include <context.h>
+#include <Eigen/Dense>
+#include <Eigen/SparseCholesky>
+#include <Eigen/SparseCore>
+#include <cusolverSp_LOWLEVEL_PREVIEW.h>
+
+#include <deformable_mesh.h>
+#include <solver.h>
 
 class SimulationCUDAContext;
+class SoftBodyData;
 
 class SoftBody : public Mesh {
 public:
-    SoftBody(const char* nodeFileName, const char* eleFileName, SimulationCUDAContext*, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
-        float mass = 1.0f, float stiffness_0 = 20000.0f, float stiffness_1 = 5000.0f, float damp = 0.999f, float muN = 0.5f, float muT = 0.5f,
-        bool centralize = false, int startIndex = 0);
+    struct SoftBodyAttribute {
+        float mass = 1.0f;
+        float stiffness_0 = 20000.0f;
+        float stiffness_1 = 5000.0f;
+        int numConstraints = 0;
+    }attrib;
+    SoftBody(SimulationCUDAContext*, SoftBodyAttribute&, SoftBodyData*);
     ~SoftBody();
 
+    void InitModel();
+    void PdSolver();
+    void solverPrepare();
+    void PDSolverStep();
+    void PDSolver();
     void Update();
     void Reset();
     void mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr);
     void unMapDevicePtr();
     GLuint* getTet()const { return Tet; }
+    GLuint* getTri()const { return Tri; }
     glm::vec3* getX()const { return X; }
     glm::vec3* getV()const { return V; }
     glm::vec3* getForce()const { return Force; }
     glm::mat3* getInvDm()const { return inv_Dm; }
-    void setAttributes(const GuiDataContainer::SoftBodyAttr& softBodyAttr);
-    int getNumber()const { return number; }
-    int getTetNumber()const { return tet_number; }
+    void setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr);
+    int getNumber()const { return numVerts; }
+    int getTetNumber()const { return numTets; }
+    int getTriNumber()const { return numTris; }
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
-    SimulationCUDAContext* mpSimContext;
-    float mass = 1.0f;
-    float stiffness_0 = 20000.0f;
-    float stiffness_1 = 5000.0f;
-    float damp = 0.999f;
-    float muN = 0.5f;
-    float muT = 0.5f;
+    const int threadsPerBlock;
+    SimulationCUDAContext* mcrpSimContext;
+    pd::deformable_mesh_t model{};
+    pd::solver_t solver;
+
+    std::vector<glm::vec3> vertices;
+    std::vector<GLuint> idx;
+    float wi = 1000000.0f; // is the deformation gradient coefficient
     bool jump = false;
 
     GLuint* Tet;
-    int tet_number; // The number of tetrahedra
-    int number; // The number of vertices
+    GLuint* Tri;
 
+    int numTets; // The number of tetrahedra
+    int numVerts; // The number of vertices
+    int numTris; // The number of triangles
+    int nnzNumber;
+
+    bool solverReady = false;
+
+    glm::vec3* ExtForce;
     glm::vec3* Force;
     glm::vec3* V;
     glm::vec3* X;
     glm::vec3* X0;
+    glm::vec3* XTilt;
+    glm::vec3* Velocity;
+    float* Mass;
+    float* V0;
+
+    csrcholInfo_t d_info = NULL;
+    void* buffer_gpu = NULL;
+    cusolverSpHandle_t cusolverHandle;
+
+    float* masses;
+    float* sn;
+    float* b;
 
     glm::mat3* inv_Dm;
 
@@ -51,8 +90,12 @@ private:
     glm::vec3* V_sum;
     int* V_num;
 
+    float* bHost;
+    Eigen::SimplicialCholesky<Eigen::SparseMatrix<float>> cholesky_decomposition_;
+
     // Methods
     void _Update();
+    void SetForce(Eigen::MatrixX3d* fext);
     std::vector<GLuint> loadEleFile(const std::string&, int startIndex = 0);
     std::vector<glm::vec3> loadNodeFile(const std::string&, bool centralize = false);
 };

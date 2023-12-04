@@ -9,6 +9,7 @@ public:
     int attrPos; // A handle for the "in" vec4 representing vertex position in the vertex shader
     int attrNor; // A handle for the "in" vec4 representing vertex normal in the vertex shader
     int attrUV; // A handle for the "in" vec2 representing the UV coordinates in the vertex shader
+    int attrCol; // A handle for the "in" vec4 representing vertex color in the vertex shader
 
     int unifModel; // A handle for the "uniform" mat4 representing model matrix in the vertex shader
     int unifModelInvTr; // A handle for the "uniform" mat4 representing inverse transpose of the model matrix in the vertex shader
@@ -23,6 +24,7 @@ public:
     virtual void setupMemberVars() override;
     // Draw the given object to our screen using this ShaderProgram's shaders
     virtual void draw(Drawable& d, int textureSlot = 0) override;
+    virtual void drawPoints(Drawable& d) override;
 
 
     // Pass the given model matrix to this shader on the GPU

@@ -33,6 +33,8 @@ bool initOpenGL() {
     if (!glfwInit()) {
         exit(EXIT_FAILURE);
     }
+    glfwWindowHint(GLFW_SAMPLES, 4);
+    glfwWindowHint(GLFW_DEPTH_BITS, 24);
 
     window = glfwCreateWindow(context->width, context->height, "CIS 565 Path Tracer", NULL, NULL);
     if (!window) {
@@ -88,7 +90,18 @@ void RenderImGui()
 
     ImGui::Begin("Simulator Analytics");                  // Create a window called "Hello, world!" and append into it.
     ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
+    ImGui::Checkbox("Enable BVH", &imguiData->BVHEnabled);
+    ImGui::Checkbox("Enable Detection", &imguiData->handleCollision);
+    ImGui::Checkbox("Visualize BVH", &imguiData->BVHVis);
+    ImGui::Checkbox("Visualize Queries", &imguiData->QueryVis);
+    ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
+    bool globalSolverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
+    bool solverChanged = ImGui::Checkbox("Use CUDA Solver", &imguiData->UseCUDASolver);
     imguiData->Reset = ImGui::Button("Reset");
+    ImGui::SameLine();
+    imguiData->Pause = ImGui::Button("Pause");
+    ImGui::SameLine();
+    imguiData->Step = ImGui::Button("Step");
     bool dtChanged = ImGui::DragFloat("dt", &imguiData->Dt, 0.0001f, 0.0001f, 0.05f, "%.4f");
     float availWidth = ImGui::GetContentRegionAvail().x;
     ImGui::SetNextItemWidth(availWidth * 0.25f);
@@ -98,7 +111,7 @@ void RenderImGui()
     bool cameraThetaChanged = ImGui::DragFloat("Camera Theta", &imguiData->theta, 0.1f, 0.001f, PI - 0.001f, "%.4f");
     bool cameraLookAtChanged = ImGui::DragFloat3("Camera Look At", &imguiData->cameraLookAt.x, 1.0f, -200.0f, 200.0f, "%.4f");
     bool zoomChanged = ImGui::DragFloat("Zoom", &imguiData->zoom, 10.f, 0.01f, 10000.0f, "%.4f");
-    ImGui::Text("Soft Body Attributes");
+    ImGui::Text("Attributes");
     ImGui::Separator();
     imguiData->softBodyAttr.stiffness_0.second = ImGui::DragFloat("Stiffness 0", &imguiData->softBodyAttr.stiffness_0.first, 100.f, 0.0f, 100000.0f, "%.2f");
     imguiData->softBodyAttr.stiffness_1.second = ImGui::DragFloat("Stiffness 1", &imguiData->softBodyAttr.stiffness_1.first, 100.f, 0.0f, 100000.0f, "%.2f");
@@ -106,10 +119,12 @@ void RenderImGui()
     imguiData->softBodyAttr.muN.second = ImGui::DragFloat("muN", &imguiData->softBodyAttr.muN.first, 0.01f, 0.0f, 100.0f, "%.4f");
     imguiData->softBodyAttr.muT.second = ImGui::DragFloat("muT", &imguiData->softBodyAttr.muT.first, 0.01f, 0.0f, 100.0f, "%.4f");
     ImGui::Separator();
-    const auto& nameItems = context->GetnamesSoftBodies();
-    if (ImGui::Combo("label", &imguiData->softBodyAttr.currSoftBodyId, nameItems.data(), nameItems.size()))
+    const auto& nameItems = context->GetNamesSoftBodies();
+    if (ImGui::Combo("Soft Bodies", &imguiData->softBodyAttr.currSoftBodyId, nameItems.data(), nameItems.size()))
     {
     }
+    const auto& nameContextItems = context->GetNamesContexts();
+    bool contextChanged = ImGui::Combo("Contexts", &imguiData->currSimContextId, nameContextItems.data(), nameContextItems.size());
 
     // LOOK: Un-Comment to check the output window and usage
     //ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
@@ -124,9 +139,13 @@ void RenderImGui()
     //ImGui::SameLine();
     //ImGui::Text("counter = %d", counter);
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::Text("#DOF %d, #Ele %d, #Query %d",
+        context->GetDOFs()[imguiData->currSimContextId],
+        context->GetEles()[imguiData->currSimContextId],
+        context->GetNumQueries());
     ImGui::End();
 
-    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged) {
+    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged || solverChanged || contextChanged || globalSolverChanged) {
         context->panelModified = true;
     }
 
