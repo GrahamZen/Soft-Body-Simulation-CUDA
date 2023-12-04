@@ -20,7 +20,7 @@
  * of memory management
  */
 
-__global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, dataType* tI, int numVerts);
+__global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, glm::vec3* V, dataType* tI, glm::vec3* normal, float muT, float muN, int numVerts);
 
 SimulationCUDAContext::~SimulationCUDAContext()
 {
@@ -92,7 +92,7 @@ void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, 
 }
 
 void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilt,
-    glm::vec3*& gV, glm::vec3*& gF, GLuint*& gEdges, GLuint*& gTet, int& numVerts, int& numTets)
+    glm::vec3*& gV, glm::vec3*& gF, GLuint*& gEdges, GLuint*& gTet, GLuint*& gTetFather, int& numVerts, int& numTets)
 {
     numVerts = totalNumVerts;
     numTets = totalNumTets;
@@ -105,9 +105,11 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
     cudaMemset(gF, 0, sizeof(glm::vec3) * totalNumVerts);
     cudaMalloc((void**)&gEdges, sizeof(GLuint) * totalNumEdges * 2);
     cudaMalloc((void**)&gTet, sizeof(GLuint) * totalNumTets * 4);
+    cudaMalloc((void**)&gTetFather, sizeof(GLuint) * totalNumTets);
     int vertOffset = 0, tetOffset = 0, edgeOffset = 0;
     thrust::device_ptr<GLuint> dev_gTetPtr(gTet);
     thrust::device_ptr<GLuint> dev_gEdgesPtr(gEdges);
+    thrust::device_ptr<GLuint> dev_gTetFatherPtr(gTetFather);
     for (int i = 0; i < m_softBodyData.size(); i++)
     {
         auto& softBodyData = m_softBodyData[i];
@@ -117,6 +119,7 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
         thrust::transform(data.Tets, data.Tets + data.numTets * 4, dev_gTetPtr + tetOffset, [vertOffset] __device__(GLuint x) {
             return x + vertOffset;
         });
+        thrust::fill(dev_gTetFatherPtr + tetOffset / 4, dev_gTetFatherPtr + tetOffset / 4 + data.numTets, i);
         cudaMemcpy(gEdges + edgeOffset, m_edges[i].data(), sizeof(GLuint) * m_edges[i].size(), cudaMemcpyHostToDevice);
         thrust::transform(dev_gEdgesPtr + edgeOffset, dev_gEdgesPtr + edgeOffset + m_edges[i].size(), dev_gEdgesPtr + edgeOffset,
             [vertOffset] __device__(GLuint x) {
@@ -132,20 +135,15 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
         tetOffset += data.numTets * 4;
         edgeOffset += m_edges[i].size();
     }
-    // inspectGLM(gTet, numTets * 4);
     cudaMemcpy(gX0, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(gXTilt, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
 
 void SimulationCUDAContext::CCD()
 {
-    m_bvh.DetectCollision(dev_Tets, dev_Xs, dev_XTilts, dev_tIs, dev_Normals);
-    // inspectGLM(dev_Xs, numVerts);
-    // inspectGLM(dev_XTilts, numVerts);
-    // inspectGLM(tIs, numVerts);
+    m_bvh.DetectCollision(dev_Tets, dev_TetFathers, dev_Xs, dev_XTilts, dev_tIs, dev_Normals);
     int blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    //CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, tIs, numVerts);
-    cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
+    CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, dev_Vs, dev_tIs, dev_Normals, muT, muN, numVerts);
 }
 
 void SimulationCUDAContext::Update()
@@ -155,7 +153,6 @@ void SimulationCUDAContext::Update()
     }
     if (context->guiData->handleCollision)
         m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
-    inspectGLM(dev_Vs, numVerts);
     HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_XTilts, dev_Vs, numVerts, glm::vec3(0.f, floorY, 0.f), floorUp, muT, muN);
     if (context->guiData->handleCollision)
         CCD();
@@ -187,5 +184,3 @@ void SimulationCUDAContext::PrepareRenderData() {
         }
     }
 }
-
-

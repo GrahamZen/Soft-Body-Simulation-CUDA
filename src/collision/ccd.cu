@@ -1,10 +1,8 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <bvh.cuh>
+#include <bvh.h>
 #include <thrust/device_vector.h>
-#include <thrust/reduce.h>
-#include <intersections.h>
+#include <thrust/fill.h>
 #include <cuda_runtime.h>
 #include <utilities.cuh>
 
@@ -52,30 +50,30 @@ AABB AABB::expand(const AABB& aabb)const {
     };
 }
 
-CollisionDetection::CollisionDetection(const int _threadsPerBlock, int maxQueries) :threadsPerBlock(_threadsPerBlock)
+CollisionDetection::CollisionDetection(const int _threadsPerBlock, size_t _maxQueries) :threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxQueries)
 {
-    cudaMalloc(&deviceQueries, maxQueries * sizeof(Query));
+    cudaMalloc(&dev_queries, maxNumQueries * sizeof(Query));
 
-    cudaMalloc(&deviceQueryCount, sizeof(int));
-    cudaMemset(deviceQueryCount, 0, sizeof(int));
+    cudaMalloc(&dev_numQueries, sizeof(size_t));
+    cudaMemset(dev_numQueries, 0, sizeof(size_t));
 
-    cudaMalloc(&deviceOverflowFlag, sizeof(bool));
+    cudaMalloc(&dev_overflowFlag, sizeof(bool));
 }
 
 CollisionDetection::~CollisionDetection()
 {
-    cudaFree(deviceQueries);
-    cudaFree(deviceQueryCount);
-    cudaFree(deviceOverflowFlag);
+    cudaFree(dev_queries);
+    cudaFree(dev_numQueries);
+    cudaFree(dev_overflowFlag);
 }
 
-void CollisionDetection::DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors)
+void CollisionDetection::DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors)
 {
-    BroadPhase(numTets, dev_BVHNodes, tets);
+    BroadPhase(numTets, dev_BVHNodes, tets, tetFathers);
     NarrowPhase(Xs, XTilts, tI, nors);
 }
 
-BVH::BVH(const int _threadsPerBlock, int _maxQueries) : threadsPerBlock(_threadsPerBlock), collisionDetection(_threadsPerBlock, _maxQueries) {}
+BVH::BVH(const int _threadsPerBlock, size_t _maxQueries) : threadsPerBlock(_threadsPerBlock), collisionDetection(_threadsPerBlock, _maxQueries) {}
 
 BVH::~BVH()
 {
@@ -96,7 +94,9 @@ void BVH::PrepareRenderData()
     Wireframe::unMapDevicePtr();
 }
 
-void BVH::DetectCollision(const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors)
+void BVH::DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors)
 {
-    collisionDetection.DetectCollision(numTets, dev_BVHNodes, tets, Xs, XTilts, tI, nors);
+    thrust::device_ptr<dataType> dev_ptr(tI);
+    thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
+    collisionDetection.DetectCollision(numTets, dev_BVHNodes, tets, tetFathers, Xs, XTilts, tI, nors);
 }

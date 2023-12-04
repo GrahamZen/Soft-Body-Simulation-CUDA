@@ -40,36 +40,36 @@ struct Query {
     GLuint v1;
     GLuint v2;
     GLuint v3;
-    float toi;
-    glm::vec3 normal;
+    float toi = 0.f;
+    glm::vec3 normal = glm::vec3(0.f);
 };
 
 class CollisionDetection {
 public:
-    CollisionDetection(const int threadsPerBlock, int maxQueries);
+    CollisionDetection(const int threadsPerBlock, size_t maxNumQueries);
     ~CollisionDetection();
-    int DetectCollisionCandidates(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets);
-    void BroadPhase(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets);
-    void DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors);
-    void NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors);
+    int DetectCollisionCandidates(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers);
+    void BroadPhase(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers);
+    void DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors);
+    void NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors);
 private:
-    Query* deviceQueries;
-    int* deviceQueryCount;
-    int actualQueryCount;
-    size_t maxQueries = 1 << 15;
-    bool* deviceOverflowFlag;
+    Query* dev_queries;
+    size_t* dev_numQueries;
+    size_t numQueries;
+    size_t maxNumQueries = 1 << 15;
+    bool* dev_overflowFlag;
     const int threadsPerBlock;
 };
 
 class BVH : public Wireframe {
 public:
 
-    BVH(const int threadsPerBlock, int _maxQueries);
+    BVH(const int threadsPerBlock, size_t _maxQueries);
     ~BVH();
     void Init(int numTets, int numVerts, int maxThreads);
     void PrepareRenderData();
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
-    void DetectCollision(const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors);
+    void DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors);
 
 private:
     void BuildBBoxes();

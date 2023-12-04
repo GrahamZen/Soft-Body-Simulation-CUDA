@@ -190,7 +190,6 @@ void Context::InitDataContainer() {
 
 void Context::InitCuda() {
     LoadSimContext();
-    cudaGLSetGLDevice(0);
 
     // Clean up on program exit
     atexit(cleanupCuda);

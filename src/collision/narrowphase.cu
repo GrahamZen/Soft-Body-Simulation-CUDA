@@ -1,13 +1,11 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <bvh.cuh>
+#include <bvh.h>
 #include <intersections.h>
 #include <cuda_runtime.h>
-#include <utilities.cuh>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
-#include <thrust/remove.h>
 #include <thrust/device_vector.h>
 
 struct CompareQuery {
@@ -23,19 +21,9 @@ struct CompareQuery {
 struct EqualQuery {
     __host__ __device__
         bool operator()(const Query& q1, const Query& q2) const {
-        return q1.v0 == q2.v0;
+        return q1.v0 == q2.v0 && q1.type == q2.type;
     }
 };
-
-bool isCollision(const glm::vec3& v, const AABB& box, dataType threshold = EPSILON) {
-    glm::vec3 nearestPoint;
-    nearestPoint.x = std::max(box.min.x, std::min(v.x, box.max.x));
-    nearestPoint.y = std::max(box.min.y, std::min(v.y, box.max.y));
-    nearestPoint.z = std::max(box.min.z, std::min(v.z, box.max.z));
-    glmVec3 diff = v - nearestPoint;
-    dataType distanceSquared = glm::dot(diff, diff);
-    return distanceSquared <= threshold;
-}
 
 __device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, int& hitTetId, glm::vec3& nor)
 {
@@ -131,17 +119,18 @@ __global__ void storeTi(int numQueries, Query* queries, dataType* tI, glm::vec3*
     }
 }
 
-void CollisionDetection::NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors)
+void CollisionDetection::NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors)
 {
-    dim3 numBlocksQuery = (actualQueryCount + threadsPerBlock - 1) / threadsPerBlock;
-    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (actualQueryCount, deviceQueries, Xs, XTilts);
-    thrust::device_ptr<Query> dev_queries(deviceQueries);
+    dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
+    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, Xs, XTilts);
+    thrust::device_ptr<Query> dev_queriesPtr(dev_queries);
 
-    thrust::sort(dev_queries, dev_queries + actualQueryCount, CompareQuery());
+    thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());
 
-    auto new_end = thrust::unique(dev_queries, dev_queries + actualQueryCount, EqualQuery());
+    auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
 
-    int actualQueryCount = new_end - dev_queries;
-    numBlocksQuery = (actualQueryCount + threadsPerBlock - 1) / threadsPerBlock;
-    storeTi << <numBlocksQuery, threadsPerBlock >> > (actualQueryCount, deviceQueries, tI, nors);
+    int numQueries = new_end - dev_queriesPtr;
+    numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
+    storeTi << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, tI, nors);
+    cudaDeviceSynchronize();
 }

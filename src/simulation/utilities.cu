@@ -434,10 +434,25 @@ __global__ void setExtForce(glm::vec3* ExtForce, glm::vec3 gravity, int numVerts
     }
 }
 
-__global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, dataType* tI, int numVerts) {
+__global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, glm::vec3* V, dataType* tI, glm::vec3* normals, float muT, float muN, int numVerts) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= numVerts) return;
-    X[idx] = X[idx] + (XTilt[idx] - X[idx]) * (float)tI[idx];
+    float interval = glm::length(XTilt - X);
+
+    if (tI[idx] < 1.0f)
+    {
+        glm::vec3 normal = normals[idx];
+        glm::vec3 vel = XTilt[idx] - X[idx];
+        glm::vec3 velNormal = glm::dot(vel, normal) * normal;
+        glm::vec3 vT = vel - velNormal;
+        float mag_vT = glm::length(vT);
+        float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(velNormal) / mag_vT, 0.0f);
+        V[idx] = -muN * velNormal + a * vT;
+    }
+    else
+    {
+        X[idx] = XTilt[idx];
+    }
 }
 
 __global__ void populateBVHNodeAABBPos(BVHNode* nodes, glm::vec3* pos, int numNodes) {

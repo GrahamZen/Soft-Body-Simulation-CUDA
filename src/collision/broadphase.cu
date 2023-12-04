@@ -1,14 +1,12 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <bvh.cuh>
+#include <bvh.h>
 #include <thrust/device_vector.h>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 #include <thrust/remove.h>
 #include <intersections.h>
 #include <cuda_runtime.h>
-#include <utilities.cuh>
 
 
 struct QueryComparator {
@@ -36,7 +34,7 @@ struct QueryEquality {
 struct IsUnknown {
     __host__ __device__
         bool operator()(const Query& query) const {
-        return query.type == QueryType::UNKNOWN;
+        return query.type == QueryType::UNKNOWN || query.type == QueryType::EE;
     }
 };
 
@@ -130,7 +128,7 @@ __device__ void fillQuery(Query* query, int tetId, int tet2Id, const GLuint* tet
 }
 
 
-__global__ void traverseTree(int numTets, const BVHNode* nodes, const GLuint* tets, Query* queries, int* queryCount, int maxQueries, bool* overflowFlag)
+__global__ void traverseTree(int numTets, const BVHNode* nodes, const GLuint* tets, const GLuint* tetFathers, Query* queries, size_t* queryCount, size_t maxNumQueries, bool* overflowFlag)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index >= numTets) return;
@@ -160,10 +158,10 @@ __global__ void traverseTree(int numTets, const BVHNode* nodes, const GLuint* te
             if (leftChild.isLeaf == 1)
             {
                 // 4 faces * 4 verts + 6 edges * 6 edges
-                if (myNode.TetrahedronIndex != leftChild.TetrahedronIndex) {
+                if (tetFathers[myNode.TetrahedronIndex] != tetFathers[leftChild.TetrahedronIndex] && myNode.TetrahedronIndex != leftChild.TetrahedronIndex) {
                     int qIdx = atomicAdd(queryCount, 36 + 16);
                     Query* qBegin = &queries[qIdx];
-                    if (qIdx < maxQueries) {
+                    if (qIdx < maxNumQueries) {
                         fillQuery(qBegin, myNode.TetrahedronIndex, leftChild.TetrahedronIndex, tets);
                     }
                     else {
@@ -183,10 +181,10 @@ __global__ void traverseTree(int numTets, const BVHNode* nodes, const GLuint* te
             // check triangle intersection
             if (rightChild.isLeaf == 1)
             {
-                if (myNode.TetrahedronIndex != rightChild.TetrahedronIndex) {
+                if (tetFathers[myNode.TetrahedronIndex] != tetFathers[rightChild.TetrahedronIndex] && myNode.TetrahedronIndex != rightChild.TetrahedronIndex) {
                     int qIdx = atomicAdd(queryCount, 36 + 16);
                     Query* qBegin = &queries[qIdx];
-                    if (qIdx < maxQueries) {
+                    if (qIdx < maxNumQueries) {
                         fillQuery(qBegin, myNode.TetrahedronIndex, rightChild.TetrahedronIndex, tets);
                     }
                     else {
@@ -204,7 +202,36 @@ __global__ void traverseTree(int numTets, const BVHNode* nodes, const GLuint* te
     }
 }
 
-__global__ void sortEachQuery(int numQueries, Query* query)
+int CollisionDetection::DetectCollisionCandidates(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers) {
+    bool overflowHappened = false;
+    bool overflow;
+    dim3 numblocksTets = (numTets + threadsPerBlock - 1) / threadsPerBlock;
+
+    cudaMemset(dev_numQueries, 0, sizeof(size_t));
+    do {
+        overflow = false;
+        cudaMemset(dev_overflowFlag, 0, sizeof(bool));
+        traverseTree << <numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, tets, tetFathers, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag);
+        cudaMemcpy(&overflow, dev_overflowFlag, sizeof(bool), cudaMemcpyDeviceToHost);
+        if (overflow) {
+            std::cerr << "overflow" << std::endl;
+            overflowHappened = true;
+            maxNumQueries *= 2;
+            if (maxNumQueries > 1 << 31) {
+                std::cerr << "Too many queries" << std::endl;
+                exit(1);
+            }
+            cudaFree(dev_queries);
+            cudaMalloc(&dev_queries, maxNumQueries * sizeof(Query));
+            cudaMemset(dev_numQueries, 0, sizeof(size_t));
+        }
+    } while (overflow);
+
+    cudaMemcpy(&numQueries, dev_numQueries, sizeof(size_t), cudaMemcpyDeviceToHost);
+    return numQueries;
+}
+
+__global__ void sortEachQuery(size_t numQueries, Query* query)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numQueries)
@@ -230,9 +257,9 @@ __global__ void sortEachQuery(int numQueries, Query* query)
     }
 }
 
-void removeDuplicates(Query* deviceQueries, int& deviceQueryCount) {
-    thrust::device_ptr<Query> dev_ptr(deviceQueries);
-    int numQueries = deviceQueryCount;
+void removeDuplicates(Query* dev_queries, size_t& dev_numQueries) {
+    thrust::device_ptr<Query> dev_ptr(dev_queries);
+    size_t numQueries = dev_numQueries;
 
     auto new_end_remove = thrust::remove_if(dev_ptr, dev_ptr + numQueries, IsUnknown());
     numQueries = new_end_remove - dev_ptr;
@@ -241,37 +268,13 @@ void removeDuplicates(Query* deviceQueries, int& deviceQueryCount) {
 
     auto new_end_unique = thrust::unique(dev_ptr, dev_ptr + numQueries, QueryEquality());
 
-    deviceQueryCount = new_end_unique - dev_ptr;
+    dev_numQueries = new_end_unique - dev_ptr;
 }
 
-int CollisionDetection::DetectCollisionCandidates(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets) {
-    bool overflowHappened = false;
-    bool overflow;
-    dim3 numblocksTets = (numTets + threadsPerBlock - 1) / threadsPerBlock;
-
-    cudaMemset(deviceQueryCount, 0, sizeof(int));
-    do {
-        cudaMemset(deviceOverflowFlag, 0, sizeof(bool));
-        traverseTree << <numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, tets, deviceQueries, deviceQueryCount, maxQueries, deviceOverflowFlag);
-        cudaMemcpy(&overflow, deviceOverflowFlag, sizeof(bool), cudaMemcpyDeviceToHost);
-        if (overflow) {
-            std::cerr << "overflow" << std::endl;
-            overflowHappened = true;
-            maxQueries *= 2;
-            cudaFree(deviceQueries);
-            cudaMalloc(&deviceQueries, maxQueries * sizeof(Query));
-            cudaMemset(deviceQueryCount, 0, sizeof(int));
-        }
-    } while (overflow);
-
-    cudaMemcpy(&actualQueryCount, deviceQueryCount, sizeof(int), cudaMemcpyDeviceToHost);
-    return actualQueryCount;
-}
-
-void CollisionDetection::BroadPhase(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets)
+void CollisionDetection::BroadPhase(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers)
 {
-    DetectCollisionCandidates(numTets, dev_BVHNodes, tets);
-    dim3 numBlocksQuery = (actualQueryCount + threadsPerBlock - 1) / threadsPerBlock;
-    sortEachQuery << <numBlocksQuery, threadsPerBlock >> > (actualQueryCount, deviceQueries);
-    removeDuplicates(deviceQueries, actualQueryCount);
+    DetectCollisionCandidates(numTets, dev_BVHNodes, tets, tetFathers);
+    dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
+    sortEachQuery << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries);
+    removeDuplicates(dev_queries, numQueries);
 }

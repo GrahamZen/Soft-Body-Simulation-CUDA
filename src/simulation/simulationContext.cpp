@@ -3,6 +3,8 @@
 #include <sstream>
 #include <map>
 #include <set>
+#include <filesystem> 
+namespace fs = std::filesystem;
 
 DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
 {
@@ -10,7 +12,7 @@ DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerB
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json,
     const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads)
-    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH, 1 << 15)
+    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH, 1 << 25)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
@@ -99,14 +101,14 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& 
                 SoftBody::SoftBodyAttribute{ mass, stiffness_0, stiffness_1, constraints });
         }
     }
-    dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_XTilts, dev_Vs, dev_Fs, dev_Edges, dev_Tets, numVerts, numTets);
+    dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_XTilts, dev_Vs, dev_Fs, dev_Edges, dev_Tets, dev_TetFathers, numVerts, numTets);
     for (auto softBodyData : dataLoader.m_softBodyData) {
         softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
     }
     m_floor.createQuad(1000, floorY);
     m_bvh.Init(numTets, numVerts, maxThreads);
-    cudaMalloc((void**)&dev_Normals, numVerts);
-    cudaMalloc((void**)&dev_tIs, numVerts);
+    cudaMalloc((void**)&dev_Normals, numVerts * sizeof(glm::vec3));
+    cudaMalloc((void**)&dev_tIs, numVerts * sizeof(dataType));
 }
 
 void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {
@@ -140,7 +142,8 @@ std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int 
     std::ifstream file(EleFilename);
 
     if (!file.is_open()) {
-        std::cerr << "Unable to open file" << std::endl;
+        fs::path absolutePath = fs::absolute(EleFilename);
+        std::cerr << "Unable to open file: " << absolutePath << std::endl;
     }
 
     std::getline(file, line);
@@ -198,7 +201,8 @@ std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename,
 {
     std::ifstream file(nodeFilename);
     if (!file.is_open()) {
-        std::cerr << "Unable to open file: " << nodeFilename << std::endl;
+        fs::path absolutePath = fs::absolute(nodeFilename);
+        std::cerr << "Unable to open file: " << absolutePath << std::endl;
         return {};
     }
 

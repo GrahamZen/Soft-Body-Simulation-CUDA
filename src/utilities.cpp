@@ -5,11 +5,8 @@
 //  A collection/kitchen sink of generally useful functions
 
 #include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/matrix_inverse.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
-#include <cstdio>
-#include <vector>
 #include <sstream>
 #include <string>
 #include <fstream>
@@ -18,7 +15,6 @@
 #include <bitset>
 #include <bvh.h>
 #include <type_traits>
-#include <glm/glm.hpp>
 
 template<typename T, typename = void>
 struct has_glm_to_string : std::false_type {};
@@ -214,6 +210,13 @@ void inspectHost(const unsigned int* host_ptr, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size / 4; i++) {
         std::cout << host_ptr[i * 4] << " " << host_ptr[i * 4 + 1] << " " << host_ptr[i * 4 + 2] << " " << host_ptr[i * 4 + 3] << std::endl;
+    }
+    int remain = size % 4;
+    if (remain != 0) {
+        for (int i = size - remain; i < size; i++) {
+            std::cout << host_ptr[i] << " ";
+        }
+        std::cout << std::endl;
     }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }

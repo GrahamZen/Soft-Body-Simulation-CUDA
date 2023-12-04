@@ -23,7 +23,7 @@ public:
     DataLoader(const int);
     void CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale,
         const glm::vec3& rot, bool centralize, int startIndex, SoftBody::SoftBodyAttribute attrib);
-    void AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilt, glm::vec3*& gV, glm::vec3*& gF, GLuint*& gEdges, GLuint*& gTet, int& numVerts, int& numTets);
+    void AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilt, glm::vec3*& gV, glm::vec3*& gF, GLuint*& gEdges, GLuint*& gTet, GLuint*& gTetFather, int& numVerts, int& numTets);
 private:
     static std::vector<GLuint> loadEleFile(const std::string& EleFilename, int startIndex, int& numTets);
     static std::vector<glm::vec3> loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts);
@@ -80,6 +80,7 @@ private:
     dataType* dev_tIs;
     glm::vec3* dev_Normals;
     GLuint* dev_Tets;
+    GLuint* dev_TetFathers;
     GLuint* dev_Edges;
     int numVerts = 0;
     int numTets = 0;
