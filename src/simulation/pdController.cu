@@ -35,7 +35,7 @@ void SoftBody::solverPrepare()
     cudaMalloc((void**)&ExtForce, sizeof(glm::vec3) * numVerts);
     cudaMemset(ExtForce, 0, sizeof(float) * numVerts);
 
-    computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, inv_Dm, Tet, wi, numTets, numVerts);
+    computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, inv_Dm, Tet, attrib.stiffness_0, numTets, numVerts);
     setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * numTets, m_1_dt2, numVerts);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
@@ -148,7 +148,7 @@ void SoftBody::PDSolverStep()
     for (int i = 0; i < 10; i++)
     {
         cudaMemset(b, 0, sizeof(float) * numVerts * 3);
-        computeLocal << < tetBlocks, threadsPerBlock >> > (V0, wi, b, inv_Dm, sn, Tet, numTets);
+        computeLocal << < tetBlocks, threadsPerBlock >> > (V0, attrib.stiffness_0, b, inv_Dm, sn, Tet, numTets);
         addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, numVerts);
 
         if (mcrpSimContext->IsEigenGlobalSolver())

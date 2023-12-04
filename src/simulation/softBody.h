@@ -53,7 +53,6 @@ private:
 
     std::vector<glm::vec3> vertices;
     std::vector<GLuint> idx;
-    float wi = 1000000.0f; // is the deformation gradient coefficient
     bool jump = false;
 
     GLuint* Tet;
