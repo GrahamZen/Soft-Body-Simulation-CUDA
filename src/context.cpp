@@ -133,6 +133,10 @@ const std::vector<const char*>& Context::GetNamesSoftBodies() const {
     return mcrpSimContext->GetNamesSoftBodies();
 }
 
+int Context::GetNumQueries() const {
+    return mcrpSimContext->GetNumQueries();
+}
+
 SimulationCUDAContext* Context::LoadSimContext() {
     std::map<std::string, nlohmann::json>softBodyDefs;
     std::ifstream fileStream = findFile(filename);

@@ -15,6 +15,7 @@ public:
     float Dt = 0.001;
     bool WireFrame = false;
     bool BVHVis = false;
+    bool BVHEnabled = true;
     bool handleCollision = true;
     bool ObjectVis = true;
     bool Reset = false;
@@ -58,6 +59,7 @@ public:
     void Update();
     void ResetCamera();
     void Draw();
+    int GetNumQueries() const;
     int GetIteration() const { return iteration; }
     const std::vector<int>& GetDOFs() const { return DOFs; }
     const std::vector<int>& GetEles() const { return Eles; }

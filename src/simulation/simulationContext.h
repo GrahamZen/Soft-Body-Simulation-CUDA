@@ -62,6 +62,7 @@ public:
     int GetTetCnt() const;
     int GetVertCnt() const;
     int GetThreadsPerBlock() const { return threadsPerBlock; }
+    int GetNumQueries() const;
     void CCD();
 private:
     ExternalForce extForce;

@@ -90,7 +90,8 @@ void RenderImGui()
 
     ImGui::Begin("Simulator Analytics");                  // Create a window called "Hello, world!" and append into it.
     ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
-    ImGui::Checkbox("Enable BVH", &imguiData->handleCollision);
+    ImGui::Checkbox("Enable BVH", &imguiData->BVHEnabled);
+    ImGui::Checkbox("Enable Detection", &imguiData->handleCollision);
     ImGui::Checkbox("Visualize BVH", &imguiData->BVHVis);
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
     bool globalSolverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
@@ -137,7 +138,10 @@ void RenderImGui()
     //ImGui::SameLine();
     //ImGui::Text("counter = %d", counter);
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    ImGui::Text("#DOF %d, #Ele %d", context->GetDOFs()[imguiData->currSimContextId], context->GetEles()[imguiData->currSimContextId]);
+    ImGui::Text("#DOF %d, #Ele %d, #Query %d",
+        context->GetDOFs()[imguiData->currSimContextId],
+        context->GetEles()[imguiData->currSimContextId],
+        context->GetNumQueries());
     ImGui::End();
 
     if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged || solverChanged || contextChanged || globalSolverChanged) {

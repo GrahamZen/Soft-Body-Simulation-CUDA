@@ -50,6 +50,10 @@ int SimulationCUDAContext::GetVertCnt() const {
     return numVerts;
 }
 
+int SimulationCUDAContext::GetNumQueries() const {
+    return m_bvh.GetNumQueries();
+}
+
 int SimulationCUDAContext::GetTetCnt() const {
     return numTets;
 }
@@ -151,8 +155,12 @@ void SimulationCUDAContext::Update()
     for (auto softbody : softBodies) {
         softbody->Update();
     }
-    if (context->guiData->handleCollision)
+    if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
+        if (context->guiData->BVHVis)
+            m_bvh.PrepareRenderData();
+
+    }
     HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_XTilts, dev_Vs, numVerts, glm::vec3(0.f, floorY, 0.f), floorUp, muT, muN);
     if (context->guiData->handleCollision)
         CCD();
@@ -161,8 +169,6 @@ void SimulationCUDAContext::Update()
     if (context->guiData->ObjectVis) {
         PrepareRenderData();
     }
-    if (context->guiData->handleCollision && context->guiData->BVHVis)
-        m_bvh.PrepareRenderData();
 }
 
 void SimulationCUDAContext::PrepareRenderData() {

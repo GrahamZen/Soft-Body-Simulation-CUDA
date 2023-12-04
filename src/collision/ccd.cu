@@ -106,3 +106,7 @@ Drawable& BVH::GetQueryDrawable()
 {
     return collisionDetection;
 }
+
+int BVH::GetNumQueries() const {
+    return collisionDetection.GetNumQueries();
+}

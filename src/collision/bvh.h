@@ -55,6 +55,9 @@ public:
     void DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors);
     void NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors);
     void PrepareRenderData(const glm::vec3* Xs);
+    int GetNumQueries() const {
+        return numQueries;
+    }
 private:
     Query* dev_queries;
     size_t* dev_numQueries;
@@ -74,6 +77,7 @@ public:
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
     void DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors);
     Drawable& GetQueryDrawable();
+    int GetNumQueries() const;
 private:
     void BuildBBoxes();
     BVHNode* dev_BVHNodes = nullptr;

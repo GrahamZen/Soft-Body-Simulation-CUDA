@@ -129,13 +129,14 @@ void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram, ShaderProgram* fl
         for (auto softBody : softBodies)
             shaderProgram->draw(*softBody, 0);
     }
-    if (context->guiData->handleCollision) {
+    if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         if (context->guiData->BVHVis) {
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             shaderProgram->draw(m_bvh, 0);
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
-        flatShaderProgram->drawPoints(m_bvh.GetQueryDrawable());
+        if (context->guiData->handleCollision)
+            flatShaderProgram->drawPoints(m_bvh.GetQueryDrawable());
     }
 }
 
