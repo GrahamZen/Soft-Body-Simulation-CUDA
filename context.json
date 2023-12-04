@@ -1,11 +1,11 @@
 {
-    "pause": false,
+    "pause": true,
     "threads per block": 128,
     "threads per block(bvh)": 128,
     "default camera": {
         "aspect ratio": 1.3333,
         "screen height": 1280,
-        "position": [0, 50, 150],
+        "position": [0, 20, 50],
         "lookAt": [0, 10, 0],
         "view": [0, 0, -1],
         "up": [0, 1, 0],
@@ -98,9 +98,12 @@
             "muT": 0.5,
             "softBodies": [
                 {
-                    "name": "cube",
-                    "pos": [ 0.0, 50.0, 0.0 ],
-                    "rot": [ 0.0, 0.0, 20.0 ]
+                    "name": "house1",
+                    "pos": [ 0.0, 50.0, 0.0 ]
+                },
+                {
+                    "name": "house1",
+                    "pos": [ 0.0, 25.0, 0.0 ]
                 }
             ]
         }

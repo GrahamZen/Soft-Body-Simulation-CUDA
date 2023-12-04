@@ -11,11 +11,13 @@ protected:
     GLuint bufPos; // A Vertex Buffer Object that we will use to store mesh vertices (vec4s)
     GLuint bufNor; // A Vertex Buffer Object that we will use to store mesh normals (vec4s)
     GLuint bufUV; // Can be used to pass per-vertex UV information to the shader
+    GLuint bufCol; // Can be used to pass per-vertex color information to the shader
 
     bool idxBound; // Set to TRUE by generateIdx(), returned by bindIdx().
     bool posBound;
     bool norBound;
     bool uvBound;
+    bool colBound;
 
 public:
     Drawable();
@@ -33,9 +35,11 @@ public:
     void generatePos();
     void generateNor();
     void generateUV();
+    void generateCol();
 
     bool bindIdx();
     bool bindPos();
     bool bindNor();
     bool bindUV();
+    bool bindCol();
 };

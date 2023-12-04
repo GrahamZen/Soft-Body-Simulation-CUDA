@@ -15,6 +15,7 @@ void SurfaceShader::setupMemberVars()
     attrPos = glGetAttribLocation(prog, "vs_Pos");
     attrNor = glGetAttribLocation(prog, "vs_Nor");
     attrUV = glGetAttribLocation(prog, "vs_UV");
+    attrCol = glGetAttribLocation(prog, "vs_Col");
 
     unifModel = glGetUniformLocation(prog, "u_Model");
     unifModelInvTr = glGetUniformLocation(prog, "u_ModelInvTr");
@@ -58,6 +59,11 @@ void SurfaceShader::draw(Drawable& d, int textureSlot)
         glVertexAttribPointer(attrUV, 2, GL_FLOAT, false, 0, NULL);
     }
 
+    if (attrCol != -1 && d.bindCol()) {
+        glEnableVertexAttribArray(attrCol);
+        glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, NULL);
+    }
+
     // Bind the index buffer and then draw shapes from it.
     // This invokes the shader program, which accesses the vertex buffers.
     d.bindIdx();
@@ -66,6 +72,35 @@ void SurfaceShader::draw(Drawable& d, int textureSlot)
     if (attrPos != -1) glDisableVertexAttribArray(attrPos);
     if (attrNor != -1) glDisableVertexAttribArray(attrNor);
     if (attrUV != -1) glDisableVertexAttribArray(attrUV);
+    if (attrCol != -1) glDisableVertexAttribArray(attrCol);
+
+    printGLErrorLog();
+}
+
+void SurfaceShader::drawPoints(Drawable& d)
+{
+    float pointSize = 5.0f;
+    glPointSize(pointSize);
+    useMe();
+
+    // Bind and enable the position attribute
+    if (attrPos != -1 && d.bindPos()) {
+        glEnableVertexAttribArray(attrPos);
+        glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+    }
+
+    // Bind and enable the color attribute
+    if (attrCol != -1 && d.bindCol()) {
+        glEnableVertexAttribArray(attrCol);
+        glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, NULL);
+    }
+
+    // Draw points
+    glDrawArrays(d.drawMode(), 0, d.elemCount());
+
+    // Disable the attributes
+    if (attrPos != -1) glDisableVertexAttribArray(attrPos);
+    if (attrCol != -1) glDisableVertexAttribArray(attrCol);
 
     printGLErrorLog();
 }

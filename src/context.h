@@ -52,6 +52,7 @@ public:
     Context(const std::string& _filename);
     ~Context();
     void LoadShaders(const std::string& vertShaderFilename = "../src/shaders/lambert.vert.glsl", const std::string& fragShaderFilename = "../src/shaders/lambert.frag.glsl");
+    void LoadFlatShaders(const std::string& vertShaderFilename = "../src/shaders/flat.vert.glsl", const std::string& fragShaderFilename = "../src/shaders/flat.frag.glsl");
     void InitDataContainer();
     void InitCuda();
     void Update();
@@ -81,6 +82,7 @@ private:
     SimulationCUDAContext* LoadSimContext();
     glm::vec3 ogLookAt; // for recentering the camera
     SurfaceShader* mpProgLambert;
+    SurfaceShader* mpProgFlat;
     int iteration = 0;
     bool pause = false;
     std::vector<const char*> namesContexts;

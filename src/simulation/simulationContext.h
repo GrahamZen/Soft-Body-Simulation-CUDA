@@ -57,7 +57,7 @@ public:
     void SetGlobalSolver(bool useEigen) { this->useEigen = useEigen; }
     bool IsEigenGlobalSolver() const { return useEigen; }
     bool IsCUDASolver() const { return useCUDASolver; }
-    void Draw(ShaderProgram*);
+    void Draw(ShaderProgram*, ShaderProgram*);
     AABB GetAABB() const;
     int GetTetCnt() const;
     int GetVertCnt() const;

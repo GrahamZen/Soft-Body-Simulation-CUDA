@@ -70,6 +70,7 @@ CollisionDetection::~CollisionDetection()
 void CollisionDetection::DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors)
 {
     BroadPhase(numTets, dev_BVHNodes, tets, tetFathers);
+    PrepareRenderData(Xs);
     NarrowPhase(Xs, XTilts, tI, nors);
 }
 
@@ -99,4 +100,9 @@ void BVH::DetectCollision(const GLuint* tets, const GLuint* tetFathers, const gl
     thrust::device_ptr<dataType> dev_ptr(tI);
     thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
     collisionDetection.DetectCollision(numTets, dev_BVHNodes, tets, tetFathers, Xs, XTilts, tI, nors);
+}
+
+Drawable& BVH::GetQueryDrawable()
+{
+    return collisionDetection;
 }

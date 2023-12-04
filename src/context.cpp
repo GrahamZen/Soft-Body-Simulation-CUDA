@@ -53,7 +53,7 @@ Camera& Camera::computeCameraParams()
     return *this;
 }
 
-Context::Context(const std::string& _filename) :filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()),
+Context::Context(const std::string& _filename) :filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()), mpProgFlat(new SurfaceShader()),
 width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer())
 {
     glm::vec3 view = mpCamera->view;
@@ -78,6 +78,7 @@ Context::~Context()
         delete[]name;
     }
     delete mpProgLambert;
+    delete mpProgFlat;
     delete mcrpSimContext;
     delete guiData;
     delete mpCamera;
@@ -119,6 +120,15 @@ void Context::LoadShaders(const std::string& vertShaderFilename, const std::stri
     mpProgLambert->setCameraPos(cameraPosition);
     mpProgLambert->setModelMatrix(glm::mat4(1.f));
 }
+
+void Context::LoadFlatShaders(const std::string& vertShaderFilename, const std::string& fragShaderFilename)
+{
+    mpProgFlat->create(vertShaderFilename.c_str(), fragShaderFilename.c_str());
+    mpProgFlat->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
+    mpProgFlat->setCameraPos(cameraPosition);
+    mpProgFlat->setModelMatrix(glm::mat4(1.f));
+}
+
 const std::vector<const char*>& Context::GetNamesSoftBodies() const {
     return mcrpSimContext->GetNamesSoftBodies();
 }
@@ -197,7 +207,7 @@ void Context::InitCuda() {
 
 void Context::Draw() {
     glEnable(GL_CULL_FACE);
-    mcrpSimContext->Draw(mpProgLambert);
+    mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
 }
 
 void Context::Update() {
@@ -236,6 +246,8 @@ void Context::Update() {
         camchanged = false;
         mpProgLambert->setCameraPos(cameraPosition);
         mpProgLambert->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
+        mpProgFlat->setCameraPos(cameraPosition);
+        mpProgFlat->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
     }
 
     if (guiData->Reset) {

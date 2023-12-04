@@ -46,6 +46,7 @@ int main(int argc, char** argv) {
 
     context->InitCuda();
     context->LoadShaders();
+    context->LoadFlatShaders();
     // Initialize ImGui Data
     InitImguiData(context->guiData);
     context->InitDataContainer();

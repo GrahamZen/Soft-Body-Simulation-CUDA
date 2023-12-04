@@ -219,6 +219,7 @@ void BVH::Init(int _numTets, int _numVerts, int maxThreads)
     cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
     cudaMalloc(&dev_ready, numNodes * sizeof(unsigned char));
     createBVH(numNodes);
+    collisionDetection.createQueries(numVerts);
     cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
     cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(unsigned char));
     cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
@@ -271,4 +272,25 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
     cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
     cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(unsigned char));
     cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
+}
+
+__global__ void processQueries(const Query* queries, int numQueries, glm::vec4* color) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx < numQueries) {
+        Query q = queries[idx];
+        atomicAdd(&color[q.v0].x, 0.2);
+        atomicExch(&color[q.v0].w, 1);
+    }
+}
+
+void CollisionDetection::PrepareRenderData(const glm::vec3* Xs)
+{
+    glm::vec3* pos;
+    glm::vec4* col;
+    mapDevicePosPtr(&pos, &col);
+    cudaMemcpy(pos, Xs, numVerts * sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+    cudaMemset(col, 0, numVerts * sizeof(glm::vec4));
+    dim3 numBlocks((numQueries + threadsPerBlock - 1) / threadsPerBlock);
+    processQueries << <numBlocks, threadsPerBlock >> > (dev_queries, numQueries, col);
+    unMapDevicePtr();
 }

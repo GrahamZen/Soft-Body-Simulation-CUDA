@@ -58,6 +58,19 @@ void Drawable::generateUV()
     glGenBuffers(1, &bufUV);
 }
 
+void Drawable::generateCol() {
+    colBound = true;
+    glGenBuffers(1, &bufCol);
+}
+
+bool Drawable::bindCol() {
+    if (colBound) {
+        glBindBuffer(GL_ARRAY_BUFFER, bufCol);
+        return true;
+    }
+    return false;
+}
+
 bool Drawable::bindIdx()
 {
     if (idxBound) {

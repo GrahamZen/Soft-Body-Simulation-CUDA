@@ -122,17 +122,20 @@ void SimulationCUDAContext::Reset()
     }
 }
 
-void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram)
+void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram, ShaderProgram* flatShaderProgram)
 {
     shaderProgram->draw(m_floor, 0);
     if (context->guiData->ObjectVis) {
         for (auto softBody : softBodies)
             shaderProgram->draw(*softBody, 0);
     }
-    if (context->guiData->handleCollision && context->guiData->BVHVis) {
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        shaderProgram->draw(m_bvh, 0);
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    if (context->guiData->handleCollision) {
+        if (context->guiData->BVHVis) {
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            shaderProgram->draw(m_bvh, 0);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+        flatShaderProgram->drawPoints(m_bvh.GetQueryDrawable());
     }
 }
 
