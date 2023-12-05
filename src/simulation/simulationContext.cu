@@ -159,7 +159,6 @@ void SimulationCUDAContext::Update()
         m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
         if (context->guiData->BVHVis)
             m_bvh.PrepareRenderData();
-
     }
     dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);
     if (context->guiData->handleCollision)
