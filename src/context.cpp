@@ -4,6 +4,8 @@
 #include <simulationContext.h>
 #include <iostream>
 #include <fstream>
+#include <sphere.h>
+#include <plane.h>
 
 Camera::Camera(nlohmann::json& camJson)
 {
@@ -28,7 +30,7 @@ Camera::Camera(nlohmann::json& camJson)
 
 Camera::Camera(const std::string& _filename)
 {
-    std::ifstream fileStream = findFile(_filename);
+    std::ifstream fileStream = utilityCore::findFile(_filename);
     if (!fileStream.is_open()) {
         std::cerr << "Failed to open JSON file: " << _filename << std::endl;
     }
@@ -137,9 +139,113 @@ int Context::GetNumQueries() const {
     return mcrpSimContext->GetNumQueries();
 }
 
+std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::map<std::string, nlohmann::json>& fixedBodyDefs) {
+    std::vector<FixedBody*>fixedBodies;
+    for (const auto& fbJson : json) {
+        auto& fbDefJson = fixedBodyDefs.at(std::string(fbJson["name"]));
+        glm::vec3 pos;
+        glm::vec3 scale;
+        glm::vec3 rot;
+        if (!fbJson.contains("pos")) {
+            if (fbDefJson.contains("pos")) {
+                pos = glm::vec3(fbDefJson["pos"][0].get<float>(), fbDefJson["pos"][1].get<float>(), fbDefJson["pos"][2].get<float>());
+            }
+            else {
+                pos = glm::vec3(0.f);
+            }
+        }
+        else {
+            pos = glm::vec3(fbJson["pos"][0].get<float>(), fbJson["pos"][1].get<float>(), fbJson["pos"][2].get<float>());
+        }
+        if (!fbJson.contains("scale")) {
+            if (fbDefJson.contains("scale")) {
+                scale = glm::vec3(fbDefJson["scale"][0].get<float>(), fbDefJson["scale"][1].get<float>(), fbDefJson["scale"][2].get<float>());
+            }
+            else {
+                scale = glm::vec3(1.f);
+            }
+        }
+        else {
+            scale = glm::vec3(fbJson["scale"][0].get<float>(), fbJson["scale"][1].get<float>(), fbJson["scale"][2].get<float>());
+        }
+        if (!fbJson.contains("rot")) {
+            if (fbDefJson.contains("rot")) {
+                rot = glm::vec3(fbDefJson["rot"][0].get<float>(), fbDefJson["rot"][1].get<float>(), fbDefJson["rot"][2].get<float>());
+            }
+            else {
+                rot = glm::vec3(0.f);
+            }
+        }
+        else {
+            rot = glm::vec3(fbJson["rot"][0].get<float>(), fbJson["rot"][1].get<float>(), fbJson["rot"][2].get<float>());
+        }
+        glm::mat4 model = utilityCore::modelMatrix(pos, rot, scale);
+        if (fbJson["name"] == "sphere") {
+            int numSides;
+            if (!fbJson.contains("numSides")) {
+                if (fbDefJson.contains("numSides")) {
+                    numSides = fbDefJson["numSides"].get<int>();
+                }
+                else {
+                    numSides = 64;
+                }
+            }
+            else {
+                int numSides = fbJson["numSides"].get<int>();
+            }
+            if (!fbJson.contains("radius")) {
+                if (fbDefJson.contains("radius")) {
+                    float radius = fbDefJson["radius"].get<float>();
+                    fixedBodies.push_back(new Sphere(model, radius, numSides));
+                }
+                else {
+                    fixedBodies.push_back(new Sphere(model, 1.f, numSides));
+                }
+            }
+            else {
+                float radius = fbJson["radius"].get<float>();
+                fixedBodies.push_back(new Sphere(model, radius, numSides));
+            }
+        }
+        if (fbJson["name"] == "plane") {
+            float length;
+            if (!fbJson.contains("length")) {
+                if (fbDefJson.contains("length")) {
+                    length = fbDefJson["length"].get<float>();
+                }
+                else {
+                    length = 1.f;
+                }
+            }
+            else {
+                length = fbJson["length"].get<float>();
+            }
+            glm::vec3 floorUp;
+            if (!fbJson.contains("floorUp")) {
+                if (fbDefJson.contains("floorUp")) {
+                    floorUp = glm::vec3(fbDefJson["floorUp"][0].get<float>(), fbDefJson["floorUp"][1].get<float>(), fbDefJson["floorUp"][2].get<float>());
+                }
+                else {
+                    floorUp = glm::vec3(0.f, 1.f, 0.f);
+                }
+            }
+            else {
+                floorUp = glm::vec3(fbJson["floorUp"][0].get<float>(), fbJson["floorUp"][1].get<float>(), fbJson["floorUp"][2].get<float>());
+            }
+            fixedBodies.push_back(new Plane(model, floorUp, length));
+        }
+    }
+
+    for (auto& fixedBody : fixedBodies) {
+        fixedBody->create();
+    }
+    return fixedBodies;
+}
+
 SimulationCUDAContext* Context::LoadSimContext() {
     std::map<std::string, nlohmann::json>softBodyDefs;
-    std::ifstream fileStream = findFile(filename);
+    std::map<std::string, nlohmann::json>fixedBodyDefs;
+    std::ifstream fileStream = utilityCore::findFile(filename);
     if (!fileStream.is_open()) {
         std::cerr << "Failed to open JSON file: " << filename << std::endl;
         return nullptr;
@@ -172,6 +278,12 @@ SimulationCUDAContext* Context::LoadSimContext() {
             softBodyDefs[softBodyJson["name"]] = softBodyJson;
         }
     }
+    if (json.contains("fixedBodies")) {
+        auto& fixedBodyJsons = json["fixedBodies"];
+        for (auto& fixedBodyJson : fixedBodyJsons) {
+            fixedBodyDefs[fixedBodyJson["name"]] = fixedBodyJson;
+        }
+    }
     if (json.contains("contexts")) {
         auto& contextJsons = json["contexts"];
         for (auto& contextJson : contextJsons) {
@@ -181,7 +293,11 @@ SimulationCUDAContext* Context::LoadSimContext() {
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());
             namesContexts.push_back(name);
-            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, threadsPerBlock, threadsPerBlockBVH, maxThreads));
+            std::vector<FixedBody*> fixBodies;
+            if (contextJson.contains("fixedBodies")) {
+                fixBodies = ReadFixedBodies(contextJson["fixedBodies"], fixedBodyDefs);
+            }
+            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
         }

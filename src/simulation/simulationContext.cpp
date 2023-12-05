@@ -1,18 +1,10 @@
 #include <simulationContext.h>
-#include <fstream>
-#include <sstream>
 #include <map>
 #include <set>
-#include <filesystem> 
-namespace fs = std::filesystem;
-
-DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
-{
-}
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json,
-    const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads)
-    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH, 1 << 11)
+    const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads)
+    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH, 1 << 16), fixedBodies(_fixedBodies), dev_fixedBodies(_threadsPerBlock, _fixedBodies)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
@@ -50,19 +42,34 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& 
             float stiffness_1;
             int constraints;
             if (!sbJson.contains("pos")) {
-                pos = glm::vec3(sbDefJson["pos"][0].get<float>(), sbDefJson["pos"][1].get<float>(), sbDefJson["pos"][2].get<float>());
+                if (sbDefJson.contains("pos")) {
+                    pos = glm::vec3(sbDefJson["pos"][0].get<float>(), sbDefJson["pos"][1].get<float>(), sbDefJson["pos"][2].get<float>());
+                }
+                else {
+                    pos = glm::vec3(0.f);
+                }
             }
             else {
                 pos = glm::vec3(sbJson["pos"][0].get<float>(), sbJson["pos"][1].get<float>(), sbJson["pos"][2].get<float>());
             }
             if (!sbJson.contains("scale")) {
-                scale = glm::vec3(sbDefJson["scale"][0].get<float>(), sbDefJson["scale"][1].get<float>(), sbDefJson["scale"][2].get<float>());
+                if (sbDefJson.contains("scale")) {
+                    scale = glm::vec3(sbDefJson["scale"][0].get<float>(), sbDefJson["scale"][1].get<float>(), sbDefJson["scale"][2].get<float>());
+                }
+                else {
+                    scale = glm::vec3(1.f);
+                }
             }
             else {
                 scale = glm::vec3(sbJson["scale"][0].get<float>(), sbJson["scale"][1].get<float>(), sbJson["scale"][2].get<float>());
             }
             if (!sbJson.contains("rot")) {
-                rot = glm::vec3(sbDefJson["rot"][0].get<float>(), sbDefJson["rot"][1].get<float>(), sbDefJson["rot"][2].get<float>());
+                if (sbDefJson.contains("rot")) {
+                    rot = glm::vec3(sbDefJson["rot"][0].get<float>(), sbDefJson["rot"][1].get<float>(), sbDefJson["rot"][2].get<float>());
+                }
+                else {
+                    rot = glm::vec3(0.f);
+                }
             }
             else {
                 rot = glm::vec3(sbJson["rot"][0].get<float>(), sbJson["rot"][1].get<float>(), sbJson["rot"][2].get<float>());
@@ -100,15 +107,15 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& 
             dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), faceFile.c_str(), pos, scale, rot, centralize, startIndex,
                 SoftBody::SoftBodyAttribute{ mass, stiffness_0, stiffness_1, constraints });
         }
+
+        dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_XTilts, dev_Vs, dev_Fs, dev_Edges, dev_Tets, dev_TetFathers, numVerts, numTets);
+        for (auto softBodyData : dataLoader.m_softBodyData) {
+            softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
+        }
+        m_bvh.Init(numTets, numVerts, maxThreads);
+        cudaMalloc((void**)&dev_Normals, numVerts * sizeof(glm::vec3));
+        cudaMalloc((void**)&dev_tIs, numVerts * sizeof(dataType));
     }
-    dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_XTilts, dev_Vs, dev_Fs, dev_Edges, dev_Tets, dev_TetFathers, numVerts, numTets);
-    for (auto softBodyData : dataLoader.m_softBodyData) {
-        softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
-    }
-    m_floor.createQuad(1000, floorY);
-    m_bvh.Init(numTets, numVerts, maxThreads);
-    cudaMalloc((void**)&dev_Normals, numVerts * sizeof(glm::vec3));
-    cudaMalloc((void**)&dev_tIs, numVerts * sizeof(dataType));
 }
 
 void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {
@@ -124,10 +131,11 @@ void SimulationCUDAContext::Reset()
 
 void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram, ShaderProgram* flatShaderProgram)
 {
-    shaderProgram->draw(m_floor, 0);
     if (context->guiData->ObjectVis) {
         for (auto softBody : softBodies)
             shaderProgram->draw(*softBody, 0);
+        for (auto fixedBody : fixedBodies)
+            shaderProgram->draw(*fixedBody, 0);
     }
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         if (context->guiData->BVHVis) {
@@ -139,135 +147,4 @@ void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram, ShaderProgram* fl
             flatShaderProgram->drawPoints(m_bvh.GetQueryDrawable());
         }
     }
-}
-
-std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
-{
-    std::string line;
-    std::ifstream file(EleFilename);
-
-    if (!file.is_open()) {
-        fs::path absolutePath = fs::absolute(EleFilename);
-        std::cerr << "Unable to open file: " << absolutePath << std::endl;
-    }
-
-    std::getline(file, line);
-    std::istringstream iss(line);
-    iss >> numTets;
-
-    std::vector<GLuint> Tet(numTets * 4);
-
-    int a, b, c, d, e;
-    for (int tet = 0; tet < numTets && std::getline(file, line); ++tet) {
-        std::istringstream iss(line);
-        iss >> a >> b >> c >> d >> e;
-
-        Tet[tet * 4 + 0] = b - startIndex;
-        Tet[tet * 4 + 1] = c - startIndex;
-        Tet[tet * 4 + 2] = d - startIndex;
-        Tet[tet * 4 + 3] = e - startIndex;
-    }
-
-    file.close();
-    return Tet;
-}
-
-std::vector<GLuint> DataLoader::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
-{
-    std::string line;
-    std::ifstream file(faceFilename);
-
-    if (!file.is_open()) {
-        // std::cerr << "Unable to open face file" << std::endl;
-        return std::vector<GLuint>();
-    }
-
-    std::getline(file, line);
-    std::istringstream iss(line);
-    iss >> numTris;
-
-    std::vector<GLuint> Triangle(numTris * 3);
-
-    int a, b, c, d, e;
-    for (int tet = 0; tet < numTris && std::getline(file, line); ++tet) {
-        std::istringstream iss(line);
-        iss >> a >> b >> c >> d >> e;
-
-        Triangle[tet * 3 + 0] = b - startIndex;
-        Triangle[tet * 3 + 1] = c - startIndex;
-        Triangle[tet * 3 + 2] = d - startIndex;
-    }
-
-    file.close();
-    return Triangle;
-}
-
-std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
-{
-    std::ifstream file(nodeFilename);
-    if (!file.is_open()) {
-        fs::path absolutePath = fs::absolute(nodeFilename);
-        std::cerr << "Unable to open file: " << absolutePath << std::endl;
-        return {};
-    }
-
-    std::string line;
-    std::getline(file, line);
-    std::istringstream iss(line);
-    iss >> numVerts;
-    std::vector<glm::vec3> X(numVerts);
-    glm::vec3 center(0.0f);
-
-    for (int i = 0; i < numVerts && std::getline(file, line); ++i) {
-        std::istringstream lineStream(line);
-        int index;
-        float x, y, z;
-        lineStream >> index >> x >> y >> z;
-
-        X[i].x = x;
-        X[i].y = y;
-        X[i].z = z;
-
-        center += X[i];
-    }
-
-    // Centralize the model
-    if (centralize) {
-        center /= static_cast<float>(numVerts);
-        for (int i = 0; i < numVerts; ++i) {
-            X[i] -= center;
-            float temp = X[i].y;
-            X[i].y = X[i].z;
-            X[i].z = temp;
-        }
-    }
-
-    return X;
-}
-
-void DataLoader::CollectEdges(const std::vector<GLuint>& triIdx) {
-    std::set<std::pair<GLuint, GLuint>> uniqueEdges;
-    std::vector<GLuint> edges;
-
-    for (size_t i = 0; i < triIdx.size(); i += 3) {
-        GLuint v0 = triIdx[i];
-        GLuint v1 = triIdx[i + 1];
-        GLuint v2 = triIdx[i + 2];
-
-        std::pair<GLuint, GLuint> edge1 = std::minmax(v0, v1);
-        std::pair<GLuint, GLuint> edge2 = std::minmax(v1, v2);
-        std::pair<GLuint, GLuint> edge3 = std::minmax(v2, v0);
-
-        uniqueEdges.insert(edge1);
-        uniqueEdges.insert(edge2);
-        uniqueEdges.insert(edge3);
-    }
-
-    for (const auto& edge : uniqueEdges) {
-        edges.push_back(edge.first);
-        edges.push_back(edge.second);
-    }
-
-    m_edges.push_back(edges);
-    totalNumEdges += edges.size() / 2;
 }
