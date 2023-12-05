@@ -3,6 +3,7 @@
 #include <bvh.h>
 #include <sphere.h>
 #include <plane.h>
+#include <cylinder.h>
 
 __global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* Force,
     int numVerts, float mass, float dt, float damp,
@@ -79,6 +80,33 @@ __global__ void handleSphereCollision(glm::vec3* X, glm::vec3* V, int numVerts, 
         if (distance < sphereRadius) {
             glm::vec3 normal = glm::normalize(toCenter);
             X[i] += distance * normal;
+            glm::vec3 vN = glm::dot(V[i], normal) * normal;
+            glm::vec3 vT = V[i] - vN;
+            float mag_vT = glm::length(vT);
+            float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, 0.0f);
+            V[i] = -muN * vN + a * vT;
+        }
+    }
+}
+
+__global__ void handleCylinderCollision(glm::vec3* X, glm::vec3* V, int numVerts, Cylinder* cylinders, int numCylinders, float muT, float muN) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= numVerts) return;
+
+    for (int j = 0; j < numCylinders; j++) {
+        glm::vec3 axis = glm::normalize(glm::vec3(cylinders[j].m_model[1])); // Assuming Y-axis is the cylinder's axis
+        glm::vec3 cylinderCenter = glm::vec3(cylinders[j].m_model[3]);
+        float cylinderRadius = cylinders[j].m_radius;
+
+        glm::vec3 toCenter = X[i] - cylinderCenter;
+        glm::vec3 projOnAxis = glm::dot(toCenter, axis) * axis;
+        glm::vec3 closestPoint = cylinderCenter + projOnAxis;
+        glm::vec3 toClosestPoint = X[i] - closestPoint;
+        float distance = glm::length(toClosestPoint);
+
+        if (distance < cylinderRadius) {
+            glm::vec3 normal = glm::normalize(toClosestPoint);
+            X[i] += (cylinderRadius - distance) * normal;
             glm::vec3 vN = glm::dot(V[i], normal) * normal;
             glm::vec3 vT = V[i] - vN;
             float mag_vT = glm::length(vT);

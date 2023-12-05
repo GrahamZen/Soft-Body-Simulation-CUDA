@@ -1,6 +1,7 @@
 #include <fixedBodyData.h>
 #include <sphere.h>
 #include <plane.h>
+#include <cylinder.h>
 #include <utilities.cuh>
 
 FixedBodyData::FixedBodyData() {}
@@ -8,6 +9,7 @@ FixedBodyData::FixedBodyData() {}
 FixedBodyData::FixedBodyData(int _threadsPerBlock, const std::vector<FixedBody*>& fixedBodies) : threadsPerBlock(_threadsPerBlock) {
     numSpheres = 0;
     numPlanes = 0;
+    numCylinders = 0;
     for (auto fixedBody : fixedBodies) {
         switch (fixedBody->getType())
         {
@@ -17,6 +19,8 @@ FixedBodyData::FixedBodyData(int _threadsPerBlock, const std::vector<FixedBody*>
         case BodyType::Plane:
             numPlanes++;
             break;
+        case BodyType::Cylinder:
+            numCylinders++;
         default:
             break;
         }
@@ -27,8 +31,12 @@ FixedBodyData::FixedBodyData(int _threadsPerBlock, const std::vector<FixedBody*>
     if (numPlanes > 0) {
         cudaMalloc(&dev_planes, numPlanes * sizeof(Plane));
     }
+    if (numCylinders > 0) {
+        cudaMalloc(&dev_cylinders, numCylinders * sizeof(Cylinder));
+    }
     int sphereIdx = 0;
     int floorIdx = 0;
+    int cylinderIdx = 0;
     for (auto fixedBody : fixedBodies) {
         switch (fixedBody->getType())
         {
@@ -40,6 +48,10 @@ FixedBodyData::FixedBodyData(int _threadsPerBlock, const std::vector<FixedBody*>
             cudaMemcpy(dev_planes + floorIdx, (Plane*)fixedBody, sizeof(Plane), cudaMemcpyHostToDevice);
             floorIdx++;
             break;
+        case BodyType::Cylinder:
+            cudaMemcpy(dev_cylinders + cylinderIdx, (Cylinder*)fixedBody, sizeof(Cylinder), cudaMemcpyHostToDevice);
+            cylinderIdx++;
+            break;
         default:
             break;
         }
@@ -49,6 +61,7 @@ FixedBodyData::FixedBodyData(int _threadsPerBlock, const std::vector<FixedBody*>
 FixedBodyData::~FixedBodyData() {
     cudaFree(dev_spheres);
     cudaFree(dev_planes);
+    cudaFree(dev_cylinders);
 }
 
 void FixedBodyData::HandleCollisions(glm::vec3* X, glm::vec3* V, int numVerts, float muT, float muN) {
@@ -58,5 +71,8 @@ void FixedBodyData::HandleCollisions(glm::vec3* X, glm::vec3* V, int numVerts, f
     }
     if (numPlanes > 0) {
         handleFloorCollision << <numBlocks, threadsPerBlock >> > (X, V, numVerts, dev_planes, numPlanes, muT, muN);
+    }
+    if (numCylinders > 0) {
+        handleCylinderCollision << <numBlocks, threadsPerBlock >> > (X, V, numVerts, dev_cylinders, numCylinders, muT, muN);
     }
 }

@@ -5,6 +5,7 @@
 #include <iostream>
 #include <fstream>
 #include <sphere.h>
+#include <cylinder.h>
 #include <plane.h>
 
 Camera::Camera(nlohmann::json& camJson)
@@ -181,6 +182,7 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
         }
         glm::mat4 model = utilityCore::modelMatrix(pos, rot, scale);
         if (fbDefJson["type"] == "sphere") {
+            glm::mat4 model = utilityCore::modelMatrix(pos, rot, glm::vec3(1, 1, 1));
             int numSides;
             if (!fbJson.contains("numSides")) {
                 if (fbDefJson.contains("numSides")) {
@@ -206,6 +208,22 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
                 float radius = fbJson["radius"].get<float>();
                 fixedBodies.push_back(new Sphere(model, radius, numSides));
             }
+        }
+        if (fbDefJson["type"] == "cylinder") {
+            glm::mat4 model = utilityCore::modelMatrix(pos, rot, glm::vec3(1, 1, 1));
+            int numSides;
+            if (!fbJson.contains("numSides")) {
+                if (fbDefJson.contains("numSides")) {
+                    numSides = fbDefJson["numSides"].get<int>();
+                }
+                else {
+                    numSides = 64;
+                }
+            }
+            else {
+                numSides = fbJson["numSides"].get<int>();
+            }
+            fixedBodies.push_back(new Cylinder(model, scale, numSides));
         }
         if (fbDefJson["type"] == "plane") {
             fixedBodies.push_back(new Plane(model));

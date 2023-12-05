@@ -16,6 +16,7 @@ class BVHNode;
 class Query;
 class Sphere;
 class Plane;
+class Cylinder;
 
 template <typename T>
 void inspectGLM(T* dev_ptr, int size) {
@@ -100,6 +101,7 @@ __global__ void HandleFloorCollision(glm::vec3* X, glm::vec3* V,
     int numVerts, glm::vec3 floorPos, glm::vec3 floorUp, float muT, float muN);
 __global__ void handleSphereCollision(glm::vec3* X, glm::vec3* V, int numVerts, Sphere* spheres, int numSpheres, float muT, float muN);
 __global__ void handleFloorCollision(glm::vec3* X, glm::vec3* V, int numVerts, Plane* planes, int numPlanes, float muT, float muN);
+__global__ void handleCylinderCollision(glm::vec3* X, glm::vec3* V, int numVerts, Cylinder* cylinders, int numCylinders, float muT, float muN);
 
 __global__ void computeLocal(float* V0, float wi, float* xProj, glm::mat3* DmInv, float* qn__1, GLuint* tetIndex, int tetNumber);
 __global__ void computeSn(float* sn, float dt, float dt2_m_1, glm::vec3* pos, glm::vec3* vel, glm::vec3* force, int numVerts);
