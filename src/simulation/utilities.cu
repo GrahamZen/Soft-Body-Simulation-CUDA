@@ -27,28 +27,28 @@ void checkCUDAErrorFn(const char* msg, const char* file, int line) {
 void inspectMortonCodes(int* dev_mortonCodes, int numTets) {
     std::vector<unsigned int> hstMorton(numTets);
     cudaMemcpy(hstMorton.data(), dev_mortonCodes, numTets * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-    inspectHostMorton(hstMorton.data(), numTets);
+    utilityCore::inspectHostMorton(hstMorton.data(), numTets);
 }
 
 void inspectBVHNode(BVHNode* dev_BVHNodes, int numTets)
 {
     std::vector<BVHNode> hstBVHNodes(2 * numTets - 1);
     cudaMemcpy(hstBVHNodes.data(), dev_BVHNodes, sizeof(BVHNode) * (2 * numTets - 1), cudaMemcpyDeviceToHost);
-    inspectHost(hstBVHNodes.data(), 2 * numTets - 1);
+    utilityCore::inspectHost(hstBVHNodes.data(), 2 * numTets - 1);
 }
 
 void inspectBVH(AABB* dev_aabbs, int size)
 {
     std::vector<AABB> hstAABB(size);
     cudaMemcpy(hstAABB.data(), dev_aabbs, sizeof(AABB) * size, cudaMemcpyDeviceToHost);
-    inspectHost(hstAABB.data(), size);
+    utilityCore::inspectHost(hstAABB.data(), size);
 }
 
 void inspectQuerys(Query* dev_query, int size)
 {
     std::vector<Query> hstAABB(size);
     cudaMemcpy(hstAABB.data(), dev_query, sizeof(Query) * size, cudaMemcpyDeviceToHost);
-    inspectHost(hstAABB.data(), size);
+    utilityCore::inspectHost(hstAABB.data(), size);
 }
 
 __global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int numVerts)

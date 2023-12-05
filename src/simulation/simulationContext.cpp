@@ -4,6 +4,8 @@
 #include <map>
 #include <set>
 #include <filesystem> 
+#include <sphere.h> 
+
 namespace fs = std::filesystem;
 
 DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
@@ -11,8 +13,8 @@ DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerB
 }
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json,
-    const std::map<std::string, nlohmann::json>& softBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads)
-    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH, 1 << 11)
+    const std::map<std::string, nlohmann::json>& softBodyDefs, const std::map<std::string, nlohmann::json>& fixedBodyDefs, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads)
+    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH, 1 << 16)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
@@ -50,19 +52,34 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& 
             float stiffness_1;
             int constraints;
             if (!sbJson.contains("pos")) {
-                pos = glm::vec3(sbDefJson["pos"][0].get<float>(), sbDefJson["pos"][1].get<float>(), sbDefJson["pos"][2].get<float>());
+                if (sbDefJson.contains("pos")) {
+                    pos = glm::vec3(sbDefJson["pos"][0].get<float>(), sbDefJson["pos"][1].get<float>(), sbDefJson["pos"][2].get<float>());
+                }
+                else {
+                    pos = glm::vec3(0.f);
+                }
             }
             else {
                 pos = glm::vec3(sbJson["pos"][0].get<float>(), sbJson["pos"][1].get<float>(), sbJson["pos"][2].get<float>());
             }
             if (!sbJson.contains("scale")) {
-                scale = glm::vec3(sbDefJson["scale"][0].get<float>(), sbDefJson["scale"][1].get<float>(), sbDefJson["scale"][2].get<float>());
+                if (sbDefJson.contains("scale")) {
+                    scale = glm::vec3(sbDefJson["scale"][0].get<float>(), sbDefJson["scale"][1].get<float>(), sbDefJson["scale"][2].get<float>());
+                }
+                else {
+                    scale = glm::vec3(1.f);
+                }
             }
             else {
                 scale = glm::vec3(sbJson["scale"][0].get<float>(), sbJson["scale"][1].get<float>(), sbJson["scale"][2].get<float>());
             }
             if (!sbJson.contains("rot")) {
-                rot = glm::vec3(sbDefJson["rot"][0].get<float>(), sbDefJson["rot"][1].get<float>(), sbDefJson["rot"][2].get<float>());
+                if (sbDefJson.contains("rot")) {
+                    rot = glm::vec3(sbDefJson["rot"][0].get<float>(), sbDefJson["rot"][1].get<float>(), sbDefJson["rot"][2].get<float>());
+                }
+                else {
+                    rot = glm::vec3(0.f);
+                }
             }
             else {
                 rot = glm::vec3(sbJson["rot"][0].get<float>(), sbJson["rot"][1].get<float>(), sbJson["rot"][2].get<float>());
@@ -100,6 +117,55 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& 
             dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), faceFile.c_str(), pos, scale, rot, centralize, startIndex,
                 SoftBody::SoftBodyAttribute{ mass, stiffness_0, stiffness_1, constraints });
         }
+        if (json.contains("fixedBodies")) {
+            for (const auto& fbJson : json["fixedBodies"]) {
+                auto& fbDefJson = fixedBodyDefs.at(std::string(fbJson["name"]));
+                glm::vec3 pos;
+                glm::vec3 scale;
+                glm::vec3 rot;
+                if (!fbJson.contains("pos")) {
+                    if (fbDefJson.contains("pos")) {
+                        pos = glm::vec3(fbDefJson["pos"][0].get<float>(), fbDefJson["pos"][1].get<float>(), fbDefJson["pos"][2].get<float>());
+                    }
+                    else {
+                        pos = glm::vec3(0.f);
+                    }
+                }
+                else {
+                    pos = glm::vec3(fbJson["pos"][0].get<float>(), fbJson["pos"][1].get<float>(), fbJson["pos"][2].get<float>());
+                }
+                if (!fbJson.contains("scale")) {
+                    if (fbDefJson.contains("scale")) {
+                        scale = glm::vec3(fbDefJson["scale"][0].get<float>(), fbDefJson["scale"][1].get<float>(), fbDefJson["scale"][2].get<float>());
+                    }
+                    else {
+                        scale = glm::vec3(1.f);
+                    }
+                }
+                else {
+                    scale = glm::vec3(fbJson["scale"][0].get<float>(), fbJson["scale"][1].get<float>(), fbJson["scale"][2].get<float>());
+                }
+                if (!fbJson.contains("rot")) {
+                    if (fbDefJson.contains("rot")) {
+                        rot = glm::vec3(fbDefJson["rot"][0].get<float>(), fbDefJson["rot"][1].get<float>(), fbDefJson["rot"][2].get<float>());
+                    }
+                    else {
+                        rot = glm::vec3(0.f);
+                    }
+                }
+                else {
+                    rot = glm::vec3(fbJson["rot"][0].get<float>(), fbJson["rot"][1].get<float>(), fbJson["rot"][2].get<float>());
+                }
+                if (fbJson["name"] == "sphere") {
+                    float radius = fbDefJson["radius"].get<float>();
+                    glm::mat4 model = utilityCore::modelMatrix(pos, rot, scale);
+                    fixedBodies.push_back(new Sphere(model, radius, 64));
+                }
+            }
+        }
+        for (auto& fixedBody : fixedBodies) {
+            fixedBody->create();
+        }
     }
     dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_XTilts, dev_Vs, dev_Fs, dev_Edges, dev_Tets, dev_TetFathers, numVerts, numTets);
     for (auto softBodyData : dataLoader.m_softBodyData) {
@@ -128,6 +194,8 @@ void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram, ShaderProgram* fl
     if (context->guiData->ObjectVis) {
         for (auto softBody : softBodies)
             shaderProgram->draw(*softBody, 0);
+        for (auto fixedBody : fixedBodies)
+            shaderProgram->draw(*fixedBody, 0);
     }
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         if (context->guiData->BVHVis) {

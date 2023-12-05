@@ -1,5 +1,6 @@
 #include <json.hpp>
 #include <softBody.h>
+#include <rigid.h>
 #include <shaderprogram.h>
 #include <bvh.h>
 #include <sceneStructs.h>
@@ -43,7 +44,7 @@ public:
         glm::vec3 jump = glm::vec3(0.f, 400.f, 0.f);
     };
     SimulationCUDAContext(Context* ctx, const ExternalForce& extForce, nlohmann::json& json,
-        const std::map<std::string, nlohmann::json>& softBodyDefs, int threadsPerBlock, int _threadsPerBlockBVH, int maxThreads);
+        const std::map<std::string, nlohmann::json>& softBodyDefs, const std::map<std::string, nlohmann::json>& fixedBodyDefs, int threadsPerBlock, int _threadsPerBlockBVH, int maxThreads);
     ~SimulationCUDAContext();
     void Update();
     void Reset();
@@ -87,6 +88,7 @@ private:
     int numTets = 0;
     std::vector<const char*> namesSoftBodies;
     std::vector<SoftBody*> softBodies;
+    std::vector<FixedBody*> fixedBodies;
     std::vector<int> startIndices;
     BVH m_bvh;
     float damp = 0.999f;

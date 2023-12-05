@@ -28,7 +28,7 @@ Camera::Camera(nlohmann::json& camJson)
 
 Camera::Camera(const std::string& _filename)
 {
-    std::ifstream fileStream = findFile(_filename);
+    std::ifstream fileStream = utilityCore::findFile(_filename);
     if (!fileStream.is_open()) {
         std::cerr << "Failed to open JSON file: " << _filename << std::endl;
     }
@@ -139,7 +139,8 @@ int Context::GetNumQueries() const {
 
 SimulationCUDAContext* Context::LoadSimContext() {
     std::map<std::string, nlohmann::json>softBodyDefs;
-    std::ifstream fileStream = findFile(filename);
+    std::map<std::string, nlohmann::json>fixedBodyDefs;
+    std::ifstream fileStream = utilityCore::findFile(filename);
     if (!fileStream.is_open()) {
         std::cerr << "Failed to open JSON file: " << filename << std::endl;
         return nullptr;
@@ -172,6 +173,12 @@ SimulationCUDAContext* Context::LoadSimContext() {
             softBodyDefs[softBodyJson["name"]] = softBodyJson;
         }
     }
+    if (json.contains("fixedBodies")) {
+        auto& fixedBodyJsons = json["fixedBodies"];
+        for (auto& fixedBodyJson : fixedBodyJsons) {
+            fixedBodyDefs[fixedBodyJson["name"]] = fixedBodyJson;
+        }
+    }
     if (json.contains("contexts")) {
         auto& contextJsons = json["contexts"];
         for (auto& contextJson : contextJsons) {
@@ -181,7 +188,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());
             namesContexts.push_back(name);
-            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, threadsPerBlock, threadsPerBlockBVH, maxThreads));
+            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, fixedBodyDefs, threadsPerBlock, threadsPerBlockBVH, maxThreads));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
         }
