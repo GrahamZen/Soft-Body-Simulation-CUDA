@@ -48,6 +48,7 @@ FixedBodyData::FixedBodyData(int _threadsPerBlock, const std::vector<FixedBody*>
 
 FixedBodyData::~FixedBodyData() {
     cudaFree(dev_spheres);
+    cudaFree(dev_planes);
 }
 
 void FixedBodyData::HandleCollisions(glm::vec3* X, glm::vec3* V, int numVerts, float muT, float muN) {

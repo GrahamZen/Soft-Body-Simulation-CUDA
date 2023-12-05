@@ -208,31 +208,7 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
             }
         }
         if (fbJson["name"] == "plane") {
-            float length;
-            if (!fbJson.contains("length")) {
-                if (fbDefJson.contains("length")) {
-                    length = fbDefJson["length"].get<float>();
-                }
-                else {
-                    length = 1.f;
-                }
-            }
-            else {
-                length = fbJson["length"].get<float>();
-            }
-            glm::vec3 floorUp;
-            if (!fbJson.contains("floorUp")) {
-                if (fbDefJson.contains("floorUp")) {
-                    floorUp = glm::vec3(fbDefJson["floorUp"][0].get<float>(), fbDefJson["floorUp"][1].get<float>(), fbDefJson["floorUp"][2].get<float>());
-                }
-                else {
-                    floorUp = glm::vec3(0.f, 1.f, 0.f);
-                }
-            }
-            else {
-                floorUp = glm::vec3(fbJson["floorUp"][0].get<float>(), fbJson["floorUp"][1].get<float>(), fbJson["floorUp"][2].get<float>());
-            }
-            fixedBodies.push_back(new Plane(model, floorUp, length));
+            fixedBodies.push_back(new Plane(model));
         }
     }
 
@@ -326,7 +302,6 @@ void Context::InitCuda() {
 }
 
 void Context::Draw() {
-    glEnable(GL_CULL_FACE);
     mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
 }
 

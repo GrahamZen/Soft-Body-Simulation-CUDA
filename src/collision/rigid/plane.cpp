@@ -5,32 +5,26 @@
 Plane::Plane()
 {}
 
-Plane::Plane(const glm::mat4& model, const glm::vec3& floorUp, float length) : FixedBody(model), m_floorUp(floorUp), m_length(length)
+Plane::Plane(const glm::mat4& model) : FixedBody(model), m_floorUp(glm::normalize(glm::vec3(m_inverseTransposeModel* glm::vec4(0, 1, 0, 0))))
 {}
 
 std::ostream& operator<<(std::ostream& os, const Plane& Plane) {
-    os << "Model: " << glm::to_string(Plane.m_model) << ", FloorUp: " << glm::to_string(Plane.m_floorUp) << ", Length: " << Plane.m_length;
+    os << "Model: " << glm::to_string(Plane.m_model) << ", FloorUp: " << glm::to_string(Plane.m_floorUp);
     return os;
 }
 
 void Plane::create()
 {
     std::vector<glm::vec3> pos{
-        glm::vec3(-m_length, 0, -m_length),
-        glm::vec3(-m_length, 0, m_length),
-        glm::vec3(m_length, 0, -m_length),
-        glm::vec3(m_length, 0, m_length),
+        glm::vec3(-1, 0, -1),
+        glm::vec3(-1, 0, 1),
+        glm::vec3(1, 0, -1),
+        glm::vec3(1, 0, 1),
     };
     for (auto& p : pos) {
         p = glm::vec3(m_model * glm::vec4(p, 1.0f));
     }
-
-    std::vector<glm::vec4> nor{
-        glm::vec4(0, 1, 0, 0),
-        glm::vec4(0, 1, 0, 0),
-        glm::vec4(0, 1, 0, 0),
-        glm::vec4(0, 1, 0, 0)
-    };
+    std::vector<glm::vec4> nor(pos.size(), glm::vec4(m_floorUp, 0.0f));
     // each uvs corresponds to a pos vec3, which corresponds to a normal.
     std::vector<glm::vec2> uvs{
         glm::vec2(0, 0),

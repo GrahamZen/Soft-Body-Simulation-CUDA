@@ -21,4 +21,5 @@ public:
     virtual void create() = 0; // To be implemented by subclasses. Populates the VBOs of the Drawable.
     glm::mat4 m_model;
     glm::mat4 m_inverseModel;
+    glm::mat4 m_inverseTransposeModel;
 };
