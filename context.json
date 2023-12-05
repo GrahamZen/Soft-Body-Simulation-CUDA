@@ -49,12 +49,12 @@
             "nodeFile": "../assets/bunny/bunny.1.node",
             "eleFile": "../assets/bunny/bunny.1.ele",
             "mass": 10.0,
-            "stiffness_0":90000000.0,
+            "stiffness_0":200000.0,
             "stiffness_1": 5000.0,
             "constraints": 0,
             "pos": [ 0.0, 25.0, 25.0 ],
             "rot": [ 0.0, 180.0, 0.0 ],
-            "scale": [ 5, 5, 5 ],
+            "scale": [ 25, 25, 25 ],
             "centralize": false,
             "start index": 1
           },
@@ -89,15 +89,52 @@
     ],
     "fixedBodies": [
         {
-            "name": "sphere",
-            "pos": [ 0.0, 20.0, 0.0 ],
+            "type": "sphere",
+            "name": "sphere1",
+            "pos": [ 0.0, -10.0, 0.0 ],
             "scale": [ 1.0, 1.0, 1.0 ],
             "radius": 5.0
         },
         {
-            "name": "plane",
-            "pos": [ 0.0, -10.0, 0.0 ],
+            "type": "plane",
+            "name": "bottom plane",
+            "pos": [ 0.0, -100.0, 0.0 ],
             "scale": [ 1000.0, 1000.0, 1000.0 ]
+        },
+        {
+            "type": "plane",
+            "name": "upper plane",
+            "pos": [ 0.0, 100.0, 0.0 ],
+            "scale": [ 1000.0, 1000.0, 1000.0 ],
+            "rot": [ 0.0, 0.0, 180.0 ]
+        },
+        {
+            "type": "plane",
+            "name": "right plane",
+            "pos": [ 100.0, 0.0, 0.0 ],
+            "scale": [ 1000.0, 1000.0, 1000.0 ],
+            "rot": [ 0.0, 0.0, 90.0 ]
+        },
+        {
+            "type": "plane",
+            "name": "left plane",
+            "pos": [ -100.0, 0.0, 0.0 ],
+            "scale": [ 1000.0, 1000.0, 1000.0 ],
+            "rot": [ 0.0, 0.0, -90.0 ]
+        },
+        {
+            "type": "plane",
+            "name": "front plane",
+            "pos": [ 0.0, 0.0, -100.0 ],
+            "scale": [ 1000.0, 1000.0, 1000.0 ],
+            "rot": [ 90.0, 0.0, 0.0 ]
+        },
+        {
+            "type": "plane",
+            "name": "back plane",
+            "pos": [ 0.0, 0.0, 100.0 ],
+            "scale": [ 1000.0, 1000.0, 1000.0 ],
+            "rot": [ -90.0, 0.0, 0.0 ]
         }
     ],
     "contexts": [
@@ -111,48 +148,32 @@
             "muT": 0.5,
             "softBodies": [
                 {
-                    "name": "house1",
-                    "pos": [ 0.0, 5.0, 0.0 ]
+                    "name": "bunny",
+                    "pos": [ 0.0, 0.0, 0.0 ]
                 }
             ],
             "fixedBodies": [
                 {
-                    "name": "sphere"
+                    "name": "sphere1"
                 },
                 {
-                    "name": "plane"
+                    "name": "bottom plane"
                 },
                 {
-                    "name": "plane",
-                    "pos": [ 0.0, 100.0, 0.0 ],
-                    "scale": [ 1000.0, 1000.0, 1000.0 ],
-                    "rot": [ 0.0, 0.0, 180.0 ]
+                    "name": "upper plane"
                 },
                 {
-                    "name": "plane",
-                    "pos": [ 100.0, 0.0, 0.0 ],
-                    "scale": [ 1000.0, 1000.0, 1000.0 ],
-                    "rot": [ 0.0, 0.0, 90.0 ]
+                    "name": "right plane"
                 },
                 {
-                    "name": "plane",
-                    "pos": [ -100.0, 0.0, 0.0 ],
-                    "scale": [ 1000.0, 1000.0, 1000.0 ],
-                    "rot": [ 0.0, 0.0, -90.0 ]
+                    "name": "left plane"
                 },
                 {
-                    "name": "plane",
-                    "pos": [ 0.0, 0.0, -100.0 ],
-                    "scale": [ 1000.0, 1000.0, 1000.0 ],
-                    "rot": [ 90.0, 0.0, 0.0 ]
+                    "name": "front plane"
                 },
                 {
-                    "name": "plane",
-                    "pos": [ 0.0, 0.0, 100.0 ],
-                    "scale": [ 1000.0, 1000.0, 1000.0 ],
-                    "rot": [ -90.0, 0.0, 0.0 ]
+                    "name": "back plane"
                 }
-                
             ]
         },
         {
