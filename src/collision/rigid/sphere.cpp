@@ -1,12 +1,20 @@
 #include <sphere.h>
 #include <vector>
+#include <glm/gtx/string_cast.hpp>
+
+Sphere::Sphere()
+{}
 
 Sphere::Sphere(const glm::mat4& model, float radius, int numSides) : FixedBody(model), m_radius(radius), m_numSides(numSides)
 {}
 
+std::ostream& operator<<(std::ostream& os, const Sphere& sphere) {
+    os << "Model: " << glm::to_string(sphere.m_model) << ", Radius: " << sphere.m_radius << ", NumSides: " << sphere.m_numSides;
+    return os;
+}
+
 void Sphere::create()
 {
-    // 创建球体的顶点和索引
     std::vector<glm::vec3> pos;
     std::vector<glm::vec4> nor;
     std::vector<glm::vec2> uvs;
@@ -17,20 +25,20 @@ void Sphere::create()
     const float PI_1_2 = PI * 0.5f;
     const float PI_1_4 = PI * 0.25f;
 
-    for (int lat = 0; lat <= m_numSides; ++lat) // 纬度
+    for (int lat = 0; lat <= m_numSides; ++lat)
     {
-        float theta = PI * float(lat) / float(m_numSides); // 从 0 到 PI
+        float theta = PI * float(lat) / float(m_numSides);
         float sinTheta = sin(theta);
         float cosTheta = cos(theta);
 
-        for (int lon = 0; lon <= m_numSides; ++lon) // 经度
+        for (int lon = 0; lon <= m_numSides; ++lon)
         {
-            float phi = PI_2 * float(lon) / float(m_numSides); // 从 0 到 2 * PI
+            float phi = PI_2 * float(lon) / float(m_numSides);
             float sinPhi = sin(phi);
             float cosPhi = cos(phi);
 
             glm::vec3 normal(sinTheta * cosPhi, cosTheta, sinTheta * sinPhi);
-            glm::vec3 vertex = normal * m_radius; // 顶点位置
+            glm::vec3 vertex = normal * m_radius;
             pos.push_back(glm::vec3(m_model * glm::vec4(vertex, 1.0f)));
             nor.push_back(glm::vec4(-normal, 1.f));
             uvs.push_back(glm::vec2(1.0f - float(lon) / float(m_numSides), 1.0f - float(lat) / float(m_numSides)));
@@ -70,8 +78,7 @@ void Sphere::create()
     glBufferData(GL_ARRAY_BUFFER, nor.size() * sizeof(glm::vec4), nor.data(), GL_STATIC_DRAW);
 }
 
-float Sphere::SDF(const glm::vec3& samplePoint)
+BodyType Sphere::getType() const
 {
-    // 球体的有符号距离函数（SDF）实现
-    return glm::length(m_inverseModel * glm::vec4(samplePoint, 1.0f)) - m_radius;
+    return BodyType::Sphere;
 }

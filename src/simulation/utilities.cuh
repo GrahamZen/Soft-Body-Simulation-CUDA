@@ -14,6 +14,9 @@ void checkCUDAErrorFn(const char* msg, const char* file, int line);
 
 class BVHNode;
 class Query;
+class Sphere;
+class Plane;
+
 template <typename T>
 void inspectGLM(T* dev_ptr, int size) {
     std::vector<T> host_ptr(size);
@@ -21,10 +24,11 @@ void inspectGLM(T* dev_ptr, int size) {
     inspectHost(host_ptr.data(), size);
 }
 
-void inspectMortonCodes(int* dev_mortonCodes, int numTets);
-void inspectBVHNode(BVHNode* dev_BVHNodes, int numTets);
-void inspectBVH(AABB* dev_aabbs, int size);
-void inspectQuerys(Query* dev_query, int size);
+void inspectMortonCodes(const int* dev_mortonCodes, int numTets);
+void inspectBVHNode(const BVHNode* dev_BVHNodes, int numTets);
+void inspectBVH(const AABB* dev_aabbs, int size);
+void inspectQuerys(const Query* dev_query, int size);
+void inspectSphere(const Sphere* dev_spheres, int size);
 
 template <typename T1, typename T2>
 bool compareDevVSHost(const T1* dev_ptr, const T2* host_ptr2, int size) {
@@ -94,6 +98,8 @@ __global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* For
 
 __global__ void HandleFloorCollision(glm::vec3* X, glm::vec3* V,
     int numVerts, glm::vec3 floorPos, glm::vec3 floorUp, float muT, float muN);
+__global__ void handleSphereCollision(glm::vec3* X, glm::vec3* V, int numVerts, Sphere* spheres, int numSpheres, float muT, float muN);
+__global__ void handleFloorCollision(glm::vec3* X, glm::vec3* V, int numVerts, Plane* planes, int numPlanes, float muT, float muN);
 
 __global__ void computeLocal(float* V0, float wi, float* xProj, glm::mat3* DmInv, float* qn__1, GLuint* tetIndex, int tetNumber);
 __global__ void computeSn(float* sn, float dt, float dt2_m_1, glm::vec3* pos, glm::vec3* vel, glm::vec3* force, int numVerts);

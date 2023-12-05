@@ -14,6 +14,7 @@
 #include <utilities.h>
 #include <bitset>
 #include <bvh.h>
+#include <sphere.h>
 #include <type_traits>
 
 template<typename T, typename = void>
@@ -195,6 +196,14 @@ void utilityCore::inspectHost(const Query* query, int size) {
         if (query[i].type == QueryType::UNKNOWN)
             std::cout << "UNKNOWN:";
         std::cout << query[i].v0 << "," << query[i].v1 << "," << query[i].v2 << "," << query[i].v3 << ", t:" << query[i].toi << ", n:" << glm::to_string(query[i].normal) << std::endl;
+    }
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
+}
+
+void utilityCore::inspectHost(const Sphere* spheres, int size) {
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+    for (int i = 0; i < size; i++) {
+        std::cout << spheres[i] << std::endl;
     }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }

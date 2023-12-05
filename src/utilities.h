@@ -12,6 +12,7 @@
 class BVHNode;
 class AABB;
 class Query;
+class Sphere;
 
 namespace utilityCore
 {
@@ -31,6 +32,7 @@ namespace utilityCore
     void inspectHost(const BVHNode* hstBVHNodes, int size);
     void inspectHost(const AABB*, int);
     void inspectHost(const Query* query, int size);
+    void inspectHost(const Sphere* spheres, int size);
 
     template <typename T>
     bool compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int size);

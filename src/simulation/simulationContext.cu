@@ -161,7 +161,7 @@ void SimulationCUDAContext::Update()
             m_bvh.PrepareRenderData();
 
     }
-    HandleFloorCollision << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (dev_XTilts, dev_Vs, numVerts, glm::vec3(0.f, floorY, 0.f), floorUp, muT, muN);
+    dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);
     if (context->guiData->handleCollision)
         CCD();
     else

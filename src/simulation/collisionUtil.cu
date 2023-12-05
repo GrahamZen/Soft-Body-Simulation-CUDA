@@ -1,0 +1,89 @@
+#include <utilities.cuh>
+#include <cuda.h>
+#include <bvh.h>
+#include <sphere.h>
+#include <plane.h>
+
+__global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* Force,
+    int numVerts, float mass, float dt, float damp,
+    glm::vec3 floorPos, glm::vec3 floorUp, float muT, float muN) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= numVerts) return;
+
+    V[i] += Force[i] / mass * dt;
+    V[i] *= damp;
+    X[i] += V[i] * dt;
+
+    float signedDis = glm::dot(X[i] - floorPos, floorUp);
+    if (signedDis < 0 && glm::dot(V[i], floorUp) < 0) {
+        X[i] -= signedDis * floorUp;
+        glm::vec3 vN = glm::dot(V[i], floorUp) * floorUp;
+        glm::vec3 vT = V[i] - vN;
+        float mag_vT = glm::length(vT);
+        float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, 0.0f);
+        V[i] = -muN * vN + a * vT;
+    }
+}
+
+__global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, glm::vec3* V, dataType* tI, glm::vec3* normals, float muT, float muN, int numVerts) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx >= numVerts) return;
+    float interval = glm::length(XTilt - X);
+
+    if (tI[idx] < 1.0f)
+    {
+        glm::vec3 normal = normals[idx];
+        glm::vec3 vel = XTilt[idx] - X[idx];
+        glm::vec3 velNormal = glm::dot(vel, normal) * normal;
+        glm::vec3 vT = vel - velNormal;
+        float mag_vT = glm::length(vT);
+        float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(velNormal) / mag_vT, 0.0f);
+        V[idx] = -muN * velNormal + a * vT;
+    }
+    else
+    {
+        X[idx] = XTilt[idx];
+    }
+}
+
+__global__ void handleFloorCollision(glm::vec3* X, glm::vec3* V, int numVerts, Plane* planes, int numPlanes, float muT, float muN) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= numVerts) return;
+    V[i] *= 0.99f;
+    for (int j = 0; j < numPlanes; j++)
+    {
+        glm::vec3 floorPos = glm::vec3(planes[j].m_model[3]);
+        glm::vec3 floorUp = planes[j].m_floorUp;
+        float signedDis = glm::dot(X[i] - floorPos, floorUp);
+        if (signedDis < 0 && glm::dot(V[i], floorUp) < 0) {
+            X[i] -= signedDis * floorUp;
+            glm::vec3 vN = glm::dot(V[i], floorUp) * floorUp;
+            glm::vec3 vT = V[i] - vN;
+            float mag_vT = glm::length(vT);
+            float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, 0.0f);
+            V[i] = -muN * vN + a * vT;
+        }
+    }
+}
+
+
+__global__ void handleSphereCollision(glm::vec3* X, glm::vec3* V, int numVerts, Sphere* spheres, int numSpheres, float muT, float muN) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= numVerts) return;
+
+    for (int j = 0; j < numSpheres; j++) {
+        glm::vec3 sphereCenter = glm::vec3(spheres[j].m_model[3]);
+        float sphereRadius = spheres[j].m_radius;
+        glm::vec3 toCenter = X[i] - sphereCenter;
+        float distance = glm::length(toCenter);
+        if (distance < sphereRadius) {
+            glm::vec3 normal = glm::normalize(toCenter);
+            X[i] += distance * normal;
+            glm::vec3 vN = glm::dot(V[i], normal) * normal;
+            glm::vec3 vT = V[i] - vN;
+            float mag_vT = glm::length(vT);
+            float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, 0.0f);
+            V[i] = -muN * vN + a * vT;
+        }
+    }
+}

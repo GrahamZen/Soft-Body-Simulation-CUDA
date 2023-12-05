@@ -1,9 +1,9 @@
 #include <json.hpp>
 #include <softBody.h>
-#include <rigid.h>
 #include <shaderprogram.h>
 #include <bvh.h>
 #include <sceneStructs.h>
+#include <fixedBodyData.h>
 
 struct SoftBodyData {
     GLuint* Tets;
@@ -38,13 +38,14 @@ private:
     const int threadsPerBlock;
 };
 
+
 class SimulationCUDAContext {
 public:
     struct ExternalForce {
         glm::vec3 jump = glm::vec3(0.f, 400.f, 0.f);
     };
     SimulationCUDAContext(Context* ctx, const ExternalForce& extForce, nlohmann::json& json,
-        const std::map<std::string, nlohmann::json>& softBodyDefs, const std::map<std::string, nlohmann::json>& fixedBodyDefs, int threadsPerBlock, int _threadsPerBlockBVH, int maxThreads);
+        const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>&, int threadsPerBlock, int _threadsPerBlockBVH, int maxThreads);
     ~SimulationCUDAContext();
     void Update();
     void Reset();
@@ -67,7 +68,6 @@ public:
     void CCD();
 private:
     ExternalForce extForce;
-    Mesh m_floor;
     float floorY = 0.f;
     glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     void PrepareRenderData();
@@ -89,6 +89,7 @@ private:
     std::vector<const char*> namesSoftBodies;
     std::vector<SoftBody*> softBodies;
     std::vector<FixedBody*> fixedBodies;
+    FixedBodyData dev_fixedBodies;
     std::vector<int> startIndices;
     BVH m_bvh;
     float damp = 0.999f;
