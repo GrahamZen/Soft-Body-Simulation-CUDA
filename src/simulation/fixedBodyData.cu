@@ -24,7 +24,7 @@ FixedBodyData::FixedBodyData(int _threadsPerBlock, const std::vector<FixedBody*>
     if (numSpheres > 0) {
         cudaMalloc(&dev_spheres, numSpheres * sizeof(Sphere));
     }
-    if (numSpheres > 0) {
+    if (numPlanes > 0) {
         cudaMalloc(&dev_planes, numPlanes * sizeof(Plane));
     }
     int sphereIdx = 0;
