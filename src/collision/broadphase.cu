@@ -215,11 +215,12 @@ bool CollisionDetection::DetectCollisionCandidates(int numTets, const BVHNode* d
         traverseTree << <numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, tets, tetFathers, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag);
         cudaMemcpy(&overflow, dev_overflowFlag, sizeof(bool), cudaMemcpyDeviceToHost);
         if (overflow) {
-            std::cerr << "overflow" << std::endl;
             overflowHappened = true;
             maxNumQueries *= 2;
+            std::cerr << "Query buffer overflow, resizing to " << maxNumQueries << std::endl;
             if (maxNumQueries > 1 << 31) {
-                std::cerr << "Too many queries" << std::endl;
+                std::cerr << "Number of queries exceeds 2^31, aborting" << std::endl;
+                exit(1);
                 return false;
             }
             cudaFree(dev_queries);
