@@ -5,6 +5,7 @@
 
 class Sphere;
 class Plane;
+class Cylinder;
 
 class FixedBodyData {
 public:
@@ -19,7 +20,9 @@ public:
 private:
     Sphere* dev_spheres = nullptr;
     Plane* dev_planes = nullptr;
+    Cylinder* dev_cylinders = nullptr;
     int numSpheres;
     int numPlanes;
+    int numCylinders;
     int threadsPerBlock;
 };

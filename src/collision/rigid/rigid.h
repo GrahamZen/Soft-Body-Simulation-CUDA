@@ -9,6 +9,7 @@
 enum class BodyType {
     Sphere,
     Plane,
+    Cylinder
 };
 
 class FixedBody : public Drawable
