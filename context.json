@@ -5,7 +5,7 @@
     "default camera": {
         "aspect ratio": 1.3333,
         "screen height": 1280,
-        "position": [0, 20, 50],
+        "position": [0, 20, 100],
         "lookAt": [0, 10, 0],
         "view": [0, 0, -1],
         "up": [0, 1, 0],
@@ -91,9 +91,15 @@
         {
             "type": "sphere",
             "name": "sphere1",
-            "pos": [ 0.0, -10.0, 0.0 ],
-            "scale": [ 1.0, 1.0, 1.0 ],
-            "radius": 5.0
+            "pos": [ 0.0, -50.0, 0.0 ],
+            "radius": 10.0
+        },
+        {
+            "type": "cylinder",
+            "name": "cylinder1",
+            "pos": [ 0.0, 10.0, 0.0 ],
+            "rot": [ 0.0, 0.0, 90.0 ],
+            "scale": [ 1.0, 1000.0, 1.0 ]
         },
         {
             "type": "plane",
@@ -153,6 +159,9 @@
                 }
             ],
             "fixedBodies": [
+                {
+                    "name": "cylinder1"
+                },
                 {
                     "name": "sphere1"
                 },
