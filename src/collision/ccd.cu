@@ -67,7 +67,7 @@ CollisionDetection::~CollisionDetection()
     cudaFree(dev_overflowFlag);
 }
 
-void CollisionDetection::DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors)
+void CollisionDetection::DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors, const glm::vec3* X0)
 {
     if (BroadPhase(numTets, dev_BVHNodes, tets, tetFathers)) {
         PrepareRenderData(Xs);
@@ -96,7 +96,7 @@ void BVH::PrepareRenderData()
     Wireframe::unMapDevicePtr();
 }
 
-void BVH::DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors)
+void BVH::DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors, const glm::vec3* X0)
 {
     thrust::device_ptr<dataType> dev_ptr(tI);
     thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);

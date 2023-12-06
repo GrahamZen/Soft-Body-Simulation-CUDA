@@ -186,7 +186,7 @@ void utilityCore::inspectHost(const AABB* aabb, int size) {
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
-void utilityCore::inspectHost(const Query* query, int size) {
+void utilityCore::inspectHost(const Query* query, int size, const glm::vec3* X0) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size; i++) {
         if (query[i].type == QueryType::EE)
@@ -195,7 +195,8 @@ void utilityCore::inspectHost(const Query* query, int size) {
             std::cout << "VF:";
         if (query[i].type == QueryType::UNKNOWN)
             std::cout << "UNKNOWN:";
-        std::cout << query[i].v0 << "," << query[i].v1 << "," << query[i].v2 << "," << query[i].v3 << ", t:" << query[i].toi << ", n:" << glm::to_string(query[i].normal) << std::endl;
+        std::cout << query[i].v0 << "," << query[i].v1 << "," << query[i].v2 << "," << query[i].v3 << ", t:" << query[i].toi 
+        << ", n:" << glm::to_string(query[i].normal) << ", X0:" << glm::to_string(X0[i]) << std::endl;
     }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }

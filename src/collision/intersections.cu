@@ -242,7 +242,7 @@ __host__ __device__ dataType ccdTriangleIntersectionTest(const glmVec3& x0, cons
     dataType a2 = stp(x01, v02, v03) + stp(v01, x02, v03) + stp(v01, v02, x03);
     dataType a3 = stp(v01, v02, v03);
     if (abs(a0) < 1e-6 * length(x01) * length(x02) * length(x03))
-        return 1.0; // initially coplanar
+        return 0.1; // initially coplanar
     dataType t[3];
     dataType minRoot = FLT_MAX;
     int nsol = solveCubic<dataType>(a3, a2, a1, a0, t);

@@ -44,11 +44,13 @@ void inspectBVH(const AABB* dev_aabbs, int size)
     utilityCore::inspectHost(hstAABB.data(), size);
 }
 
-void inspectQuerys(const Query* dev_query, int size)
+void inspectQuerys(const Query* dev_query, int size, const glm::vec3* X0)
 {
-    std::vector<Query> hstAABB(size);
-    cudaMemcpy(hstAABB.data(), dev_query, sizeof(Query) * size, cudaMemcpyDeviceToHost);
-    utilityCore::inspectHost(hstAABB.data(), size);
+    std::vector<Query> hstQueries(size);
+    std::vector<glm::vec3> hstX0(size);
+    cudaMemcpy(hstQueries.data(), dev_query, sizeof(Query) * size, cudaMemcpyDeviceToHost);
+    cudaMemcpy(hstX0.data(), X0, sizeof(glm::vec3) * size, cudaMemcpyDeviceToHost);
+    utilityCore::inspectHost(hstQueries.data(), size, hstX0.data());
 }
 
 void inspectSphere(const Sphere* dev_spheres, int size)

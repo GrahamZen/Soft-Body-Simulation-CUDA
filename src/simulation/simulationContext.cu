@@ -145,7 +145,7 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
 
 void SimulationCUDAContext::CCD()
 {
-    m_bvh.DetectCollision(dev_Tets, dev_TetFathers, dev_Xs, dev_XTilts, dev_tIs, dev_Normals);
+    m_bvh.DetectCollision(dev_Tets, dev_TetFathers, dev_Xs, dev_XTilts, dev_tIs, dev_Normals, dev_X0s);
     int blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     /*
     std::vector<dataType> hstTI(numVerts);
