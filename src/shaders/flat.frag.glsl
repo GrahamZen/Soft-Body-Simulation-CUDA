@@ -7,14 +7,26 @@
 //can compute what color to apply to its pixel based on things like vertex position, light position, and vertex color.
 
 in vec4 fs_Col;
+in float vertexIndex;
 
 layout(location=0)out vec3 out_Col;//This is the final output color that you will see on your screen for the pixel that is currently being processed.
 
+// void main()
+// {
+//     if (fs_Col.a < 0.1)
+//     {
+//         discard;
+//     }
+//     out_Col = vec3(fs_Col);
+// }
+
 void main()
 {
-    if (fs_Col.a < 0.1)
-    {
-        discard;
-    }
-    out_Col = vec3(fs_Col);
+//     if (fs_Col.a < 0.1)
+//     {
+//         discard;
+//     }
+    float normalizedIndex = vertexIndex / 255;
+    vec3 color = vec3(normalizedIndex, normalizedIndex, normalizedIndex);
+    out_Col = color;
 }

@@ -27,11 +27,12 @@ in vec2 vs_UV;// The array of vertex texture coordinates passed to the shader
 in vec4 vs_Col;// The array of vertex colors passed to the shader
 
 out vec4 fs_Col;// The color of each vertex. This is implicitly passed to the fragment shader.
-
+out float vertexIndex;
 void main()
 {        
     vec4 modelposition=u_Model*vec4(vs_Pos,1.0);// Temporarily store the transformed vertex positions for use below
     
+    vertexIndex = float(gl_VertexID);
     fs_Col = vs_Col;// Pass the vertex colors to the fragment shader for interpolation
     gl_Position=u_Proj*u_View*modelposition;// gl_Position is a built-in variable of OpenGL which is
     // used to render the final positions of the geometry's vertices
