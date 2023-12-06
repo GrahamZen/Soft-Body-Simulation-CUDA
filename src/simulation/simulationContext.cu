@@ -147,6 +147,14 @@ void SimulationCUDAContext::CCD()
 {
     m_bvh.DetectCollision(dev_Tets, dev_TetFathers, dev_Xs, dev_XTilts, dev_tIs, dev_Normals);
     int blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    /*
+    std::vector<dataType> hstTI(numVerts);
+    cudaMemcpy(hstTI.data(), dev_tIs, numVerts * sizeof(dataType), cudaMemcpyDeviceToHost);
+    for (int i = 0; i < numVerts; i++)
+    {
+        std::cout << i << " : " << hstTI[i] << std::endl;
+    }
+    std::cout << " ------------------------------------------- " << std::endl;*/
     CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, dev_Vs, dev_tIs, dev_Normals, muT, muN, numVerts);
 }
 
