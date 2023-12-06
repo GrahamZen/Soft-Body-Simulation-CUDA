@@ -22,7 +22,7 @@ template <typename T>
 void inspectGLM(T* dev_ptr, int size) {
     std::vector<T> host_ptr(size);
     cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost);
-    inspectHost(host_ptr.data(), size);
+    utilityCore::inspectHost(host_ptr.data(), size);
 }
 
 void inspectMortonCodes(const int* dev_mortonCodes, int numTets);

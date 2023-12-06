@@ -16,12 +16,14 @@ using glmMat4 = glm::tmat4x4<dataType>;
 using glmMat3 = glm::tmat3x3<dataType>;
 using glmMat2 = glm::tmat2x2<dataType>;
 
-struct AABB {
+class AABB {
+public:
     glm::vec3 min = glm::vec3{ FLT_MAX };
     glm::vec3 max = glm::vec3{ -FLT_MAX };
     AABB expand(const AABB& aabb)const;
 };
-struct BVHNode {
+class BVHNode {
+public:
     AABB bbox;
     int isLeaf;
     int leftIndex;
@@ -36,7 +38,8 @@ enum class QueryType {
     EE
 };
 
-struct Query {
+class Query {
+public:
     QueryType type;
     GLuint v0;
     GLuint v1;
@@ -52,7 +55,7 @@ public:
     ~CollisionDetection();
     bool DetectCollisionCandidates(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers);
     bool BroadPhase(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers);
-    void DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors);
+    void DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors, const glm::vec3* X0 = nullptr);
     void NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors);
     void PrepareRenderData(const glm::vec3* Xs);
     int GetNumQueries() const {
@@ -75,7 +78,7 @@ public:
     void Init(int numTets, int numVerts, int maxThreads);
     void PrepareRenderData();
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
-    void DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors);
+    void DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors, const glm::vec3* X0 = nullptr);
     Drawable& GetQueryDrawable();
     int GetNumQueries() const;
 private:

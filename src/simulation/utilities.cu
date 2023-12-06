@@ -46,9 +46,9 @@ void inspectBVH(const AABB* dev_aabbs, int size)
 
 void inspectQuerys(const Query* dev_query, int size)
 {
-    std::vector<Query> hstAABB(size);
-    cudaMemcpy(hstAABB.data(), dev_query, sizeof(Query) * size, cudaMemcpyDeviceToHost);
-    utilityCore::inspectHost(hstAABB.data(), size);
+    std::vector<Query> hstQueries(size);
+    cudaMemcpy(hstQueries.data(), dev_query, sizeof(Query) * size, cudaMemcpyDeviceToHost);
+    utilityCore::inspectHost(hstQueries.data(), size);
 }
 
 void inspectSphere(const Sphere* dev_spheres, int size)

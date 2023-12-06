@@ -41,12 +41,12 @@ __global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, glm::vec3* V, dataType
         float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(velNormal) / mag_vT, 0.0f);
         //V[idx] = -muN * velNormal + a * vT;
         //V[idx] = X[idx] - XTilt[idx];
-        //XTilt[idx] = X[idx];
     }
     else
     {
         X[idx] = XTilt[idx];
     }
+    XTilt[idx] = X[idx];
 }
 
 __global__ void handleFloorCollision(glm::vec3* X, glm::vec3* V, int numVerts, Plane* planes, int numPlanes, float muT, float muN) {

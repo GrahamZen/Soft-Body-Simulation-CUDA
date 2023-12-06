@@ -1,6 +1,7 @@
 #include <simulationContext.h>
 #include <map>
 #include <set>
+#include <utilities.cuh>
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json,
     const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads)
