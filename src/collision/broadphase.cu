@@ -35,7 +35,7 @@ struct QueryEquality {
 struct IsUnknown {
     __host__ __device__
         bool operator()(const Query& query) const {
-        return query.type == QueryType::UNKNOWN || query.type == QueryType::EE;
+        return query.type == QueryType::UNKNOWN;
     }
 };
 

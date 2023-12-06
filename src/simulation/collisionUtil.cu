@@ -39,7 +39,9 @@ __global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, glm::vec3* V, dataType
         glm::vec3 vT = vel - velNormal;
         float mag_vT = glm::length(vT);
         float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(velNormal) / mag_vT, 0.0f);
-        V[idx] = -muN * velNormal + a * vT;
+        //V[idx] = -muN * velNormal + a * vT;
+        //V[idx] = X[idx] - XTilt[idx];
+        //XTilt[idx] = X[idx];
     }
     else
     {
