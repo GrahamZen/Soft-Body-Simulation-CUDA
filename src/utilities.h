@@ -31,7 +31,7 @@ namespace utilityCore
     void inspectHostMorton(const unsigned int* host_ptr, int size);
     void inspectHost(const BVHNode* hstBVHNodes, int size);
     void inspectHost(const AABB*, int);
-    void inspectHost(const Query* query, int size, const glm::vec3* X0);
+    void inspectHost(const Query* query, int size);
     void inspectHost(const Sphere* spheres, int size);
 
     template <typename T>

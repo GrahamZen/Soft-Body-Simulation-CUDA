@@ -28,7 +28,7 @@ void inspectGLM(T* dev_ptr, int size) {
 void inspectMortonCodes(const int* dev_mortonCodes, int numTets);
 void inspectBVHNode(const BVHNode* dev_BVHNodes, int numTets);
 void inspectBVH(const AABB* dev_aabbs, int size);
-void inspectQuerys(const Query* dev_query, int size, const glm::vec3* X0);
+void inspectQuerys(const Query* dev_query, int size);
 void inspectSphere(const Sphere* dev_spheres, int size);
 
 template <typename T1, typename T2>

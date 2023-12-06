@@ -16,12 +16,14 @@ using glmMat4 = glm::tmat4x4<dataType>;
 using glmMat3 = glm::tmat3x3<dataType>;
 using glmMat2 = glm::tmat2x2<dataType>;
 
-struct AABB {
+class AABB {
+public:
     glm::vec3 min = glm::vec3{ FLT_MAX };
     glm::vec3 max = glm::vec3{ -FLT_MAX };
     AABB expand(const AABB& aabb)const;
 };
-struct BVHNode {
+class BVHNode {
+public:
     AABB bbox;
     int isLeaf;
     int leftIndex;
@@ -36,7 +38,8 @@ enum class QueryType {
     EE
 };
 
-struct Query {
+class Query {
+public:
     QueryType type;
     GLuint v0;
     GLuint v1;

@@ -71,6 +71,7 @@ void CollisionDetection::DetectCollision(int numTets, const BVHNode* dev_BVHNode
 {
     if (BroadPhase(numTets, dev_BVHNodes, tets, tetFathers)) {
         PrepareRenderData(Xs);
+        inspectQuerys(dev_queries, numQueries);
         NarrowPhase(Xs, XTilts, tI, nors);
     }
 }
