@@ -1,6 +1,6 @@
 #include <json.hpp>
 #include <softBody.h>
-#include <shaderprogram.h>
+#include <surfaceshader.h>
 #include <bvh.h>
 #include <sceneStructs.h>
 #include <fixedBodyData.h>
@@ -59,7 +59,7 @@ public:
     void SetGlobalSolver(bool useEigen) { this->useEigen = useEigen; }
     bool IsEigenGlobalSolver() const { return useEigen; }
     bool IsCUDASolver() const { return useCUDASolver; }
-    void Draw(ShaderProgram*, ShaderProgram*);
+    void Draw(SurfaceShader*, SurfaceShader*);
     AABB GetAABB() const;
     int GetTetCnt() const;
     int GetVertCnt() const;

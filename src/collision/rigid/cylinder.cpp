@@ -21,29 +21,28 @@ void Cylinder::create()
     std::vector<unsigned int> idx;
     const float PI = 3.1415926f;
     float angleStep = 2 * PI / m_numSides;
-    float halfHeight = m_height * 0.5f;
     for (int i = 0; i <= m_numSides; ++i) {
         float angle = i * angleStep;
-        float x = m_radius * cos(angle);
-        float z = m_radius * sin(angle);
-        pos.push_back(glm::vec3(m_model * glm::vec4(x, halfHeight, z, 1.0f)));
-        nor.push_back(glm::vec4(m_model * glm::vec4(0, 1, 0, 0)));
-        pos.push_back(glm::vec3(m_model * glm::vec4(x, -halfHeight, z, 1.0f)));
-        nor.push_back(-glm::vec4(m_model * glm::vec4(0, -1, 0, 0)));
+        float x = cos(angle);
+        float z = sin(angle);
+        pos.push_back(glm::vec3(x, 1.0, z));
+        nor.push_back(glm::vec4(0, 1, 0, 0));
+        pos.push_back(glm::vec3(x, -1.0, z));
+        nor.push_back(-glm::vec4(0, -1, 0, 0));
     }
     for (int i = 0; i <= m_numSides; ++i) {
         float angle = i * angleStep;
-        float x = m_radius * cos(angle);
-        float z = m_radius * sin(angle);
-        pos.push_back(glm::vec3(m_model * glm::vec4(x, halfHeight, z, 1.0f)));
-        nor.push_back(glm::vec4(m_model * glm::vec4(x, 0, z, 0)));
-        pos.push_back(glm::vec3(m_model * glm::vec4(x, -halfHeight, z, 1.0f)));
-        nor.push_back(-glm::vec4(m_model * glm::vec4(x, 0, z, 0)));
+        float x = cos(angle);
+        float z = sin(angle);
+        pos.push_back(glm::vec3(x, 1.0, z));
+        nor.push_back(glm::normalize(glm::vec4(x, 0, z, 0)));
+        pos.push_back(glm::vec3(x, -1.0, z));
+        nor.push_back(-glm::normalize(glm::vec4(x, 0, z, 0)));
     }
-    pos.push_back(glm::vec3(m_model * glm::vec4(0, halfHeight, 0, 1.0f)));
-    nor.push_back(glm::vec4(m_model * glm::vec4(0, 1, 0, 0)));
-    pos.push_back(glm::vec3(m_model * glm::vec4(0, -halfHeight, 0, 1.0f)));
-    nor.push_back(-glm::vec4(m_model * glm::vec4(0, -1, 0, 0)));
+    pos.push_back(glm::vec3(0, 1.0, 0));
+    nor.push_back(glm::vec4(0, 1, 0, 0));
+    pos.push_back(glm::vec3(0, -1.0, 0));
+    nor.push_back(-glm::vec4(0, -1, 0, 0));
 
     int topCenterIndex = pos.size() - 2;
     int bottomCenterIndex = pos.size() - 1;

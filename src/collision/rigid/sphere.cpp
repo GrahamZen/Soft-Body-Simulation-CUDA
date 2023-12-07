@@ -38,9 +38,9 @@ void Sphere::create()
             float cosPhi = cos(phi);
 
             glm::vec3 normal(sinTheta * cosPhi, cosTheta, sinTheta * sinPhi);
-            glm::vec3 vertex = normal * m_radius;
-            pos.push_back(glm::vec3(m_model * glm::vec4(vertex, 1.0f)));
-            nor.push_back(-glm::vec4(glm::normalize(glm::vec3(m_inverseTransposeModel * glm::vec4(normal, 0.0f))), 0.0f));
+            glm::vec3 vertex = normal;
+            pos.push_back(vertex);
+            nor.push_back(-glm::vec4(normal, 0.0f));
             uvs.push_back(glm::vec2(1.0f - float(lon) / float(m_numSides), 1.0f - float(lat) / float(m_numSides)));
         }
     }

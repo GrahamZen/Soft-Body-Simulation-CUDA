@@ -198,7 +198,7 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
             if (!fbJson.contains("radius")) {
                 if (fbDefJson.contains("radius")) {
                     float radius = fbDefJson["radius"].get<float>();
-                    fixedBodies.push_back(new Sphere(model, radius, numSides));
+                    fixedBodies.push_back(new Sphere(utilityCore::modelMatrix(pos, rot, glm::vec3(radius, radius, radius)), radius, numSides));
                 }
                 else {
                     fixedBodies.push_back(new Sphere(model, 1.f, numSides));
@@ -206,11 +206,11 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
             }
             else {
                 float radius = fbJson["radius"].get<float>();
-                fixedBodies.push_back(new Sphere(model, radius, numSides));
+                fixedBodies.push_back(new Sphere(utilityCore::modelMatrix(pos, rot, glm::vec3(radius, radius, radius)), radius, numSides));
             }
         }
         if (fbDefJson["type"] == "cylinder") {
-            glm::mat4 model = utilityCore::modelMatrix(pos, rot, glm::vec3(1, 1, 1));
+            glm::mat4 model = utilityCore::modelMatrix(pos, rot, glm::vec3(scale[0], scale[1], scale[0]));
             int numSides;
             if (!fbJson.contains("numSides")) {
                 if (fbDefJson.contains("numSides")) {
