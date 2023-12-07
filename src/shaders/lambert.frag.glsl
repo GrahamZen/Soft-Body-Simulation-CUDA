@@ -14,7 +14,7 @@ in vec4 fs_Nor;
 in vec4 fs_LightVec;
 in vec2 fs_UV;
 
-layout(location=0)out vec3 out_Col;//This is the final output color that you will see on your screen for the pixel that is currently being processed.
+layout(location=0)out vec4 out_Col;//This is the final output color that you will see on your screen for the pixel that is currently being processed.
 
 void main()
 {
@@ -34,6 +34,7 @@ void main()
     //lit by our point light are not completely black.
     
     // Compute final shaded color
-    out_Col=vec3(diffuseColor*lightIntensity);
+    out_Col=diffuseColor*lightIntensity;
+    out_Col.a=1.0;
     //    out_Col = normalize(abs(fs_Nor));
 }
