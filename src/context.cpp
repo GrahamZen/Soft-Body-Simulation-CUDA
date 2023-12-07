@@ -180,7 +180,6 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
         else {
             rot = glm::vec3(fbJson["rot"][0].get<float>(), fbJson["rot"][1].get<float>(), fbJson["rot"][2].get<float>());
         }
-        glm::mat4 model = utilityCore::modelMatrix(pos, rot, scale);
         if (fbDefJson["type"] == "sphere") {
             glm::mat4 model = utilityCore::modelMatrix(pos, rot, glm::vec3(1, 1, 1));
             int numSides;
@@ -226,7 +225,7 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
             fixedBodies.push_back(new Cylinder(model, scale, numSides));
         }
         if (fbDefJson["type"] == "plane") {
-            fixedBodies.push_back(new Plane(model));
+            fixedBodies.push_back(new Plane(utilityCore::modelMatrix(pos, rot, scale)));
         }
     }
 
@@ -320,7 +319,7 @@ void Context::InitCuda() {
 }
 
 void Context::Draw() {
-    glEnable(GL_CULL_FACE);
+    // glEnable(GL_CULL_FACE);
     mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
 }
 

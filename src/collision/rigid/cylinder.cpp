@@ -28,7 +28,7 @@ void Cylinder::create()
         pos.push_back(glm::vec3(x, 1.0, z));
         nor.push_back(glm::vec4(0, 1, 0, 0));
         pos.push_back(glm::vec3(x, -1.0, z));
-        nor.push_back(-glm::vec4(0, -1, 0, 0));
+        nor.push_back(glm::vec4(0, -1, 0, 0));
     }
     for (int i = 0; i <= m_numSides; ++i) {
         float angle = i * angleStep;
@@ -37,12 +37,12 @@ void Cylinder::create()
         pos.push_back(glm::vec3(x, 1.0, z));
         nor.push_back(glm::normalize(glm::vec4(x, 0, z, 0)));
         pos.push_back(glm::vec3(x, -1.0, z));
-        nor.push_back(-glm::normalize(glm::vec4(x, 0, z, 0)));
+        nor.push_back(glm::normalize(glm::vec4(x, 0, z, 0)));
     }
     pos.push_back(glm::vec3(0, 1.0, 0));
     nor.push_back(glm::vec4(0, 1, 0, 0));
     pos.push_back(glm::vec3(0, -1.0, 0));
-    nor.push_back(-glm::vec4(0, -1, 0, 0));
+    nor.push_back(glm::vec4(0, -1, 0, 0));
 
     int topCenterIndex = pos.size() - 2;
     int bottomCenterIndex = pos.size() - 1;
@@ -50,8 +50,8 @@ void Cylinder::create()
     // Top cap
     for (int i = 0; i < m_numSides; ++i) {
         idx.push_back(topCenterIndex);
-        idx.push_back(i * 2);
         idx.push_back((i + 1) * 2);
+        idx.push_back(i * 2);
     }
 
     // Bottom cap
@@ -62,7 +62,7 @@ void Cylinder::create()
     }
 
     // Side
-    for (int i = 0; i < m_numSides; ++i) {
+    for (int i = m_numSides + 1; i < m_numSides * 2 + 1; ++i) {
         idx.push_back(i * 2);
         idx.push_back(i * 2 + 1);
         idx.push_back((i + 1) * 2 + 1);

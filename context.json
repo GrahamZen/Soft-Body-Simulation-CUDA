@@ -48,8 +48,9 @@
             "name": "bunny",
             "nodeFile": "../assets/bunny/bunny.1.node",
             "eleFile": "../assets/bunny/bunny.1.ele",
+            "faceFile": "../assets/bunny/bunny.1.face",
             "mass": 10.0,
-            "stiffness_0": 20000000.0,
+            "stiffness_0": 200000.0,
             "stiffness_1": 5000.0,
             "constraints": 0,
             "pos": [ 0.0, 25.0, 25.0 ],
@@ -99,54 +100,54 @@
             "name": "cylinder1",
             "pos": [ 0.0, 10.0, 0.0 ],
             "rot": [ 0.0, 0.0, 90.0 ],
-            "scale": [ 1.0, 1000.0, 1.0 ]
+            "scale": [ 10.0, 50.0, 10.0 ]
         },
         {
             "type": "plane",
             "name": "bottom plane",
-            "pos": [ 0.0, -100.0, 0.0 ],
-            "scale": [ 1000.0, 1000.0, 1000.0 ]
+            "pos": [ 0.0, -350.0, 0.0 ],
+            "scale": [ 350.0, 350.0, 350.0 ]
         },
         {
             "type": "plane",
             "name": "upper plane",
-            "pos": [ 0.0, 100.0, 0.0 ],
-            "scale": [ 1000.0, 1000.0, 1000.0 ],
+            "pos": [ 0.0, 350.0, 0.0 ],
+            "scale": [ 350.0, 350.0, 350.0 ],
             "rot": [ 0.0, 0.0, 180.0 ]
         },
         {
             "type": "plane",
             "name": "right plane",
-            "pos": [ 100.0, 0.0, 0.0 ],
-            "scale": [ 1000.0, 1000.0, 1000.0 ],
+            "pos": [ 350.0, 0.0, 0.0 ],
+            "scale": [ 350.0, 350.0, 350.0 ],
             "rot": [ 0.0, 0.0, 90.0 ]
         },
         {
             "type": "plane",
             "name": "left plane",
-            "pos": [ -100.0, 0.0, 0.0 ],
-            "scale": [ 1000.0, 1000.0, 1000.0 ],
+            "pos": [ -350.0, 0.0, 0.0 ],
+            "scale": [ 350.0, 350.0, 350.0 ],
             "rot": [ 0.0, 0.0, -90.0 ]
         },
         {
             "type": "plane",
             "name": "front plane",
-            "pos": [ 0.0, 0.0, -100.0 ],
-            "scale": [ 1000.0, 1000.0, 1000.0 ],
+            "pos": [ 0.0, 0.0, -350.0 ],
+            "scale": [ 350.0, 350.0, 350.0 ],
             "rot": [ 90.0, 0.0, 0.0 ]
         },
         {
             "type": "plane",
             "name": "back plane",
-            "pos": [ 0.0, 0.0, 100.0 ],
-            "scale": [ 1000.0, 1000.0, 1000.0 ],
+            "pos": [ 0.0, 0.0, 350.0 ],
+            "scale": [ 350.0, 350.0, 350.0 ],
             "rot": [ -90.0, 0.0, 0.0 ]
         }
     ],
     "contexts": [
         {
             "name": "house&bunny",
-            "load": false,
+            "load": true,
             "dt": 0.01,
             "gravity": 98,
             "damp": 0.999,
@@ -155,15 +156,16 @@
             "softBodies": [
                 {
                     "name": "bunny",
-                    "pos": [ 0.0, 0.0, 0.0 ]
+                    "pos": [ 0.0, 50.0, 0.0 ]
                 }
             ],
             "fixedBodies": [
                 {
-                    "name": "cylinder1"
+                    "name": "sphere1",
+                    "pos": [ 0.0, -20.0, 0.0 ]
                 },
                 {
-                    "name": "sphere1"
+                    "name": "cylinder1"
                 },
                 {
                     "name": "bottom plane"

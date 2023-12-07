@@ -161,6 +161,7 @@ bool MouseOverImGuiWindow()
 
 void mainLoop() {
     while (!glfwWindowShouldClose(window)) {
+        glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
 
         glfwPollEvents();
         context->Update();
