@@ -134,6 +134,15 @@ void SurfaceShader::drawSingleQuery(SingleQueryDisplay& d)
                 glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
             }
         }
+        if (attrCol != -1 && d.bindCol()) {
+            glEnableVertexAttribArray(attrCol);
+            glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, (void*)(4 * sizeof(glm::vec4)));
+        }
+        if (attrPos != -1 && d.bindPos()) {
+            glEnableVertexAttribArray(attrPos);
+            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+            glDrawArrays(d.drawMode(), 0, 2);
+        }
     }
 
     if (attrPos != -1) glDisableVertexAttribArray(attrPos);

@@ -22,14 +22,17 @@ GLenum SingleQueryDisplay::drawMode()
 }
 
 void SingleQueryDisplay::create() {
-    std::vector<GLuint> linesIdx{ 0, 1, 2, 3 };
-    count = 4;
+    std::vector<GLuint> linesIdx{ 0, 1, 2, 3, 4, 5 };
+    count = 6;
     std::vector<GLuint> triIdx{ 0, 1, 2 };
 
-    std::vector<glm::vec4> colors(4, glm::vec4(1.0f, 0.0f, 0.0f, 0.5f));
+    std::vector<glm::vec4> colors(6, glm::vec4(1.0f, 0.0f, 0.0f, 0.6f));
+    colors[4] = glm::vec4(0.0f, 1.0f, 1.0f, 0.8f);
+    colors[5] = glm::vec4(0.0f, 1.0f, 1.0f, 0.8f);
+
     generateCol();
     glBindBuffer(GL_ARRAY_BUFFER, bufCol);
-    glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec4), colors.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(glm::vec4), colors.data(), GL_STATIC_DRAW);
 
     generateIdx();
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufIdx);
@@ -37,7 +40,7 @@ void SingleQueryDisplay::create() {
 
     generatePos();
     glBindBuffer(GL_ARRAY_BUFFER, bufPos);
-    glBufferData(GL_ARRAY_BUFFER, 4 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, 6 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
     cudaGraphicsGLRegisterBuffer(&cuda_bufPos_resource, bufPos, cudaGraphicsMapFlagsWriteDiscard);
 
     // extra VBOs for vertex and triangle

@@ -143,7 +143,11 @@ void RenderImGui()
     ImGui::Checkbox("Visualize All Queries", &imguiData->QueryVis);
     ImGui::SameLine();
     ImGui::Checkbox("Query Debug Mode", &imguiData->QueryDebugMode);
-    bool pointSizeChanged = ImGui::DragFloat("Point Size", &imguiData->PointSize, 1, 0.1f, 20.f, "%.2f");
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    ImGui::DragFloat("Point Size", &imguiData->PointSize, 1, 0.1f, 50.f, "%.2f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    ImGui::DragFloat("Line Width", &imguiData->LineWidth, 1, 0.1f, 50.f, "%.2f");
     // context->guiData->QueryDirty = ImGui::SliderInt("Query Index", &imguiData->CurrQueryId, 0, context->GetNumQueries() - 1);
     context->guiData->QueryDirty = ImGui::DragInt("Query Index", &imguiData->CurrQueryId, 1, 0, context->GetNumQueries() - 1);
     ImGui::Text("v0: %d, v1: %d, v2: %d, v3: %d", context->guiData->mPQuery->v0, context->guiData->mPQuery->v1, context->guiData->mPQuery->v2, context->guiData->mPQuery->v3);
@@ -164,6 +168,7 @@ void RenderImGui()
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     glPointSize(context->guiData->PointSize);
+    glLineWidth(context->guiData->LineWidth);
 }
 
 bool MouseOverImGuiWindow()

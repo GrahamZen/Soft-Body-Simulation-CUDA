@@ -13,6 +13,7 @@ public:
     ~GuiDataContainer();
     float Dt = 0.001;
     float PointSize = 5;
+    float LineWidth = 1;
     bool WireFrame = false;
     bool BVHVis = false;
     bool BVHEnabled = true;
