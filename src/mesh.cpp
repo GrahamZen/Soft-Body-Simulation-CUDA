@@ -3,6 +3,7 @@
 #include <sstream>
 #include <mesh.h>
 #include <bvh.h>
+#include <cuda_gl_interop.h>
 
 Mesh::Mesh()
     : Drawable(),

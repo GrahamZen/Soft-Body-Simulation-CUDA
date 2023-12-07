@@ -4,7 +4,8 @@
 #include <texture.h>
 #include <string>
 #include <glm/glm.hpp>
-#include <cuda_gl_interop.h>
+
+class cudaGraphicsResource;
 
 class Mesh : public Drawable
 {

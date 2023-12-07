@@ -136,7 +136,7 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
         shaderProgram->setModelMatrix(glm::mat4(1.f));
         for (auto softBody : softBodies)
             shaderProgram->draw(*softBody, 0);
-        for (auto fixedBody : fixedBodies){
+        for (auto fixedBody : fixedBodies) {
             shaderProgram->setModelMatrix(fixedBody->m_model);
             shaderProgram->draw(*fixedBody, 0);
         }
@@ -147,9 +147,14 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
             shaderProgram->draw(m_bvh, 0);
             glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
-        if (context->guiData->handleCollision && context->guiData->QueryVis) {
+        if (context->guiData->handleCollision) {
             shaderProgram->setModelMatrix(glm::mat4(1.f));
-            flatShaderProgram->drawPoints(m_bvh.GetQueryDrawable());
+            if (context->guiData->QueryVis)
+                flatShaderProgram->drawPoints(m_bvh.GetQueryDrawable());
+            if (context->guiData->QueryDebugMode) {
+                flatShaderProgram->drawSingleQuery(m_bvh.GetSingleQueryDrawable(context->guiData->CurrQueryId, dev_Xs, context->guiData->QueryDirty ? context->guiData->mPQuery : nullptr));
+                context->guiData->QueryDirty = false;
+            }
         }
     }
 }

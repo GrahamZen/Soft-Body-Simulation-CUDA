@@ -5,6 +5,7 @@
 #include <wireframe.h>
 #include <mesh.h>
 #include <queryDisplay.h>
+#include <singleQueryDisplay.h>
 
 class SoftBody;
 
@@ -61,8 +62,10 @@ public:
     int GetNumQueries() const {
         return numQueries;
     }
+    SingleQueryDisplay& GetSQDisplay(int i, const glm::vec3* Xs, Query* guiQuery);
 private:
     Query* dev_queries;
+    SingleQueryDisplay mSqDisplay;
     size_t* dev_numQueries;
     size_t numQueries;
     size_t maxNumQueries = 1 << 15;
@@ -80,6 +83,7 @@ public:
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
     void DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors, const glm::vec3* X0 = nullptr);
     Drawable& GetQueryDrawable();
+    SingleQueryDisplay& GetSingleQueryDrawable(int i, const glm::vec3* Xs, Query* guiQuery);
     int GetNumQueries() const;
 private:
     void BuildBBoxes();

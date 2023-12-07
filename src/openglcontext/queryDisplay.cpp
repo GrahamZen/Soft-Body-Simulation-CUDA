@@ -35,7 +35,7 @@ void QueryDisplay::createQueries(int _numVerts) {
     cudaGraphicsGLRegisterBuffer(&cuda_bufCol_resource, bufCol, cudaGraphicsMapFlagsWriteDiscard);
 }
 
-void QueryDisplay::mapDevicePosPtr(glm::vec3** bufPosDevPtr, glm::vec4** bufColDevPtr)
+void QueryDisplay::MapDevicePosPtr(glm::vec3** bufPosDevPtr, glm::vec4** bufColDevPtr)
 {
     size_t size;
     cudaGraphicsMapResources(1, &cuda_bufPos_resource, 0);

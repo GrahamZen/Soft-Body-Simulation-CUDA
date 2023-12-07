@@ -278,7 +278,8 @@ __global__ void processQueries(const Query* queries, int numQueries, glm::vec4* 
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx < numQueries) {
         Query q = queries[idx];
-        atomicAdd(&color[q.v0].x, 0.2);
+        atomicAdd(&color[q.v0].x, 0.05);
+        atomicAdd(&color[q.v0].y, 0.05);
         atomicExch(&color[q.v0].w, 1);
     }
 }
@@ -287,10 +288,44 @@ void CollisionDetection::PrepareRenderData(const glm::vec3* Xs)
 {
     glm::vec3* pos;
     glm::vec4* col;
-    mapDevicePosPtr(&pos, &col);
+    MapDevicePosPtr(&pos, &col);
     cudaMemcpy(pos, Xs, numVerts * sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
     cudaMemset(col, 0, numVerts * sizeof(glm::vec4));
     dim3 numBlocks((numQueries + threadsPerBlock - 1) / threadsPerBlock);
     processQueries << <numBlocks, threadsPerBlock >> > (dev_queries, numQueries, col);
     unMapDevicePtr();
+}
+
+SingleQueryDisplay& CollisionDetection::GetSQDisplay(int i, const glm::vec3* X, Query* guiQuery)
+{
+    if (numQueries == 0) {
+        mSqDisplay.SetCount(0);
+        return mSqDisplay;
+    }
+    mSqDisplay.SetCount(4);
+    Query q;
+    cudaMemcpy(&q, &dev_queries[i], sizeof(Query), cudaMemcpyDeviceToHost);
+    if (guiQuery)
+        *guiQuery = q;
+    if (q.type == QueryType::EE) mSqDisplay.SetIsLine(true);
+    else mSqDisplay.SetIsLine(false);
+    if (mSqDisplay.IsLine()) {
+        glm::vec3* pos;
+        mSqDisplay.MapDevicePtr(&pos, nullptr, nullptr);
+        cudaMemcpy(pos, &X[q.v0], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(pos + 1, &X[q.v1], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(pos + 2, &X[q.v2], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(pos + 3, &X[q.v3], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        mSqDisplay.UnMapDevicePtr();
+    }
+    else {
+        glm::vec3* vertPos, * triPos;
+        mSqDisplay.MapDevicePtr(nullptr, &vertPos, &triPos);
+        cudaMemcpy(vertPos, &X[q.v0], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(triPos, &X[q.v1], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(triPos + 1, &X[q.v2], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(triPos + 2, &X[q.v3], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        mSqDisplay.UnMapDevicePtr();
+    }
+    return mSqDisplay;
 }

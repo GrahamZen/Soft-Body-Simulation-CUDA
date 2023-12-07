@@ -52,7 +52,7 @@ void Wireframe::createBVH(int numNodes) {
     cudaGraphicsGLRegisterBuffer(&cuda_bufPos_resource, bufPos, cudaGraphicsMapFlagsWriteDiscard);
 }
 
-void Wireframe::mapDevicePosPtr(glm::vec3** bufPosDevPtr)
+void Wireframe::MapDevicePosPtr(glm::vec3** bufPosDevPtr)
 {
     size_t size;
     cudaGraphicsMapResources(1, &cuda_bufPos_resource, 0);

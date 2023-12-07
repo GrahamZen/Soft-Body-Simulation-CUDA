@@ -9,24 +9,13 @@
 in vec4 fs_Col;
 in float vertexIndex;
 
-layout(location=0)out vec3 out_Col;//This is the final output color that you will see on your screen for the pixel that is currently being processed.
-
-// void main()
-// {
-//     if (fs_Col.a < 0.1)
-//     {
-//         discard;
-//     }
-//     out_Col = vec3(fs_Col);
-// }
+layout(location=0)out vec4 out_Col;//This is the final output color that you will see on your screen for the pixel that is currently being processed.
 
 void main()
 {
-//     if (fs_Col.a < 0.1)
-//     {
-//         discard;
-//     }
-    float normalizedIndex = vertexIndex / 255;
-    vec3 color = vec3(normalizedIndex, normalizedIndex, normalizedIndex);
-    out_Col = color;
+    if (fs_Col.a < 0.1)
+    {
+        discard;
+    }
+    out_Col = vec4(fs_Col.r, fs_Col.g * fs_Col.a, fs_Col.b * fs_Col.a, fs_Col.a);
 }

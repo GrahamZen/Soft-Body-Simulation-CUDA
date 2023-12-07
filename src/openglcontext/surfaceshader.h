@@ -1,6 +1,7 @@
 #pragma once
 
 #include <shaderprogram.h>
+#include <singleQueryDisplay.h>
 
 class SurfaceShader : public ShaderProgram
 {
@@ -24,7 +25,8 @@ public:
     virtual void setupMemberVars() override;
     // Draw the given object to our screen using this ShaderProgram's shaders
     virtual void draw(Drawable& d, int textureSlot = 0) override;
-    virtual void drawPoints(Drawable& d) override;
+    void drawPoints(Drawable& d);
+    void drawSingleQuery(SingleQueryDisplay& d);
 
 
     // Pass the given model matrix to this shader on the GPU

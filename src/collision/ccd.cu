@@ -58,6 +58,7 @@ CollisionDetection::CollisionDetection(const int _threadsPerBlock, size_t _maxQu
     cudaMemset(dev_numQueries, 0, sizeof(size_t));
 
     cudaMalloc(&dev_overflowFlag, sizeof(bool));
+    mSqDisplay.create();
 }
 
 CollisionDetection::~CollisionDetection()
@@ -90,7 +91,7 @@ BVH::~BVH()
 void BVH::PrepareRenderData()
 {
     glm::vec3* pos;
-    Wireframe::mapDevicePosPtr(&pos);
+    Wireframe::MapDevicePosPtr(&pos);
     dim3 numThreadsPerBlock(numNodes / threadsPerBlock + 1);
     populateBVHNodeAABBPos << <numThreadsPerBlock, threadsPerBlock >> > (dev_BVHNodes, pos, numNodes);
     Wireframe::unMapDevicePtr();
@@ -106,6 +107,11 @@ void BVH::DetectCollision(const GLuint* tets, const GLuint* tetFathers, const gl
 Drawable& BVH::GetQueryDrawable()
 {
     return collisionDetection;
+}
+
+SingleQueryDisplay& BVH::GetSingleQueryDrawable(int i, const glm::vec3* Xs, Query* guiQuery)
+{
+    return collisionDetection.GetSQDisplay(i, Xs, guiQuery);
 }
 
 int BVH::GetNumQueries() const {

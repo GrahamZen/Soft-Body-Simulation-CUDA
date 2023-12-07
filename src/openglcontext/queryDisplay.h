@@ -15,7 +15,7 @@ public:
     virtual GLenum drawMode() override;
 
     void createQueries(int numVerts);
-    void mapDevicePosPtr(glm::vec3** bufPosDevPtr, glm::vec4** bufCol);
+    void MapDevicePosPtr(glm::vec3** bufPosDevPtr, glm::vec4** bufCol);
     void unMapDevicePtr();
 protected:
     cudaGraphicsResource* cuda_bufPos_resource = nullptr;

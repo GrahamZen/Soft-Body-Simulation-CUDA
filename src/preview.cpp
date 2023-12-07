@@ -2,6 +2,7 @@
 #include <ctime>
 #include <main.h>
 #include <preview.h>
+#include <bvh.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -93,7 +94,6 @@ void RenderImGui()
     ImGui::Checkbox("Enable BVH", &imguiData->BVHEnabled);
     ImGui::Checkbox("Enable Detection", &imguiData->handleCollision);
     ImGui::Checkbox("Visualize BVH", &imguiData->BVHVis);
-    ImGui::Checkbox("Visualize Queries", &imguiData->QueryVis);
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
     bool globalSolverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
     bool solverChanged = ImGui::Checkbox("Use CUDA Solver", &imguiData->UseCUDASolver);
@@ -111,8 +111,8 @@ void RenderImGui()
     bool cameraThetaChanged = ImGui::DragFloat("Camera Theta", &imguiData->theta, 0.1f, 0.001f, PI - 0.001f, "%.4f");
     bool cameraLookAtChanged = ImGui::DragFloat3("Camera Look At", &imguiData->cameraLookAt.x, 1.0f, -200.0f, 200.0f, "%.4f");
     bool zoomChanged = ImGui::DragFloat("Zoom", &imguiData->zoom, 10.f, 0.01f, 10000.0f, "%.4f");
-    ImGui::Text("Attributes");
     ImGui::Separator();
+    ImGui::Text("Soft body Attributes");
     imguiData->softBodyAttr.stiffness_0.second = ImGui::DragFloat("Stiffness 0", &imguiData->softBodyAttr.stiffness_0.first, 100.f, 0.0f, 100000.0f, "%.2f");
     imguiData->softBodyAttr.stiffness_1.second = ImGui::DragFloat("Stiffness 1", &imguiData->softBodyAttr.stiffness_1.first, 100.f, 0.0f, 100000.0f, "%.2f");
     imguiData->softBodyAttr.damp.second = ImGui::DragFloat("Damp", &imguiData->softBodyAttr.damp.first, 0.01f, 0.0f, 1.0f, "%.4f");
@@ -138,6 +138,18 @@ void RenderImGui()
     //	counter++;
     //ImGui::SameLine();
     //ImGui::Text("counter = %d", counter);
+    ImGui::Separator();
+    ImGui::Text("Query Display");
+    ImGui::Checkbox("Visualize All Queries", &imguiData->QueryVis);
+    ImGui::SameLine();
+    ImGui::Checkbox("Query Debug Mode", &imguiData->QueryDebugMode);
+    bool pointSizeChanged = ImGui::DragFloat("Point Size", &imguiData->PointSize, 1, 0.1f, 20.f, "%.2f");
+    // context->guiData->QueryDirty = ImGui::SliderInt("Query Index", &imguiData->CurrQueryId, 0, context->GetNumQueries() - 1);
+    context->guiData->QueryDirty = ImGui::DragInt("Query Index", &imguiData->CurrQueryId, 1, 0, context->GetNumQueries() - 1);
+    ImGui::Text("v0: %d, v1: %d, v2: %d, v3: %d", context->guiData->mPQuery->v0, context->guiData->mPQuery->v1, context->guiData->mPQuery->v2, context->guiData->mPQuery->v3);
+    ImGui::Text("toi: %.4f, normal: (%.4f, %.4f, %.4f)", context->guiData->mPQuery->toi, context->guiData->mPQuery->normal.x, context->guiData->mPQuery->normal.y, context->guiData->mPQuery->normal.z);
+
+    ImGui::Separator();
     ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
     ImGui::Text("#DOF %d, #Ele %d, #Query %d",
         context->GetDOFs()[imguiData->currSimContextId],
@@ -151,7 +163,7 @@ void RenderImGui()
 
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+    glPointSize(context->guiData->PointSize);
 }
 
 bool MouseOverImGuiWindow()

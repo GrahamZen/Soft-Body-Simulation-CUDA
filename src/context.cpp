@@ -319,7 +319,8 @@ void Context::InitCuda() {
 }
 
 void Context::Draw() {
-    // glEnable(GL_CULL_FACE);
+    // blend 
+    glEnable(GL_BLEND);
     mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
 }
 
@@ -415,4 +416,16 @@ void GuiDataContainer::SoftBodyAttr::setJumpClean(bool& val)
 
 bool GuiDataContainer::SoftBodyAttr::getJumpDirty()const {
     return jump.second;
+}
+
+GuiDataContainer::GuiDataContainer()
+    :mPQuery(new Query()), Dt(0.001), PointSize(15), WireFrame(false), BVHVis(false), BVHEnabled(true),
+    handleCollision(true), QueryVis(false), QueryDebugMode(true), ObjectVis(true), Reset(false), Pause(false),
+    Step(false), UseEigen(true), UseCUDASolver(true), CurrQueryId(0)
+{
+}
+
+GuiDataContainer::~GuiDataContainer()
+{
+    delete mPQuery;
 }
