@@ -41,10 +41,15 @@ void Wireframe::createBVH(int numNodes) {
     }
 
     count = idx.size();
+    std::vector<glm::vec4> colors(count, glm::vec4(1.0f, 0.5f, 0.5f, 1.0f));
 
     generateIdx();
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufIdx);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size() * sizeof(GLuint), idx.data(), GL_STATIC_DRAW);
+
+    generateCol();
+    glBindBuffer(GL_ARRAY_BUFFER, bufCol);
+    glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(glm::vec4), colors.data(), GL_STATIC_DRAW);
 
     generatePos();
     glBindBuffer(GL_ARRAY_BUFFER, bufPos);

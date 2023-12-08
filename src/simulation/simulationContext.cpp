@@ -132,6 +132,7 @@ void SimulationCUDAContext::Reset()
 
 void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* flatShaderProgram)
 {
+    glLineWidth(2);
     if (context->guiData->ObjectVis) {
         shaderProgram->setModelMatrix(glm::mat4(1.f));
         for (auto softBody : softBodies)
@@ -143,15 +144,14 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
     }
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         if (context->guiData->BVHVis) {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            shaderProgram->draw(m_bvh, 0);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            flatShaderProgram->draw(m_bvh, 0);
         }
         if (context->guiData->handleCollision) {
             shaderProgram->setModelMatrix(glm::mat4(1.f));
             if (context->guiData->QueryVis)
                 flatShaderProgram->drawPoints(m_bvh.GetQueryDrawable());
             if (context->guiData->QueryDebugMode) {
+                glLineWidth(context->guiData->LineWidth);
                 flatShaderProgram->drawSingleQuery(m_bvh.GetSingleQueryDrawable(context->guiData->CurrQueryId, dev_Xs, context->guiData->QueryDirty ? context->guiData->mPQuery : nullptr));
                 context->guiData->QueryDirty = false;
             }

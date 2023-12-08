@@ -168,7 +168,6 @@ void RenderImGui()
     ImGui::Render();
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     glPointSize(context->guiData->PointSize);
-    glLineWidth(context->guiData->LineWidth);
 }
 
 bool MouseOverImGuiWindow()
