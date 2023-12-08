@@ -5,7 +5,7 @@
     "default camera": {
         "aspect ratio": 1.3333,
         "screen height": 1280,
-        "position": [0, 20, 50],
+        "position": [0, 20, 100],
         "lookAt": [0, 10, 0],
         "view": [0, 0, -1],
         "up": [0, 1, 0],
@@ -23,7 +23,7 @@
             "start index": 1,
             "pos": [0.0, 40.0, 0.0],
             "rot": [0.0, 0.0, 0.0],
-            "scale": [2, 1, 2],
+            "scale": [2, 2, 2],
             "mass": 10.0,
             "stiffness_0": 200000.0,
             "stiffness_1": 5000.0,
@@ -155,20 +155,19 @@
             "muT": 0.5,
             "softBodies": [
                 {
-                    "name": "bunny",
-                    "pos": [ 0.0, 50.0, 0.0 ]
+                    "name": "tet",
+                    "pos": [ 0.0, 50.0, 0.0 ],
+                    "rot": [ 0.0, 0.0, 0.0 ]
+                },
+                {
+                    "name": "tet",
+                    "pos": [ 0.0, 20.0, 0.0 ]
                 }
             ],
             "fixedBodies": [
                 {
-                    "name": "sphere1",
-                    "pos": [ 0.0, -20.0, 0.0 ]
-                },
-                {
-                    "name": "cylinder1"
-                },
-                {
-                    "name": "bottom plane"
+                    "name": "bottom plane",
+                    "pos": [ 0.0, 0.0, 0.0 ]
                 },
                 {
                     "name": "upper plane"
@@ -188,7 +187,7 @@
             ]
         },
         {
-            "name": "5 houses",
+            "name": "cube test",
             "load": true,
             "dt": 0.01,
             "gravity": 98,
@@ -198,18 +197,33 @@
             "softBodies": [
                 {
                     "name": "cube",
-                    "pos": [ 8.0, 80.0, 0.0 ],
-                    "rot": [ 0.0, 0.0, 75.0 ]
-                },
-                {
-                    "name": "cube",
                     "pos": [ 7.0, 70.0, 0.0 ],
                     "rot": [ 0.0, 0.0, 75.0 ]
                 },
                 {
                     "name": "cube",
                     "pos": [ 10.0, 50.0, 0.0 ],
-                    "rot": [ 0.0, 0.0, 75.0 ]
+                    "rot": [ 0.0, 0.0, 0.0 ]
+                }
+            ],
+            "fixedBodies": [
+                {
+                    "name": "bottom plane",
+                    "pos": [ 0.0, 0.0, 0.0 ]
+                }
+            ]
+        },
+        {
+            "name": "armadillo",
+            "load": true,
+            "dt": 0.01,
+            "gravity": 98,
+            "damp": 0.999,
+            "muN": 0.5,
+            "muT": 0.5,
+            "softBodies": [
+                {
+                    "name": "armadillo0"
                 }
             ],
             "fixedBodies": [
