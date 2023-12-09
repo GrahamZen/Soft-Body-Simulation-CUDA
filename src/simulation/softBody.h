@@ -25,6 +25,8 @@ public:
     }attrib;
     SoftBody(SimulationCUDAContext*, SoftBodyAttribute&, SoftBodyData*);
     ~SoftBody();
+    SoftBody(const SoftBody&) = delete;
+    SoftBody& operator=(const SoftBody&) = delete;
 
     void InitModel();
     void PdSolver();

@@ -274,7 +274,7 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
     cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
 }
 
-BVH::BVH(const int _threadsPerBlock, size_t _maxQueries) : threadsPerBlock(_threadsPerBlock), collisionDetection(_threadsPerBlock, _maxQueries) {}
+BVH::BVH(const SimulationCUDAContext* simContext, const int _threadsPerBlock, size_t _maxQueries) : threadsPerBlock(_threadsPerBlock), collisionDetection(simContext, _threadsPerBlock, _maxQueries) {}
 
 BVH::~BVH()
 {

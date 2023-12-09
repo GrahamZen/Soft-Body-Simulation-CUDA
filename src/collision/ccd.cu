@@ -50,7 +50,7 @@ AABB AABB::expand(const AABB& aabb)const {
     };
 }
 
-CollisionDetection::CollisionDetection(const int _threadsPerBlock, size_t _maxQueries) :threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxQueries)
+CollisionDetection::CollisionDetection(const SimulationCUDAContext* simContext, const int _threadsPerBlock, size_t _maxNumQueries) : mPSimContext(simContext), threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxNumQueries)
 {
     cudaMalloc(&dev_queries, maxNumQueries * sizeof(Query));
 

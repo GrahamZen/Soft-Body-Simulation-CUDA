@@ -33,8 +33,6 @@ void SoftBody::solverPrepare()
     cudaMalloc((void**)&tmpVal, sizeof(int) * len);
     cudaMemset(tmpVal, 0, sizeof(int) * len);
 
-    dev_ExtForce = thrust::device_vector<glm::vec3>(numVerts);
-
     computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, inv_Dm, Tet, attrib.stiffness_0, numTets, numVerts);
     setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * numTets, m_1_dt2, numVerts);
 
@@ -139,10 +137,10 @@ void SoftBody::PDSolverStep()
     int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
 
-    glm::vec3 gravity = glm::vec3(0.0f, -mcrpSimContext->GetGravity() * attrib.mass, 0.0f);
+    glm::vec3 gravity{0.0f, -mcrpSimContext->GetGravity() * attrib.mass, 0.0f};
     thrust::fill(thrust::device, dev_ExtForce.begin(), dev_ExtForce.end(), gravity);
     computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, X, V, thrust::raw_pointer_cast(dev_ExtForce.data()), masses, m_1_dt2, numVerts);
-
+    checkCUDAError("computeSn");
     for (int i = 0; i < mcrpSimContext->GetNumIterations(); i++)
     {
         cudaMemset(b, 0, sizeof(float) * numVerts * 3);

@@ -168,21 +168,23 @@ void SimulationCUDAContext::Update()
         for (auto softbody : softBodies) {
             softbody->Update();
         }
-        }, name + (IsCUDASolver() ? "-CUDA" : "-Eigen") + "Solver");
+        }, "[" + name + "]" + (IsCUDASolver() ? "<CUDA" : "<Eigen") + "Solver>");
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         measureExecutionTime([&]() {
             m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
-            }, name + "-BVH construction");
+            }, "[" + name + "]" + "<BVH construction>");
         if (context->guiData->BVHVis)
             m_bvh.PrepareRenderData();
     }
     measureExecutionTime([&]() {
         dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);
-        }, name + "-Fixed objects collision handling");
+        }, "[" + name + "]" + "<Fixed objects collision handling>");
     if (context->guiData->handleCollision && softBodies.size() > 1) {
+        //inspectGLM(dev_Xs, numVerts);
+        //inspectGLM(dev_XTilts, numVerts);
         measureExecutionTime([&]() {
             CCD();
-            }, name + "-CCD");
+            }, "[" + name + "]" + "<CCD>");
     }
     else
         cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);

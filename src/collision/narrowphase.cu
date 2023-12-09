@@ -8,6 +8,7 @@
 #include <thrust/unique.h>
 #include <thrust/device_vector.h>
 #include <utilities.cuh>
+#include <simulationContext.h>
 
 struct CompareQuery {
     __host__ __device__
@@ -170,9 +171,9 @@ __global__ void storeTi(int numQueries, Query* queries, dataType* tI, glm::vec3*
             if (q.toi < 1.0f)
             {
                 tI[q.v0] = 0.5f;
-                //tI[q.v1] = 0.5f;
-                //tI[q.v2] = 0.5f;
-                //tI[q.v3] = 0.5f;
+                tI[q.v1] = 0.5f;
+                tI[q.v2] = 0.5f;
+                tI[q.v3] = 0.5f;
                 nors[q.v0] = q.normal;
             }
         }
@@ -192,7 +193,6 @@ void CollisionDetection::NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilt
     thrust::device_ptr<Query> dev_queriesPtr(dev_queries);
 
     thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());
-
     auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
     int numQueries = new_end - dev_queriesPtr;
     numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;

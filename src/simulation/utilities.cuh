@@ -102,7 +102,7 @@ __global__ void handleFloorCollision(glm::vec3* X, glm::vec3* V, int numVerts, P
 __global__ void handleCylinderCollision(glm::vec3* X, glm::vec3* V, int numVerts, Cylinder* cylinders, int numCylinders, float muT, float muN);
 
 __global__ void computeLocal(const float* V0, const float wi, float* xProj, const glm::mat3* DmInv, const float* qn__1, const GLuint* tetIndex, int tetNumber);
-__global__ void computeSn(float* sn, float dt, float dt2_m_1, glm::vec3* pos, glm::vec3* vel, glm::vec3* force, float* b, float massDt_2, int numVerts);
+__global__ void computeSn(float* sn, float dt, float dt2_m_1, glm::vec3* pos, glm::vec3* vel, const glm::vec3* force, float* b, float massDt_2, int numVerts);
 __global__ void setMDt_2(int* outIdx, float* val, int startIndex, float massDt_2, int vertNumber);
 __global__ void computeM_h2Sn(float* b, float* sn, float massDt_2, int vertNumber);
 __global__ void addM_h2Sn(float* b, float* masses, int vertNumber);

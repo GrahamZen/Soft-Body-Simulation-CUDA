@@ -344,7 +344,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
             mpSimContexts.push_back(new SimulationCUDAContext(this, baseName, extForce, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
-            spdlog::info("{} : #dof: {}, #ele: {}", baseName, DOFs.back(), Eles.back());
+            spdlog::info("{} #dof: {}, #ele: {}", "[" + baseName + "]", DOFs.back(), Eles.back());
         }
         mcrpSimContext = mpSimContexts[0];
     }

@@ -40,6 +40,7 @@ private:
 
 
 class SimulationCUDAContext {
+    friend class CollisionDetection;
 public:
     struct ExternalForce {
         glm::vec3 jump = glm::vec3(0.f, 400.f, 0.f);
