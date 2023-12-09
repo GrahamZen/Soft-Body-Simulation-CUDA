@@ -44,8 +44,8 @@ public:
     struct ExternalForce {
         glm::vec3 jump = glm::vec3(0.f, 400.f, 0.f);
     };
-    SimulationCUDAContext(Context* ctx, const ExternalForce& extForce, nlohmann::json& json,
-        const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>&, int threadsPerBlock, int _threadsPerBlockBVH, int maxThreads);
+    SimulationCUDAContext(Context* ctx, const std::string& _name, const ExternalForce& extForce, nlohmann::json& json,
+        const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>&, int threadsPerBlock, int _threadsPerBlockBVH, int _maxThreads, int _numIterations);
     ~SimulationCUDAContext();
     void Update();
     void Reset();
@@ -65,12 +65,14 @@ public:
     int GetVertCnt() const;
     int GetThreadsPerBlock() const { return threadsPerBlock; }
     int GetNumQueries() const;
+    int GetNumIterations() const { return numIterations; }
     void CCD();
 private:
     ExternalForce extForce;
     float floorY = 0.f;
     glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     void PrepareRenderData();
+    int numIterations = 10;
     int threadsPerBlock = 64;
     bool useEigen = true;
     bool useCUDASolver = true;
@@ -98,4 +100,5 @@ private:
     float dt = 0.001f;
     float gravity = 9.8f;
     Context* context = nullptr;
+    const std::string name;
 };

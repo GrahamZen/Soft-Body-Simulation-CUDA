@@ -19,7 +19,7 @@ void SoftBody::PdSolver()
     {
         solver.prepare(mcrpSimContext->GetDt());
     }
-    solver.step(fext, 10);
+    solver.step(fext, mcrpSimContext->GetNumIterations());
     //fext.setZero();
 }
 

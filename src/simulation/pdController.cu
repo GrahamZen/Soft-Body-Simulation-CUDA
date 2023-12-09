@@ -3,6 +3,7 @@
 #include <thrust/sort.h>
 #include <thrust/reduce.h>
 #include <thrust/execution_policy.h>
+#include <thrust/fill.h>
 #include <cusolverSp.h>
 #include <cusolverSp_LOWLEVEL_PREVIEW.h>
 #include <cusparse.h>
@@ -32,8 +33,7 @@ void SoftBody::solverPrepare()
     cudaMalloc((void**)&tmpVal, sizeof(int) * len);
     cudaMemset(tmpVal, 0, sizeof(int) * len);
 
-    cudaMalloc((void**)&ExtForce, sizeof(glm::vec3) * numVerts);
-    cudaMemset(ExtForce, 0, sizeof(float) * numVerts);
+    dev_ExtForce = thrust::device_vector<glm::vec3>(numVerts);
 
     computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, inv_Dm, Tet, attrib.stiffness_0, numTets, numVerts);
     setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * numTets, m_1_dt2, numVerts);
@@ -133,19 +133,17 @@ void SoftBody::PDSolverStep()
     float const dtInv = 1.0f / dt;
     float const dt2 = dt * dt;
     float const dt2_m_1 = dt2 / attrib.mass;
-    float const m_1_dt2 = attrib.mass / dt2;
+    float const m_1_dt2 = 1.f / dt2_m_1;
 
 
     int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
 
     glm::vec3 gravity = glm::vec3(0.0f, -mcrpSimContext->GetGravity() * attrib.mass, 0.0f);
-    setExtForce << < vertBlocks, threadsPerBlock >> > (ExtForce, gravity, numVerts);
-    computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, X, V, ExtForce, numVerts);
-    computeM_h2Sn << < vertBlocks, threadsPerBlock >> > (masses, sn, m_1_dt2, numVerts);
+    thrust::fill(thrust::device, dev_ExtForce.begin(), dev_ExtForce.end(), gravity);
+    computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, X, V, thrust::raw_pointer_cast(dev_ExtForce.data()), masses, m_1_dt2, numVerts);
 
-    // 10 is the numVerts of iterations
-    for (int i = 0; i < 10; i++)
+    for (int i = 0; i < mcrpSimContext->GetNumIterations(); i++)
     {
         cudaMemset(b, 0, sizeof(float) * numVerts * 3);
         computeLocal << < tetBlocks, threadsPerBlock >> > (V0, attrib.stiffness_0, b, inv_Dm, sn, Tet, numTets);
