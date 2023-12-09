@@ -7,6 +7,19 @@
 #include <sphere.h>
 #include <cylinder.h>
 #include <plane.h>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
+
+std::string getCurrentTimeStamp() {
+    auto now = std::chrono::system_clock::now();
+    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+    std::tm bt = *std::localtime(&in_time_t);
+
+    std::ostringstream ss;
+    ss << std::put_time(&bt, "%Y-%m-%d_%H-%M-%S");
+    return ss.str();
+}
 
 Camera::Camera(nlohmann::json& camJson)
 {
@@ -73,6 +86,10 @@ width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera
     phi = glm::acos(glm::dot(glm::normalize(viewXZ), glm::vec3(0, 0, -1)));
     theta = glm::acos(glm::dot(glm::normalize(viewZY), glm::vec3(0, 1, 0)));
     zoom = glm::length(mpCamera->position - ogLookAt);
+    std::string filename = "logs/log_" + getCurrentTimeStamp() + ".txt";
+    auto logger = spdlog::basic_logger_mt("basic_logger", filename);
+    spdlog::set_default_logger(logger);
+    spdlog::set_level(spdlog::level::debug);
 }
 
 Context::~Context()
@@ -324,7 +341,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
             if (contextJson.contains("fixedBodies")) {
                 fixBodies = ReadFixedBodies(contextJson["fixedBodies"], fixedBodyDefs);
             }
-            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
+            mpSimContexts.push_back(new SimulationCUDAContext(this, baseName, extForce, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
         }
