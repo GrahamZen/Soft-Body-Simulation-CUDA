@@ -118,7 +118,22 @@ void Context::PollEvents() {
 
 void Context::LoadShaders(const std::string& vertShaderFilename, const std::string& fragShaderFilename)
 {
-    mpProgLambert->create(vertShaderFilename.c_str(), fragShaderFilename.c_str());
+    std::ifstream fileStream = utilityCore::findFile(filename);
+    if (!fileStream.is_open()) {
+        std::cerr << "Failed to open JSON file: " << filename << std::endl;
+    }
+    nlohmann::json json;
+    fileStream >> json;
+    fileStream.close();
+    if (json.contains("shaders folder")) {
+        std::string shadersFolder = json["shaders folder"];
+        std::string vertShaderPath = shadersFolder + "/" + "lambert.vert.glsl";
+        std::string fragShaderPath = shadersFolder + "/" + "lambert.frag.glsl";
+        mpProgLambert->create(vertShaderPath.c_str(), fragShaderPath.c_str());
+    }
+    else {
+        mpProgLambert->create(vertShaderFilename.c_str(), fragShaderFilename.c_str());
+    }
     mpProgLambert->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
     mpProgLambert->setCameraPos(cameraPosition);
     mpProgLambert->setModelMatrix(glm::mat4(1.f));
@@ -126,7 +141,22 @@ void Context::LoadShaders(const std::string& vertShaderFilename, const std::stri
 
 void Context::LoadFlatShaders(const std::string& vertShaderFilename, const std::string& fragShaderFilename)
 {
-    mpProgFlat->create(vertShaderFilename.c_str(), fragShaderFilename.c_str());
+    std::ifstream fileStream = utilityCore::findFile(filename);
+    if (!fileStream.is_open()) {
+        std::cerr << "Failed to open JSON file: " << filename << std::endl;
+    }
+    nlohmann::json json;
+    fileStream >> json;
+    fileStream.close();
+    if (json.contains("shaders folder")) {
+        std::string shadersFolder = json["shaders folder"];
+        std::string vertShaderPath = shadersFolder + "/" + "flat.vert.glsl";
+        std::string fragShaderPath = shadersFolder + "/" + "flat.frag.glsl";
+        mpProgFlat->create(vertShaderPath.c_str(), fragShaderPath.c_str());
+    }
+    else {
+        mpProgFlat->create(vertShaderFilename.c_str(), fragShaderFilename.c_str());
+    }
     mpProgFlat->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
     mpProgFlat->setCameraPos(cameraPosition);
     mpProgFlat->setModelMatrix(glm::mat4(1.f));

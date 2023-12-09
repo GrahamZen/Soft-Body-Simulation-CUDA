@@ -263,3 +263,17 @@ std::ifstream utilityCore::findFile(const std::string& fileName) {
     std::cerr << "File not found: " << fileName << std::endl;
     return std::ifstream();
 }
+
+std::string utilityCore::findFileName(const std::string& fileName) {
+    fs::path currentPath = fs::current_path();
+    for (int i = 0; i < 5; ++i) {
+        fs::path filePath = currentPath / fileName;
+        if (fs::exists(filePath)) {
+            return filePath.string();
+        }
+        currentPath = currentPath.parent_path();
+    }
+
+    std::cerr << "File not found: " << fileName << std::endl;
+    return std::string();
+}

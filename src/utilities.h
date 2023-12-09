@@ -37,4 +37,5 @@ namespace utilityCore
     template <typename T>
     bool compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int size);
     std::ifstream findFile(const std::string& fileName);
+    std::string findFileName(const std::string& fileName);
 }
