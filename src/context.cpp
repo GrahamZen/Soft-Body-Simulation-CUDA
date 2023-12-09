@@ -282,6 +282,10 @@ SimulationCUDAContext* Context::LoadSimContext() {
     if (json.contains("pause")) {
         pause = json["pause"].get<bool>();
     }
+    int numIterations = 10;
+    if (json.contains("num of iterations")) {
+        numIterations = json["num of iterations"].get<int>();
+    }
     if (json.contains("external force")) {
         auto& externalForceJson = json["external force"];
         if (externalForceJson.contains("jump")) {
@@ -320,7 +324,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
             if (contextJson.contains("fixedBodies")) {
                 fixBodies = ReadFixedBodies(contextJson["fixedBodies"], fixedBodyDefs);
             }
-            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads));
+            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
         }

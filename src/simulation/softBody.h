@@ -7,6 +7,7 @@
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
 #include <cusolverSp_LOWLEVEL_PREVIEW.h>
+#include <thrust/device_vector.h>
 
 #include <deformable_mesh.h>
 #include <solver.h>
@@ -65,7 +66,7 @@ private:
 
     bool solverReady = false;
 
-    glm::vec3* ExtForce;
+    thrust::device_vector<glm::vec3> dev_ExtForce;
     glm::vec3* Force;
     glm::vec3* V;
     glm::vec3* X;
