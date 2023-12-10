@@ -185,6 +185,10 @@ When the weight of the constraint is too low: OOOPS!
 
 ![1702179696625](image/README/1702179696625.gif)
 
+A simple scene with a bunny, a sphere, and a cube.
+
+![1702244118601](image/README/1702244118601.gif)
+
 ### Visualization
 
 |Single Query| All Queries | BVH|
