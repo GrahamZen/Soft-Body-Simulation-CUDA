@@ -376,6 +376,11 @@ void Context::Draw() {
     mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
 }
 
+void Context::SetBVHBuildType(BVH::BuildType buildType)
+{
+    mcrpSimContext->SetBVHBuildType(buildType);
+}
+
 void Context::Update() {
     PollEvents();
     if (panelModified) {
@@ -472,7 +477,7 @@ bool GuiDataContainer::SoftBodyAttr::getJumpDirty()const {
 
 GuiDataContainer::GuiDataContainer()
     :mPQuery(new Query()), Dt(0.001), PointSize(15), LineWidth(10), WireFrame(false), BVHVis(false), BVHEnabled(true),
-    handleCollision(true), QueryVis(false), QueryDebugMode(true), ObjectVis(true), Reset(false), Pause(false),
+    handleCollision(false), QueryVis(false), QueryDebugMode(true), ObjectVis(true), Reset(false), Pause(false),
     Step(false), UseEigen(true), UseCUDASolver(true), CurrQueryId(0)
 {
 }

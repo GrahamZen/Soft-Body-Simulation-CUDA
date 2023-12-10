@@ -1,6 +1,8 @@
 #pragma once
 #include <utilities.h>
 #include <vector>
+#include <bvh.h>
+
 class SoftBody;
 class Camera;
 class SimulationCUDAContext;
@@ -65,6 +67,7 @@ public:
     void Update();
     void ResetCamera();
     void Draw();
+    void SetBVHBuildType(BVH::BuildType buildType);
     int GetNumQueries() const;
     int GetIteration() const { return iteration; }
     const std::vector<int>& GetDOFs() const { return DOFs; }

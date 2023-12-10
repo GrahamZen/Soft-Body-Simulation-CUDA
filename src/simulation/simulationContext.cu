@@ -13,11 +13,18 @@
 
 template<typename Func>
 void measureExecutionTime(const Func& func, const std::string& message) {
-    auto start = std::chrono::high_resolution_clock::now();
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
     func();
-    auto stop = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<double, std::milli> duration = stop - start;
-    spdlog::info("{} Time: {} milliseconds", message, duration.count());
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    spdlog::info("{} Time: {} milliseconds", message, milliseconds);
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
 }
 
 #define ERRORCHECK 1
@@ -164,6 +171,7 @@ void SimulationCUDAContext::CCD()
 
 void SimulationCUDAContext::Update()
 {
+    const std::string buildTypeStr = m_bvh.GetBuildType() == BVH::BuildType::Cooperative ? "Cooperative" : m_bvh.GetBuildType() == BVH::BuildType::Atomic ? "Atomic" : "Serial";
     measureExecutionTime([&]() {
         for (auto softbody : softBodies) {
             softbody->Update();
@@ -172,7 +180,7 @@ void SimulationCUDAContext::Update()
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         measureExecutionTime([&]() {
             m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
-            }, "[" + name + "]" + "<BVH construction>");
+            }, "[" + name + "]<" + buildTypeStr + "BVH construction>");
         if (context->guiData->BVHVis)
             m_bvh.PrepareRenderData();
     }
@@ -180,8 +188,6 @@ void SimulationCUDAContext::Update()
         dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);
         }, "[" + name + "]" + "<Fixed objects collision handling>");
     if (context->guiData->handleCollision && softBodies.size() > 1) {
-        //inspectGLM(dev_Xs, numVerts);
-        //inspectGLM(dev_XTilts, numVerts);
         measureExecutionTime([&]() {
             CCD();
             }, "[" + name + "]" + "<CCD>");

@@ -123,6 +123,11 @@ void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::Soft
     softBodies[index]->setAttributes(softBodyAttr);
 }
 
+void SimulationCUDAContext::SetBVHBuildType(BVH::BuildType buildType)
+{
+    m_bvh.SetBuildType(buildType);
+}
+
 void SimulationCUDAContext::Reset()
 {
     for (auto softbody : softBodies) {
