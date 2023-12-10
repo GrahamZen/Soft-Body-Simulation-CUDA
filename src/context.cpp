@@ -7,6 +7,19 @@
 #include <sphere.h>
 #include <cylinder.h>
 #include <plane.h>
+#include <spdlog/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
+
+std::string getCurrentTimeStamp() {
+    auto now = std::chrono::system_clock::now();
+    auto in_time_t = std::chrono::system_clock::to_time_t(now);
+
+    std::tm bt = *std::localtime(&in_time_t);
+
+    std::ostringstream ss;
+    ss << std::put_time(&bt, "%Y-%m-%d_%H-%M-%S");
+    return ss.str();
+}
 
 Camera::Camera(nlohmann::json& camJson)
 {
@@ -73,6 +86,10 @@ width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera
     phi = glm::acos(glm::dot(glm::normalize(viewXZ), glm::vec3(0, 0, -1)));
     theta = glm::acos(glm::dot(glm::normalize(viewZY), glm::vec3(0, 1, 0)));
     zoom = glm::length(mpCamera->position - ogLookAt);
+    std::string filename = "logs/log_" + getCurrentTimeStamp() + ".txt";
+    auto logger = spdlog::basic_logger_mt("basic_logger", filename);
+    spdlog::set_default_logger(logger);
+    spdlog::set_level(spdlog::level::debug);
 }
 
 Context::~Context()
@@ -118,7 +135,22 @@ void Context::PollEvents() {
 
 void Context::LoadShaders(const std::string& vertShaderFilename, const std::string& fragShaderFilename)
 {
-    mpProgLambert->create(vertShaderFilename.c_str(), fragShaderFilename.c_str());
+    std::ifstream fileStream = utilityCore::findFile(filename);
+    if (!fileStream.is_open()) {
+        std::cerr << "Failed to open JSON file: " << filename << std::endl;
+    }
+    nlohmann::json json;
+    fileStream >> json;
+    fileStream.close();
+    if (json.contains("shaders folder")) {
+        std::string shadersFolder = json["shaders folder"];
+        std::string vertShaderPath = shadersFolder + "/" + "lambert.vert.glsl";
+        std::string fragShaderPath = shadersFolder + "/" + "lambert.frag.glsl";
+        mpProgLambert->create(vertShaderPath.c_str(), fragShaderPath.c_str());
+    }
+    else {
+        mpProgLambert->create(vertShaderFilename.c_str(), fragShaderFilename.c_str());
+    }
     mpProgLambert->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
     mpProgLambert->setCameraPos(cameraPosition);
     mpProgLambert->setModelMatrix(glm::mat4(1.f));
@@ -126,7 +158,22 @@ void Context::LoadShaders(const std::string& vertShaderFilename, const std::stri
 
 void Context::LoadFlatShaders(const std::string& vertShaderFilename, const std::string& fragShaderFilename)
 {
-    mpProgFlat->create(vertShaderFilename.c_str(), fragShaderFilename.c_str());
+    std::ifstream fileStream = utilityCore::findFile(filename);
+    if (!fileStream.is_open()) {
+        std::cerr << "Failed to open JSON file: " << filename << std::endl;
+    }
+    nlohmann::json json;
+    fileStream >> json;
+    fileStream.close();
+    if (json.contains("shaders folder")) {
+        std::string shadersFolder = json["shaders folder"];
+        std::string vertShaderPath = shadersFolder + "/" + "flat.vert.glsl";
+        std::string fragShaderPath = shadersFolder + "/" + "flat.frag.glsl";
+        mpProgFlat->create(vertShaderPath.c_str(), fragShaderPath.c_str());
+    }
+    else {
+        mpProgFlat->create(vertShaderFilename.c_str(), fragShaderFilename.c_str());
+    }
     mpProgFlat->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
     mpProgFlat->setCameraPos(cameraPosition);
     mpProgFlat->setModelMatrix(glm::mat4(1.f));
@@ -180,7 +227,6 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
         else {
             rot = glm::vec3(fbJson["rot"][0].get<float>(), fbJson["rot"][1].get<float>(), fbJson["rot"][2].get<float>());
         }
-        glm::mat4 model = utilityCore::modelMatrix(pos, rot, scale);
         if (fbDefJson["type"] == "sphere") {
             glm::mat4 model = utilityCore::modelMatrix(pos, rot, glm::vec3(1, 1, 1));
             int numSides;
@@ -198,7 +244,7 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
             if (!fbJson.contains("radius")) {
                 if (fbDefJson.contains("radius")) {
                     float radius = fbDefJson["radius"].get<float>();
-                    fixedBodies.push_back(new Sphere(model, radius, numSides));
+                    fixedBodies.push_back(new Sphere(utilityCore::modelMatrix(pos, rot, glm::vec3(radius, radius, radius)), radius, numSides));
                 }
                 else {
                     fixedBodies.push_back(new Sphere(model, 1.f, numSides));
@@ -206,11 +252,11 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
             }
             else {
                 float radius = fbJson["radius"].get<float>();
-                fixedBodies.push_back(new Sphere(model, radius, numSides));
+                fixedBodies.push_back(new Sphere(utilityCore::modelMatrix(pos, rot, glm::vec3(radius, radius, radius)), radius, numSides));
             }
         }
         if (fbDefJson["type"] == "cylinder") {
-            glm::mat4 model = utilityCore::modelMatrix(pos, rot, glm::vec3(1, 1, 1));
+            glm::mat4 model = utilityCore::modelMatrix(pos, rot, glm::vec3(scale[0], scale[1], scale[0]));
             int numSides;
             if (!fbJson.contains("numSides")) {
                 if (fbDefJson.contains("numSides")) {
@@ -226,7 +272,7 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
             fixedBodies.push_back(new Cylinder(model, scale, numSides));
         }
         if (fbDefJson["type"] == "plane") {
-            fixedBodies.push_back(new Plane(model));
+            fixedBodies.push_back(new Plane(utilityCore::modelMatrix(pos, rot, scale)));
         }
     }
 
@@ -252,6 +298,10 @@ SimulationCUDAContext* Context::LoadSimContext() {
     int threadsPerBlock = 128, threadsPerBlockBVH = threadsPerBlock;
     if (json.contains("pause")) {
         pause = json["pause"].get<bool>();
+    }
+    int numIterations = 10;
+    if (json.contains("num of iterations")) {
+        numIterations = json["num of iterations"].get<int>();
     }
     if (json.contains("external force")) {
         auto& externalForceJson = json["external force"];
@@ -291,9 +341,10 @@ SimulationCUDAContext* Context::LoadSimContext() {
             if (contextJson.contains("fixedBodies")) {
                 fixBodies = ReadFixedBodies(contextJson["fixedBodies"], fixedBodyDefs);
             }
-            mpSimContexts.push_back(new SimulationCUDAContext(this, extForce, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads));
+            mpSimContexts.push_back(new SimulationCUDAContext(this, baseName, extForce, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
+            spdlog::info("{} #dof: {}, #ele: {}", "[" + baseName + "]", DOFs.back(), Eles.back());
         }
         mcrpSimContext = mpSimContexts[0];
     }
@@ -320,7 +371,8 @@ void Context::InitCuda() {
 }
 
 void Context::Draw() {
-    glEnable(GL_CULL_FACE);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
 }
 
@@ -331,7 +383,6 @@ void Context::Update() {
             mcrpSimContext = mpSimContexts[guiData->currSimContextId];
         }
         mcrpSimContext->SetGlobalSolver(guiData->UseEigen);
-        mcrpSimContext->SetCUDASolver(guiData->UseCUDASolver);
         mcrpSimContext->SetDt(guiData->Dt);
         phi = guiData->phi;
         theta = guiData->theta;
@@ -416,4 +467,16 @@ void GuiDataContainer::SoftBodyAttr::setJumpClean(bool& val)
 
 bool GuiDataContainer::SoftBodyAttr::getJumpDirty()const {
     return jump.second;
+}
+
+GuiDataContainer::GuiDataContainer()
+    :mPQuery(new Query()), Dt(0.001), PointSize(15), LineWidth(10), WireFrame(false), BVHVis(false), BVHEnabled(true),
+    handleCollision(true), QueryVis(false), QueryDebugMode(true), ObjectVis(true), Reset(false), Pause(false),
+    Step(false), UseEigen(true), CurrQueryId(0)
+{
+}
+
+GuiDataContainer::~GuiDataContainer()
+{
+    delete mPQuery;
 }

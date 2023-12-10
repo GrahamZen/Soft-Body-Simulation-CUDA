@@ -7,6 +7,18 @@
 #include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
 #include <bvh.cuh>
+#include <chrono>
+#include <spdlog/spdlog.h>
+#include <functional>
+
+template<typename Func>
+void measureExecutionTime(const Func& func, const std::string& message) {
+    auto start = std::chrono::high_resolution_clock::now();
+    func();
+    auto stop = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double, std::milli> duration = stop - start;
+    spdlog::info("{} Time: {} milliseconds", message, duration.count());
+}
 
 #define ERRORCHECK 1
 
@@ -147,30 +159,33 @@ void SimulationCUDAContext::CCD()
 {
     m_bvh.DetectCollision(dev_Tets, dev_TetFathers, dev_Xs, dev_XTilts, dev_tIs, dev_Normals, dev_X0s);
     int blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    /*
-    std::vector<dataType> hstTI(numVerts);
-    cudaMemcpy(hstTI.data(), dev_tIs, numVerts * sizeof(dataType), cudaMemcpyDeviceToHost);
-    for (int i = 0; i < numVerts; i++)
-    {
-        std::cout << i << " : " << hstTI[i] << std::endl;
-    }
-    std::cout << " ------------------------------------------- " << std::endl;*/
     CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, dev_Vs, dev_tIs, dev_Normals, muT, muN, numVerts);
 }
 
 void SimulationCUDAContext::Update()
 {
-    for (auto softbody : softBodies) {
-        softbody->Update();
-    }
+    measureExecutionTime([&]() {
+        for (auto softbody : softBodies) {
+            softbody->Update();
+        }
+        }, "[" + name + "]" + "<Solver>");
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
-        m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
+        measureExecutionTime([&]() {
+            m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
+            }, "[" + name + "]" + "<BVH construction>");
         if (context->guiData->BVHVis)
             m_bvh.PrepareRenderData();
     }
-    dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);
-    if (context->guiData->handleCollision)
-        CCD();
+    measureExecutionTime([&]() {
+        dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);
+        }, "[" + name + "]" + "<Fixed objects collision handling>");
+    if (context->guiData->handleCollision && softBodies.size() > 1) {
+        //inspectGLM(dev_Xs, numVerts);
+        //inspectGLM(dev_XTilts, numVerts);
+        measureExecutionTime([&]() {
+            CCD();
+            }, "[" + name + "]" + "<CCD>");
+    }
     else
         cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
     if (context->guiData->ObjectVis) {

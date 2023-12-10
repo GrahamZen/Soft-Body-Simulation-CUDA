@@ -8,6 +8,7 @@
 #include <thrust/unique.h>
 #include <thrust/device_vector.h>
 #include <utilities.cuh>
+#include <simulationContext.h>
 
 struct CompareQuery {
     __host__ __device__
@@ -170,9 +171,9 @@ __global__ void storeTi(int numQueries, Query* queries, dataType* tI, glm::vec3*
             if (q.toi < 1.0f)
             {
                 tI[q.v0] = 0.5f;
-                //tI[q.v1] = 0.5f;
-                //tI[q.v2] = 0.5f;
-                //tI[q.v3] = 0.5f;
+                tI[q.v1] = 0.5f;
+                tI[q.v2] = 0.5f;
+                tI[q.v3] = 0.5f;
                 nors[q.v0] = q.normal;
             }
         }
@@ -185,6 +186,58 @@ __global__ void storeTi(int numQueries, Query* queries, dataType* tI, glm::vec3*
     }
 }
 
+__global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::vec3* XTilts, Query* queries, glm::vec3* Vs)
+{
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < numQueries)
+    {
+        Query& q = queries[index];
+
+        if (q.type == QueryType::EE)
+        {
+            if (q.toi < 1.0f)
+            {
+                float distance1 = glm::length(XTilts[q.v0] - Xs[q.v0]) * (1.0f - q.toi) + 0.001f;
+                float distance2 = glm::length(XTilts[q.v1] - Xs[q.v1]) * (1.0f - q.toi) + 0.001f;
+                glm::vec3 vel1 = 1.0f / distance1 * q.normal;
+                glm::vec3 vel2 = 1.0f / distance2 * q.normal;
+
+                atomicAdd(&Vs[q.v0][0], vel1[0]);
+                atomicAdd(&Vs[q.v0][1], vel1[1]);
+                atomicAdd(&Vs[q.v0][2], vel1[2]);
+
+                atomicAdd(&Vs[q.v1][0], vel2[0]);
+                atomicAdd(&Vs[q.v1][1], vel2[1]);
+                atomicAdd(&Vs[q.v1][2], vel2[2]);
+            }
+        }
+        if (q.type == QueryType::VF)
+        {
+            if (q.toi < 1.0f)
+            {
+                float distance = glm::length(XTilts[q.v0] - Xs[q.v0]) * (1.0f - q.toi) + 0.001f;
+                glm::vec3 vel = 1.0f / distance * q.normal;
+
+                atomicAdd(&Vs[q.v0][0], vel[0]);
+                atomicAdd(&Vs[q.v0][1], vel[1]);
+                atomicAdd(&Vs[q.v0][2], vel[2]);
+
+                atomicAdd(&Vs[q.v1][0], -vel[0]);
+                atomicAdd(&Vs[q.v1][1], -vel[1]);
+                atomicAdd(&Vs[q.v1][2], -vel[2]);
+
+                atomicAdd(&Vs[q.v2][0], -vel[0]);
+                atomicAdd(&Vs[q.v2][1], -vel[1]);
+                atomicAdd(&Vs[q.v2][2], -vel[2]);
+
+                atomicAdd(&Vs[q.v3][0], -vel[0]);
+                atomicAdd(&Vs[q.v3][1], -vel[1]);
+                atomicAdd(&Vs[q.v3][2], -vel[2]);
+            }
+        }
+    }
+}
+
 void CollisionDetection::NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors)
 {
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
@@ -192,10 +245,10 @@ void CollisionDetection::NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilt
     thrust::device_ptr<Query> dev_queriesPtr(dev_queries);
 
     thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());
-
     auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
     int numQueries = new_end - dev_queriesPtr;
     numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
+    //computeNewVel << <numBlocksQuery, threadsPerBlock >> > (numQueries, Xs, XTilts, dev_queries, mPSimContext->dev_Vs);
     storeTi << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, tI, nors);
     cudaDeviceSynchronize();
 }

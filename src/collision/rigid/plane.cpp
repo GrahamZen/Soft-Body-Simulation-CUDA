@@ -21,10 +21,7 @@ void Plane::create()
         glm::vec3(1, 0, -1),
         glm::vec3(1, 0, 1),
     };
-    for (auto& p : pos) {
-        p = glm::vec3(m_model * glm::vec4(p, 1.0f));
-    }
-    std::vector<glm::vec4> nor(pos.size(), glm::vec4(m_floorUp, 0.0f));
+    std::vector<glm::vec4> nor(pos.size(), glm::vec4(0, 1, 0, 0));
     // each uvs corresponds to a pos vec3, which corresponds to a normal.
     std::vector<glm::vec2> uvs{
         glm::vec2(0, 0),

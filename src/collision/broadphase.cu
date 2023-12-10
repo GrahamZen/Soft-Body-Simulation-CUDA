@@ -80,7 +80,7 @@ __device__ void fillQuery(Query* query, int tetId, int tet2Id, const GLuint* tet
         query[i * 4 + 2].type = QueryType::VF;
         query[i * 4 + 2].v0 = vi;
         query[i * 4 + 2].v1 = v20;
-        query[i * 4 + 2].v2 = v21;
+        query[i * 4 + 2].v2 = v22;
         query[i * 4 + 2].v3 = v23;
         query[i * 4 + 3].type = QueryType::VF;
         query[i * 4 + 3].v0 = vi;

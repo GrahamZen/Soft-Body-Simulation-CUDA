@@ -136,10 +136,10 @@ std::istream& utilityCore::safeGetline(std::istream& is, std::string& t) {
 glm::mat4 utilityCore::modelMatrix(const glm::vec3& pos, const glm::vec3& rot, const glm::vec3& scale) {
     glm::mat4 model = glm::mat4(1.0f);
     model = glm::translate(model, pos);
-    model = glm::scale(model, scale);
     model = glm::rotate(model, glm::radians(rot.x), glm::vec3(1.0f, 0.0f, 0.0f));
     model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, glm::radians(rot.z), glm::vec3(0.0f, 0.0f, 1.0f));
+    model = glm::scale(model, scale);
     return model;
 }
 
@@ -262,4 +262,18 @@ std::ifstream utilityCore::findFile(const std::string& fileName) {
 
     std::cerr << "File not found: " << fileName << std::endl;
     return std::ifstream();
+}
+
+std::string utilityCore::findFileName(const std::string& fileName) {
+    fs::path currentPath = fs::current_path();
+    for (int i = 0; i < 5; ++i) {
+        fs::path filePath = currentPath / fileName;
+        if (fs::exists(filePath)) {
+            return filePath.string();
+        }
+        currentPath = currentPath.parent_path();
+    }
+
+    std::cerr << "File not found: " << fileName << std::endl;
+    return std::string();
 }

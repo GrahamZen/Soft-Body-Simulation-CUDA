@@ -50,7 +50,7 @@ AABB AABB::expand(const AABB& aabb)const {
     };
 }
 
-CollisionDetection::CollisionDetection(const int _threadsPerBlock, size_t _maxQueries) :threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxQueries)
+CollisionDetection::CollisionDetection(const SimulationCUDAContext* simContext, const int _threadsPerBlock, size_t _maxNumQueries) : mPSimContext(simContext), threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxNumQueries)
 {
     cudaMalloc(&dev_queries, maxNumQueries * sizeof(Query));
 
@@ -58,6 +58,7 @@ CollisionDetection::CollisionDetection(const int _threadsPerBlock, size_t _maxQu
     cudaMemset(dev_numQueries, 0, sizeof(size_t));
 
     cudaMalloc(&dev_overflowFlag, sizeof(bool));
+    mSqDisplay.create();
 }
 
 CollisionDetection::~CollisionDetection()
@@ -71,44 +72,74 @@ void CollisionDetection::DetectCollision(int numTets, const BVHNode* dev_BVHNode
 {
     if (BroadPhase(numTets, dev_BVHNodes, tets, tetFathers)) {
         PrepareRenderData(Xs);
-        inspectQuerys(dev_queries, numQueries);
         NarrowPhase(Xs, XTilts, tI, nors);
     }
 }
 
-BVH::BVH(const int _threadsPerBlock, size_t _maxQueries) : threadsPerBlock(_threadsPerBlock), collisionDetection(_threadsPerBlock, _maxQueries) {}
-
-BVH::~BVH()
-{
-    cudaFree(dev_BVHNodes);
-    cudaFree(dev_tI);
-    cudaFree(dev_indicesToReport);
-
-    cudaFree(dev_ready);
-    cudaFree(dev_mortonCodes);
+__global__ void processQueries(const Query* queries, int numQueries, glm::vec4* color) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx < numQueries) {
+        Query q = queries[idx];
+        atomicAdd(&color[q.v0].x, 0.05);
+        atomicAdd(&color[q.v0].y, 0.05);
+        atomicExch(&color[q.v0].w, 1);
+    }
 }
 
-void BVH::PrepareRenderData()
+void CollisionDetection::PrepareRenderData(const glm::vec3* Xs)
 {
     glm::vec3* pos;
-    Wireframe::mapDevicePosPtr(&pos);
-    dim3 numThreadsPerBlock(numNodes / threadsPerBlock + 1);
-    populateBVHNodeAABBPos << <numThreadsPerBlock, threadsPerBlock >> > (dev_BVHNodes, pos, numNodes);
-    Wireframe::unMapDevicePtr();
+    glm::vec4* col;
+    MapDevicePosPtr(&pos, &col);
+    cudaMemcpy(pos, Xs, numVerts * sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+    cudaMemset(col, 0, numVerts * sizeof(glm::vec4));
+    dim3 numBlocks((numQueries + threadsPerBlock - 1) / threadsPerBlock);
+    processQueries << <numBlocks, threadsPerBlock >> > (dev_queries, numQueries, col);
+    unMapDevicePtr();
 }
 
-void BVH::DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors, const glm::vec3* X0)
+SingleQueryDisplay& CollisionDetection::GetSQDisplay(int i, const glm::vec3* X, Query* guiQuery)
 {
-    thrust::device_ptr<dataType> dev_ptr(tI);
-    thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
-    collisionDetection.DetectCollision(numTets, dev_BVHNodes, tets, tetFathers, Xs, XTilts, tI, nors);
-}
-
-Drawable& BVH::GetQueryDrawable()
-{
-    return collisionDetection;
-}
-
-int BVH::GetNumQueries() const {
-    return collisionDetection.GetNumQueries();
+    if (numQueries == 0) {
+        mSqDisplay.SetCount(0);
+        return mSqDisplay;
+    }
+    mSqDisplay.SetCount(6);
+    Query q;
+    cudaMemcpy(&q, &dev_queries[i], sizeof(Query), cudaMemcpyDeviceToHost);
+    if (guiQuery)
+        *guiQuery = q;
+    if (q.type == QueryType::EE) mSqDisplay.SetIsLine(true);
+    else mSqDisplay.SetIsLine(false);
+    if (mSqDisplay.IsLine()) {
+        glm::vec3* pos;
+        mSqDisplay.MapDevicePtr(&pos, nullptr, nullptr);
+        cudaMemcpy(pos, &X[q.v0], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(pos + 1, &X[q.v1], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(pos + 2, &X[q.v2], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(pos + 3, &X[q.v3], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        glm::vec3 v0Pos, v1Pos;
+        cudaMemcpy(&v0Pos, &X[q.v0], sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&v1Pos, &X[q.v1], sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&pos[4], &((v0Pos + v1Pos) / 2.f), sizeof(glm::vec3), cudaMemcpyHostToDevice);
+        // the third line point from the middle of v0 and v1 towards the normal direction
+        glm::vec3 normalPoint = (v0Pos + v1Pos) / 2.f + q.normal * 10.f;
+        cudaMemcpy(&pos[5], &normalPoint, sizeof(glm::vec3), cudaMemcpyHostToDevice);
+        mSqDisplay.UnMapDevicePtr();
+    }
+    else {
+        glm::vec3* pos, * vertPos, * triPos;
+        mSqDisplay.MapDevicePtr(&pos, &vertPos, &triPos);
+        cudaMemcpy(vertPos, &X[q.v0], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(triPos, &X[q.v1], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(triPos + 1, &X[q.v2], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(triPos + 2, &X[q.v3], sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        glm::vec3 v0Pos;
+        cudaMemcpy(&v0Pos, &X[q.v0], sizeof(glm::vec3), cudaMemcpyDeviceToHost);
+        glm::vec3 normalPoint = v0Pos + q.normal * 10.f;
+        cudaMemcpy(&pos[0], &v0Pos, sizeof(glm::vec3), cudaMemcpyHostToDevice);
+        cudaMemcpy(&pos[1], &normalPoint, sizeof(glm::vec3), cudaMemcpyHostToDevice);
+        mSqDisplay.UnMapDevicePtr();
+    }
+    return mSqDisplay;
 }

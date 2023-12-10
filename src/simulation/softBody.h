@@ -7,9 +7,7 @@
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
 #include <cusolverSp_LOWLEVEL_PREVIEW.h>
-
-#include <deformable_mesh.h>
-#include <solver.h>
+#include <thrust/device_vector.h>
 
 class SimulationCUDAContext;
 class SoftBodyData;
@@ -24,9 +22,9 @@ public:
     }attrib;
     SoftBody(SimulationCUDAContext*, SoftBodyAttribute&, SoftBodyData*);
     ~SoftBody();
+    SoftBody(const SoftBody&) = delete;
+    SoftBody& operator=(const SoftBody&) = delete;
 
-    void InitModel();
-    void PdSolver();
     void solverPrepare();
     void PDSolverStep();
     void PDSolver();
@@ -48,9 +46,6 @@ public:
 private:
     const int threadsPerBlock;
     SimulationCUDAContext* mcrpSimContext;
-    pd::deformable_mesh_t model{};
-    pd::solver_t solver;
-
     std::vector<glm::vec3> vertices;
     std::vector<GLuint> idx;
     bool jump = false;
@@ -65,7 +60,7 @@ private:
 
     bool solverReady = false;
 
-    glm::vec3* ExtForce;
+    thrust::device_vector<glm::vec3> dev_ExtForce;
     glm::vec3* Force;
     glm::vec3* V;
     glm::vec3* X;

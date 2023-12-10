@@ -80,8 +80,6 @@ void SurfaceShader::draw(Drawable& d, int textureSlot)
 void SurfaceShader::drawPoints(Drawable& d)
 {
     if (d.elemCount() == 0) return;
-    float pointSize = 5.0f;
-    glPointSize(pointSize);
     useMe();
 
     // Bind and enable the position attribute
@@ -103,6 +101,55 @@ void SurfaceShader::drawPoints(Drawable& d)
     if (attrPos != -1) glDisableVertexAttribArray(attrPos);
     if (attrCol != -1) glDisableVertexAttribArray(attrCol);
 
+    printGLErrorLog();
+}
+
+void SurfaceShader::drawSingleQuery(SingleQueryDisplay& d)
+{
+    if (d.elemCount() == 0) return;
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glDisable(GL_DEPTH_TEST);
+    useMe();
+    if (attrCol != -1 && d.bindCol()) {
+        glEnableVertexAttribArray(attrCol);
+        glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, NULL);
+    }
+    if (d.IsLine()) {
+        if (attrPos != -1 && d.bindPos()) {
+            glEnableVertexAttribArray(attrPos);
+            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+            glDrawArrays(d.drawMode(), 0, d.elemCount());
+        }
+    }
+    else {
+        if (attrPos != -1 && d.bindVertPos()) {
+            glEnableVertexAttribArray(attrPos);
+            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+            glDrawArrays(GL_POINTS, 0, 1);
+        }
+        if (attrPos != -1 && d.bindTriPos()) {
+            glEnableVertexAttribArray(attrPos);
+            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+            if (d.bindTriIdx()) {
+                glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
+            }
+        }
+        if (attrCol != -1 && d.bindCol()) {
+            glEnableVertexAttribArray(attrCol);
+            glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, (void*)(4 * sizeof(glm::vec4)));
+        }
+        if (attrPos != -1 && d.bindPos()) {
+            glEnableVertexAttribArray(attrPos);
+            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+            glDrawArrays(d.drawMode(), 0, 2);
+        }
+    }
+
+    if (attrPos != -1) glDisableVertexAttribArray(attrPos);
+    if (attrNor != -1 && d.bindNor()) glDisableVertexAttribArray(attrNor);
+    if (attrUV != -1 && d.bindUV()) glDisableVertexAttribArray(attrUV);
+    if (attrCol != -1 && d.bindCol()) glDisableVertexAttribArray(attrCol);
+    glEnable(GL_DEPTH_TEST);
     printGLErrorLog();
 }
 

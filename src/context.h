@@ -1,7 +1,6 @@
 #pragma once
 #include <utilities.h>
 #include <vector>
-
 class SoftBody;
 class Camera;
 class SimulationCUDAContext;
@@ -10,24 +9,29 @@ class SurfaceShader;
 class GuiDataContainer
 {
 public:
-    GuiDataContainer() : TracedDepth(0) {}
-    int TracedDepth;
+    GuiDataContainer();
+    ~GuiDataContainer();
     float Dt = 0.001;
+    float PointSize = 5;
+    float LineWidth = 1;
     bool WireFrame = false;
     bool BVHVis = false;
     bool BVHEnabled = true;
     bool handleCollision = true;
-    bool QueryVis = true;
+    bool QueryVis = false;
+    bool QueryDebugMode = true;
     bool ObjectVis = true;
     bool Reset = false;
     bool Pause = false;
     bool Step = false;
     bool UseEigen = true;
-    bool UseCUDASolver = true;
+    int CurrQueryId = 0;
     float theta, phi;
     glm::vec3 cameraLookAt;
     float zoom;
     int currSimContextId = -1;
+    Query* mPQuery;
+    bool QueryDirty = true;
     struct SoftBodyAttr
     {
         int currSoftBodyId = -1;

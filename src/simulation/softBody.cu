@@ -6,7 +6,7 @@
 
 SoftBody::SoftBody(SimulationCUDAContext* context, SoftBodyAttribute& _attrib, SoftBodyData* dataPtr)
     : mcrpSimContext(context), threadsPerBlock(context->GetThreadsPerBlock()), attrib(_attrib), Tet(dataPtr->Tets), Tri(dataPtr->Tris), X(dataPtr->dev_X), X0(dataPtr->dev_X0), XTilt(dataPtr->dev_XTilt),
-    V(dataPtr->dev_V), Force(dataPtr->dev_F), numTets(dataPtr->numTets), numVerts(dataPtr->numVerts), numTris(dataPtr->numTris)
+    V(dataPtr->dev_V), Force(dataPtr->dev_F), numTets(dataPtr->numTets), numVerts(dataPtr->numVerts), numTris(dataPtr->numTris), dev_ExtForce(numVerts, glm::vec3(0.f))
 {
     vertices.resize(numVerts);
     cudaMemcpy(vertices.data(), X, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToHost);
@@ -16,7 +16,6 @@ SoftBody::SoftBody(SimulationCUDAContext* context, SoftBodyAttribute& _attrib, S
     Mesh::numTets = numTets;
     Mesh::numTris = numTris;
 
-    InitModel();
     if (numTris == 0)
         createTetrahedron();
     else
@@ -80,7 +79,6 @@ void SoftBody::Reset()
     cudaMemset(V, 0, sizeof(glm::vec3) * numVerts);
     cudaMemcpy(X, X0, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(XTilt, X0, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
-    InitModel();
 }
 
 void SoftBody::_Update()
@@ -88,24 +86,5 @@ void SoftBody::_Update()
     AddExternal << <(numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (V, numVerts, jump, attrib.mass, mcrpSimContext->GetExtForce().jump);
     // Laplacian_Smoothing();
     //ComputeForces << <(numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (Force, X, Tet, numTets, inv_Dm, stiffness_0, stiffness_1);
-    if (mcrpSimContext->IsCUDASolver())
-    {
-        PDSolver();
-    }
-    else
-    {
-        Eigen::MatrixXf positionsFloat;
-        using RowMajorMatrixX3f = Eigen::Matrix<float, Eigen::Dynamic, 3, Eigen::RowMajor>;
-        RowMajorMatrixX3f velocitiesFloat(numVerts, 3);
-        positionsFloat.resizeLike(model.positions().transpose());
-        cudaMemcpy(positionsFloat.data(), X, numVerts * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-        cudaMemcpy(velocitiesFloat.data(), V, numVerts * sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-        model.positions() = positionsFloat.transpose().cast<double>();
-        model.velocity() = velocitiesFloat.cast<double>();
-        PdSolver();
-        positionsFloat = model.positions().cast<float>().transpose();
-        cudaMemcpy(XTilt, positionsFloat.data(), numVerts * sizeof(glm::vec3), cudaMemcpyHostToDevice);
-        velocitiesFloat = model.velocity().cast<float>();
-        cudaMemcpy(V, velocitiesFloat.data(), numVerts * sizeof(glm::vec3), cudaMemcpyHostToDevice);
-    }
+    PDSolver();
 }

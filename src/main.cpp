@@ -123,3 +123,10 @@ void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
     lastX = xpos;
     lastY = ypos;
 }
+
+void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
+    context->mpCamera->resolution.y = height;
+    context->mpCamera->resolution.x = width;
+    context->mpCamera->computeCameraParams();
+}

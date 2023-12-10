@@ -23,6 +23,20 @@ set(BUILD_TESTING OFF)
 set(EIGEN_BUILD_PKGCONFIG OFF)
 FetchContent_MakeAvailable(Eigen)
 
+include(FetchContent)
+
+FetchContent_Declare(
+        spdlog
+        GIT_REPOSITORY https://github.com/gabime/spdlog.git
+        GIT_TAG        v1.x
+)
+
+FetchContent_GetProperties(spdlog)
+if (NOT spdlog_POPULATED)
+    FetchContent_Populate(spdlog)
+    add_subdirectory(${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR})
+endif()
+
 # Enable C++11 for host code
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
@@ -100,7 +114,6 @@ set(PROJECT_INCLUDE_DIR
 ${PROJECT_SOURCE_DIR}/src 
 ${PROJECT_SOURCE_DIR}/src/openglcontext 
 ${PROJECT_SOURCE_DIR}/src/simulation 
-${PROJECT_SOURCE_DIR}/src/simulation/eigen
 ${PROJECT_SOURCE_DIR}/src/collision 
 ${PROJECT_SOURCE_DIR}/src/collision/rigid
 )
@@ -126,6 +139,7 @@ CUDA::cudart
 Eigen3::Eigen
 OpenMP::OpenMP_CXX
 CUDA::cusolver
+spdlog::spdlog
 #stream_compaction  # TODO: uncomment if using your stream compaction
 )
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES

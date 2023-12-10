@@ -20,7 +20,7 @@ public:
     ~FixedBody() = default;
     virtual BodyType getType() const = 0;
     virtual void create() = 0; // To be implemented by subclasses. Populates the VBOs of the Drawable.
-    glm::mat4 m_model;
-    glm::mat4 m_inverseModel;
-    glm::mat4 m_inverseTransposeModel;
+    const glm::mat4 m_model;
+    const glm::mat4 m_inverseModel;
+    const glm::mat4 m_inverseTransposeModel;
 };

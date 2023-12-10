@@ -5,6 +5,7 @@
 #include <wireframe.h>
 #include <mesh.h>
 #include <queryDisplay.h>
+#include <singleQueryDisplay.h>
 
 class SoftBody;
 
@@ -16,6 +17,7 @@ using glmMat4 = glm::tmat4x4<dataType>;
 using glmMat3 = glm::tmat3x3<dataType>;
 using glmMat2 = glm::tmat2x2<dataType>;
 
+class SimulationCUDAContext;
 class AABB {
 public:
     glm::vec3 min = glm::vec3{ FLT_MAX };
@@ -51,7 +53,7 @@ public:
 
 class CollisionDetection : public QueryDisplay {
 public:
-    CollisionDetection(const int threadsPerBlock, size_t maxNumQueries);
+    CollisionDetection(const SimulationCUDAContext* simContext, const int threadsPerBlock, size_t maxNumQueries);
     ~CollisionDetection();
     bool DetectCollisionCandidates(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers);
     bool BroadPhase(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers);
@@ -61,25 +63,29 @@ public:
     int GetNumQueries() const {
         return numQueries;
     }
+    SingleQueryDisplay& GetSQDisplay(int i, const glm::vec3* Xs, Query* guiQuery);
 private:
     Query* dev_queries;
+    SingleQueryDisplay mSqDisplay;
     size_t* dev_numQueries;
     size_t numQueries;
     size_t maxNumQueries = 1 << 15;
     bool* dev_overflowFlag;
     const int threadsPerBlock;
+    const SimulationCUDAContext* mPSimContext;
 };
 
 class BVH : public Wireframe {
 public:
 
-    BVH(const int threadsPerBlock, size_t _maxQueries);
+    BVH(const SimulationCUDAContext* simContext, const int threadsPerBlock, size_t _maxQueries);
     ~BVH();
     void Init(int numTets, int numVerts, int maxThreads);
     void PrepareRenderData();
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
     void DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors, const glm::vec3* X0 = nullptr);
     Drawable& GetQueryDrawable();
+    SingleQueryDisplay& GetSingleQueryDrawable(int i, const glm::vec3* Xs, Query* guiQuery);
     int GetNumQueries() const;
 private:
     void BuildBBoxes();

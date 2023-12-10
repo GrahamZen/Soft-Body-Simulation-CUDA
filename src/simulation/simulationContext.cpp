@@ -3,9 +3,9 @@
 #include <set>
 #include <utilities.cuh>
 
-SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const ExternalForce& _extForce, nlohmann::json& json,
-    const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads)
-    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), m_bvh(_threadsPerBlockBVH, 1 << 16), fixedBodies(_fixedBodies), dev_fixedBodies(_threadsPerBlock, _fixedBodies)
+SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _name, const ExternalForce& _extForce, nlohmann::json& json,
+    const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads, int _numIterations)
+    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), numIterations(_numIterations), m_bvh(this, _threadsPerBlockBVH, 1 << 16), fixedBodies(_fixedBodies), dev_fixedBodies(_threadsPerBlock, _fixedBodies), name(_name)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
@@ -130,22 +130,31 @@ void SimulationCUDAContext::Reset()
     }
 }
 
-void SimulationCUDAContext::Draw(ShaderProgram* shaderProgram, ShaderProgram* flatShaderProgram)
+void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* flatShaderProgram)
 {
+    glLineWidth(2);
     if (context->guiData->ObjectVis) {
+        shaderProgram->setModelMatrix(glm::mat4(1.f));
         for (auto softBody : softBodies)
             shaderProgram->draw(*softBody, 0);
-        for (auto fixedBody : fixedBodies)
+        for (auto fixedBody : fixedBodies) {
+            shaderProgram->setModelMatrix(fixedBody->m_model);
             shaderProgram->draw(*fixedBody, 0);
+        }
     }
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         if (context->guiData->BVHVis) {
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            shaderProgram->draw(m_bvh, 0);
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            flatShaderProgram->draw(m_bvh, 0);
         }
-        if (context->guiData->handleCollision && context->guiData->QueryVis) {
-            flatShaderProgram->drawPoints(m_bvh.GetQueryDrawable());
+        if (context->guiData->handleCollision) {
+            shaderProgram->setModelMatrix(glm::mat4(1.f));
+            if (context->guiData->QueryVis)
+                flatShaderProgram->drawPoints(m_bvh.GetQueryDrawable());
+            if (context->guiData->QueryDebugMode) {
+                glLineWidth(context->guiData->LineWidth);
+                flatShaderProgram->drawSingleQuery(m_bvh.GetSingleQueryDrawable(context->guiData->CurrQueryId, dev_Xs, context->guiData->QueryDirty ? context->guiData->mPQuery : nullptr));
+                context->guiData->QueryDirty = false;
+            }
         }
     }
 }

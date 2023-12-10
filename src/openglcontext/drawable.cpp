@@ -66,9 +66,8 @@ void Drawable::generateCol() {
 bool Drawable::bindCol() {
     if (colBound) {
         glBindBuffer(GL_ARRAY_BUFFER, bufCol);
-        return true;
     }
-    return false;
+    return colBound;
 }
 
 bool Drawable::bindIdx()
