@@ -23,6 +23,17 @@ As shown above, this project can be roughly divided into 2 parts. The first part
 
 ## Background
 
+### Finite Element Method
+
+In soft body simulation, FEM is a popular method. It is a numerical technique for finding approximate solutions to boundary value problems for partial differential equations. Usually it uses variational methods (the calculus of variations) to minimize an error function and produce a stable solution. In our case, we use the Projective Dynamics method. For soft body simulation, we are mostly dealing with tetrahedral meshes. 
+
+| Triangle Mesh | Tetrahedra |
+| ---------------------------------------------- | ---------------------------------------------- |
+| ![1702178752560](image/README/1702178752560.png) | ![1702178756760](image/README/1702178756760.png)|
+
+Generally, the energy of a tetrahedron (similar to the energy in a spring, determined by the strain model used) is calculated using the deformation gradient, which is similar to the concept of transformation matrix. In our case, we use the Corotated material.
+
+
 ### Projective Dynamics
 
 Projective Dynamics (PD) is a method that bridges the gap between nodal Finite Element methods and Position Based Dynamics. It results in a straightforward yet accurate solver capable of handling various types of constraints. The core algorithm of PD consists of two primary solvers: a local solver and a global solver.
@@ -31,7 +42,10 @@ Projective Dynamics (PD) is a method that bridges the gap between nodal Finite E
 <img src="image/PD.png" width="400">
 
 ### Collision Detection & Handling
-This part of the process involves continuous collision detection, which can be divided into two stages: broad phase collision detection and narrow phase collision detection. The broad phase aims to identify potential collision pairs to reduce computation in the narrow phase. The narrow phase focuses on determining the actual existence of collisions in these pairs and calculating the collision time. Once collisions are detected, they can be resolved and eliminated.
+
+CCD can be divided into two stages: 
+* broad phase collision detection: aims to identify potential collision pairs to reduce computation in the narrow phase.
+*  narrow phase collision detection: focuses on determining the actual existence of collisions in these pairs and calculating the collision time. Once collisions are detected, they can be resolved and eliminated.
 
 ## Implementation
 
@@ -62,7 +76,7 @@ For the global step, we just use a linear solve to find the q in the following e
 <img src="image/globalEquation.png" width="400">
 
 
-To deal this function, two ways of solving this large sparse linear problem are implemented with Eigen on CPU and cuSolver on GPU. Both way solve the problem by precompute and factorize the A matrix. And by our current observation, the Eigen implementation runs faster than the cuSolver one.
+To deal this function, two ways of solving this large sparse linear problem are implemented with `Eigen` on CPU and cuSolver on GPU. Both way solve the problem by precompute and factorize the A matrix. And by our current observation, the `Eigen` implementation runs faster than the cuSolver one.
 
 
 ## Collision Detection & Handling
@@ -80,7 +94,17 @@ We have our BVH tree built on the GPU side, which follows the steps:
 3. Split tree to get the structure of the internal nodes according to the morton codes
 4. Build the bounding box for each of the internal node from bottom to up
 
-To get more information about building BVH on GPU, one can refers to the [blog](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/) and the [paper](https://developer.nvidia.com/blog/parallelforall/wp-content/uploads/2012/11/karras2012hpg_paper.pdf). Our implementation basically follows the same logic as the articles shown above. The only difference might be that we provide several ways of building the bounding box for the internal nodes. These methods includes naive serial merge according to tree depth, merging with atomic operation, cooperative groups. According to our observation, using cooperative groups the performance is speedup greatly.
+To get more information about building BVH on GPU, one can refers to the [blog](https://developer.nvidia.com/blog/thinking-parallel-part-iii-tree-construction-gpu/) and the [paper](https://developer.nvidia.com/blog/parallelforall/wp-content/uploads/2012/11/karras2012hpg_paper.pdf). Our implementation basically follows the same logic as the articles shown above. 
+
+The only difference might be that we provide several ways of building the bounding box for the internal nodes. These methods includes naive serial merge according to tree depth, merging with atomic operation, cooperative groups. 
+
+**Cooperative groups**
+
+The reason we use cooperative groups, is that we want to move the iterations of the for loop to the kernel function. Since every node should be aware of its children, we need to synchronize all the threads. And cooperative groups provide us with the ability to synchronize the whole grids. However, the number of threads in a grid is limited. So, when the number of nodes is large, this method is not applicable.
+
+**Atomic operation**
+
+For Atomic operation, we let those threads whose children are not ready to wait until they are ready. 
 
 
 #### Traversing BVH tree
@@ -93,7 +117,12 @@ When implemented on the CPU, the performance difference is not significant becau
 
 However, the number of collision queries obtained in each collision detection is **uncertain**. Thus, decoupling the broad phase and narrow phase in CPU-based collision detection is much simpler than on the GPU, as dynamic memory allocation can be easily managed on the CPU, whereas the GPU does not natively support the allocation of dynamic arrays. Therefore, we have to manage dynamic memory allocation ourselves. Before filling an array with atomic operations in a thread, we must check whether continuing to fill the array will cause it to overflow. If so, we terminate the current BVH traverse, reallocate memory that is twice as large, and then reperform the BVH traverse.
 
-Since we don't want to solve duplicate queries, we need to sort each query so that they are comparable. Then we can use the thrust library to sort and deduplicate the query array. Before that, queries that are invalid (e.g. a query where the vertex is the same as one of the face's vertices) should be removed. The following image shows the whole process of broad phase CCD.
+For traversing the BVH tree, we consider that a collision may occur when the bounding boxes of two tetrahedra intersect, and in such cases, we store the corresponding 52 queries in the query array(4 vertices * 4 vertices + 6 edges * 6 edges). The following image shows the moment when the bounding boxes of two tetrahedra intersect.
+
+<p align="center">
+<img src="image/README/1702179366699.png" width="600">
+
+Since we don't want to solve duplicate queries, we need to sort each query so that they are comparable. Then we can use the `thrust` library to sort and deduplicate the query array. Before that, queries that are invalid (e.g. a query where the vertex is the same as one of the face's vertices) should be removed. The following image shows the whole process of broad phase CCD.
 
 <p align="center">
 <img src="image/README/1702085746140.png" width="600">
@@ -132,14 +161,36 @@ The GUI is implemented using ImGui. Users can switch between different simulatio
 
 ### Projective Dynamics
 
+The graph shows a performance comparison when only using `Eigen` and CUDA to compute the strain constraints of tetrahedra, which is the part of the paper that is highly suitable for parallelization. It is evident that there is a significant improvement in performance. If other parts of the `Eigen` version were also implemented on the CPU, the difference in performance would be even greater. 
+
+However, as the number of tetrahedra increases, it's observable that the rate of performance improvement decreases. This is because the computational resources of the GPU are limited, and when the number of threads exceeds a certain amount, true full parallelism cannot be achieved.
+
+![1702180233840](image/README/1702180233840.png)
+
 ### BVH construction
 
-## Conclusion
+Regarding the construction of BVH, as mentioned earlier, we implemented the computation of the AABB of internal BVH nodes in three ways, which significantly impacts performance. As shown in the graph, the serial construction method is the slowest because it requires multiple kernel function launches. Converting the serial algorithm to a cooperative group logic is straightforward, but as previously mentioned, it has a limit on the number of threads, so this part of the BVH analysis did not use scenarios with a very high degree of freedom (DOF) for comparison. The atomic operation method for construction is the fastest, as each BVH node is managed by an individual thread and only requires a single operation within one kernel function. The granularity of synchronization is similar to the grid sync of a cooperative group but often involves fewer steps. Thus, the time cost is relatively close to the cooperative group version. 
+
+However, it is notable that when the DOF reaches 40,000, the cooperative group version's cost increases rapidly, indicating that the expense of synchronizing the entire grid escalates quickly with the increase in the number of threads.
+
+![1702180193405](image/README/1702180193405.png)
 
 ## Showcase
 
-![](image/showcase1.gif)
+### Simulation
 
-![](image/showcase2.png)
+![1702179756379](image/README/1702179756379.gif)
 
-![](image/showcase3.png)
+When the weight of the constraint is too low: OOOPS!
+
+![1702179696625](image/README/1702179696625.gif)
+
+### Visualization
+
+|Single Query| All Queries | BVH|
+| ---------------------------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+| ![1702179130900](image/README/1702179130900.png) |![1702179139466](image/README/1702179139466.png) | ![1702179149146](image/README/1702179149146.png) |
+
+**The BVH of an Armadillo**
+
+![1702179639763](image/README/1702179639763.png)
