@@ -165,7 +165,7 @@ The graph shows a performance comparison when only using `Eigen` and CUDA to com
 
 However, as the number of tetrahedra increases, it's observable that the rate of performance improvement decreases. This is because the computational resources of the GPU are limited, and when the number of threads exceeds a certain amount, true full parallelism cannot be achieved.
 
-![1702180233840](image/README/1702180233840.png)
+![1702235196801](image/README/1702235196801.png)
 
 ### BVH construction
 
