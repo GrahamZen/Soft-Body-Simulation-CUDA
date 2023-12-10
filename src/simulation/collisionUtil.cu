@@ -46,7 +46,7 @@ __global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, glm::vec3* V, dataType
     {
         X[idx] = XTilt[idx];
     }
-    XTilt[idx] = X[idx];
+    //XTilt[idx] = X[idx];
 }
 
 __global__ void handleFloorCollision(glm::vec3* X, glm::vec3* V, int numVerts, Plane* planes, int numPlanes, float muT, float muN) {
