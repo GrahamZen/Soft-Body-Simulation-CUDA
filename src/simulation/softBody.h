@@ -9,9 +9,6 @@
 #include <cusolverSp_LOWLEVEL_PREVIEW.h>
 #include <thrust/device_vector.h>
 
-#include <deformable_mesh.h>
-#include <solver.h>
-
 class SimulationCUDAContext;
 class SoftBodyData;
 
@@ -28,8 +25,6 @@ public:
     SoftBody(const SoftBody&) = delete;
     SoftBody& operator=(const SoftBody&) = delete;
 
-    void InitModel();
-    void PdSolver();
     void solverPrepare();
     void PDSolverStep();
     void PDSolver();
@@ -51,9 +46,6 @@ public:
 private:
     const int threadsPerBlock;
     SimulationCUDAContext* mcrpSimContext;
-    pd::deformable_mesh_t model{};
-    pd::solver_t solver;
-
     std::vector<glm::vec3> vertices;
     std::vector<GLuint> idx;
     bool jump = false;

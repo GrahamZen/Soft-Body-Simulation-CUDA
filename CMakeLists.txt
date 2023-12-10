@@ -114,7 +114,6 @@ set(PROJECT_INCLUDE_DIR
 ${PROJECT_SOURCE_DIR}/src 
 ${PROJECT_SOURCE_DIR}/src/openglcontext 
 ${PROJECT_SOURCE_DIR}/src/simulation 
-${PROJECT_SOURCE_DIR}/src/simulation/eigen
 ${PROJECT_SOURCE_DIR}/src/collision 
 ${PROJECT_SOURCE_DIR}/src/collision/rigid
 )
