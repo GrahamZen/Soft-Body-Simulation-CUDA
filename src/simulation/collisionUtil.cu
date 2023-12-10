@@ -96,7 +96,8 @@ __global__ void handleCylinderCollision(glm::vec3* X, glm::vec3* V, int numVerts
     if (i >= numVerts) return;
 
     for (int j = 0; j < numCylinders; j++) {
-        glm::vec3 axis = glm::normalize(glm::vec3(cylinders[j].m_model[1])); // Assuming Y-axis is the cylinder's axis
+        const Cylinder cy = cylinders[j];
+        glm::vec3 axis = glm::vec3(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
         glm::vec3 cylinderCenter = glm::vec3(cylinders[j].m_model[3]);
         float cylinderRadius = cylinders[j].m_radius;
 
