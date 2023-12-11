@@ -388,7 +388,6 @@ void Context::Update() {
             mcrpSimContext = mpSimContexts[guiData->currSimContextId];
         }
         mcrpSimContext->SetGlobalSolver(guiData->UseEigen);
-        mcrpSimContext->SetCUDASolver(guiData->UseCUDASolver);
         mcrpSimContext->SetDt(guiData->Dt);
         phi = guiData->phi;
         theta = guiData->theta;
@@ -477,8 +476,8 @@ bool GuiDataContainer::SoftBodyAttr::getJumpDirty()const {
 
 GuiDataContainer::GuiDataContainer()
     :mPQuery(new Query()), Dt(0.001), PointSize(15), LineWidth(10), WireFrame(false), BVHVis(false), BVHEnabled(true),
-    handleCollision(false), QueryVis(false), QueryDebugMode(true), ObjectVis(true), Reset(false), Pause(false),
-    Step(false), UseEigen(true), UseCUDASolver(true), CurrQueryId(0)
+    handleCollision(true), QueryVis(false), QueryDebugMode(true), ObjectVis(true), Reset(false), Pause(false),
+    Step(false), UseEigen(true), CurrQueryId(0)
 {
 }
 

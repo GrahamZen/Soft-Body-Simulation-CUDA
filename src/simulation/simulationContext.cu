@@ -176,7 +176,7 @@ void SimulationCUDAContext::Update()
         for (auto softbody : softBodies) {
             softbody->Update();
         }
-        }, "[" + name + "]" + (IsCUDASolver() ? "<CUDA" : "<Eigen") + "Solver>");
+        }, "[" + name + "]<CUDA Solver>");
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         measureExecutionTime([&]() {
             m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);

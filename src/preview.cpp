@@ -102,7 +102,6 @@ void RenderImGui()
     }
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
     bool globalSolverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
-    bool solverChanged = ImGui::Checkbox("Use CUDA Solver", &imguiData->UseCUDASolver);
     imguiData->Reset = ImGui::Button("Reset");
     ImGui::SameLine();
     imguiData->Pause = ImGui::Button("Pause");
@@ -167,7 +166,7 @@ void RenderImGui()
         context->GetNumQueries());
     ImGui::End();
 
-    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged || solverChanged || contextChanged || globalSolverChanged) {
+    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged || contextChanged || globalSolverChanged) {
         context->panelModified = true;
     }
 

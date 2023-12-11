@@ -165,7 +165,7 @@ The graph shows a performance comparison when only using `Eigen` and CUDA to com
 
 However, as the number of tetrahedra increases, it's observable that the rate of performance improvement decreases. This is because the computational resources of the GPU are limited, and when the number of threads exceeds a certain amount, true full parallelism cannot be achieved.
 
-![1702180233840](image/README/1702180233840.png)
+![1702235196801](image/README/1702235196801.png)
 
 ### BVH construction
 
@@ -184,6 +184,10 @@ However, it is notable that when the DOF reaches 40,000, the cooperative group v
 When the weight of the constraint is too low: OOOPS!
 
 ![1702179696625](image/README/1702179696625.gif)
+
+A simple scene with a bunny, a sphere, and a cube.
+
+![1702244118601](image/README/1702244118601.gif)
 
 ### Visualization
 

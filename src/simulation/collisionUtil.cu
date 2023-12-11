@@ -46,7 +46,7 @@ __global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, glm::vec3* V, dataType
     {
         X[idx] = XTilt[idx];
     }
-    XTilt[idx] = X[idx];
+    //XTilt[idx] = X[idx];
 }
 
 __global__ void handleFloorCollision(glm::vec3* X, glm::vec3* V, int numVerts, Plane* planes, int numPlanes, float muT, float muN) {
@@ -96,7 +96,8 @@ __global__ void handleCylinderCollision(glm::vec3* X, glm::vec3* V, int numVerts
     if (i >= numVerts) return;
 
     for (int j = 0; j < numCylinders; j++) {
-        glm::vec3 axis = glm::normalize(glm::vec3(cylinders[j].m_model[1])); // Assuming Y-axis is the cylinder's axis
+        const Cylinder cy = cylinders[j];
+        glm::vec3 axis = glm::vec3(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
         glm::vec3 cylinderCenter = glm::vec3(cylinders[j].m_model[3]);
         float cylinderRadius = cylinders[j].m_radius;
 

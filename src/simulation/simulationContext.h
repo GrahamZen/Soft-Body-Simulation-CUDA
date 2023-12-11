@@ -57,10 +57,8 @@ public:
     void UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr);
     void SetDt(float dt) { this->dt = dt; }
     void SetBVHBuildType(BVH::BuildType);
-    void SetCUDASolver(bool useCUDASolver) { this->useCUDASolver = useCUDASolver; }
     void SetGlobalSolver(bool useEigen) { this->useEigen = useEigen; }
     bool IsEigenGlobalSolver() const { return useEigen; }
-    bool IsCUDASolver() const { return useCUDASolver; }
     void Draw(SurfaceShader*, SurfaceShader*);
     AABB GetAABB() const;
     int GetTetCnt() const;
@@ -77,7 +75,6 @@ private:
     int numIterations = 10;
     int threadsPerBlock = 64;
     bool useEigen = true;
-    bool useCUDASolver = true;
     glm::vec3* dev_Xs;
     glm::vec3* dev_X0s;
     glm::vec3* dev_XTilts;
