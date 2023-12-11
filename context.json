@@ -168,7 +168,7 @@
         },
         {
             "name": "house&bunny",
-            "load": false,
+            "load": true,
             "dt": 0.01,
             "gravity": 98,
             "damp": 0.999,

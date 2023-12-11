@@ -77,7 +77,10 @@ private:
 
 class BVH : public Wireframe {
 public:
-
+    enum class BuildType {
+        Serial, Atomic, Cooperative
+    };
+    using ReadyFlagType = int;
     BVH(const SimulationCUDAContext* simContext, const int threadsPerBlock, size_t _maxQueries);
     ~BVH();
     void Init(int numTets, int numVerts, int maxThreads);
@@ -87,12 +90,14 @@ public:
     Drawable& GetQueryDrawable();
     SingleQueryDisplay& GetSingleQueryDrawable(int i, const glm::vec3* Xs, Query* guiQuery);
     int GetNumQueries() const;
+    void SetBuildType(BuildType);
+    BuildType GetBuildType();
 private:
     void BuildBBoxes();
     BVHNode* dev_BVHNodes = nullptr;
     AABB* dev_bboxes = nullptr;
     unsigned int* dev_mortonCodes = nullptr;
-    unsigned char* dev_ready = nullptr;
+    ReadyFlagType* dev_ready = nullptr;
 
     int numNodes;
     int numTets;
@@ -106,6 +111,6 @@ private:
     dim3 suggestedCGNumblocks;
     int suggestedBlocksize;
     bool isBuildBBCG = false;
-
+    BuildType buildType;
     CollisionDetection collisionDetection;
 };

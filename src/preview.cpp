@@ -94,6 +94,12 @@ void RenderImGui()
     ImGui::Checkbox("Enable BVH", &imguiData->BVHEnabled);
     ImGui::Checkbox("Enable Detection", &imguiData->handleCollision);
     ImGui::Checkbox("Visualize BVH", &imguiData->BVHVis);
+    const std::vector<const char*> buildTypeNameItems = { "Serial", "Atomic", "Cooperative" };
+    int buildType;
+    if (ImGui::Combo("BVH Build Type", &buildType, buildTypeNameItems.data(), buildTypeNameItems.size()))
+    {
+        context->SetBVHBuildType(static_cast<BVH::BuildType>(buildType));
+    }
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
     bool globalSolverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
     imguiData->Reset = ImGui::Button("Reset");

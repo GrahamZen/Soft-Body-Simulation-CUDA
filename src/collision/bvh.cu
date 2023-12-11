@@ -170,7 +170,7 @@ __global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNod
 
 }
 
-__global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, unsigned char* ready) {
+__global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, BVH::ReadyFlagType* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (ind >= leafCount - 1)return;
@@ -186,7 +186,7 @@ __global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, unsigned char* 
 
 namespace cg = cooperative_groups;
 
-__global__ void buildBBoxesCG(int leafCount, BVHNode* nodes, unsigned char* ready) {
+__global__ void buildBBoxesCG(int leafCount, BVHNode* nodes, BVH::ReadyFlagType* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
     cg::grid_group grid = cg::this_grid();
 
@@ -206,6 +206,26 @@ __global__ void buildBBoxesCG(int leafCount, BVHNode* nodes, unsigned char* read
     }
 }
 
+__global__ void buildBBoxesAtomic(int leafCount, BVHNode* nodes, BVH::ReadyFlagType* ready) {
+    int ind = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (ind >= leafCount - 1) return;
+    BVHNode node = nodes[ind];
+
+    while (true) {
+        auto leftReady = atomicCAS(&ready[node.leftIndex], 0, 0);
+        auto rightReady = atomicCAS(&ready[node.rightIndex], 0, 0);
+
+        if (leftReady != 0 && rightReady != 0) {
+            buildBBox(nodes[ind], nodes[node.leftIndex], nodes[node.rightIndex]);
+            ready[ind] = 1;
+            break;
+        }
+        __threadfence();
+    }
+}
+
+
 void BVH::Init(int _numTets, int _numVerts, int maxThreads)
 {
     numTets = _numTets;
@@ -217,12 +237,12 @@ void BVH::Init(int _numTets, int _numVerts, int maxThreads)
     cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
     cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
     cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
-    cudaMalloc(&dev_ready, numNodes * sizeof(unsigned char));
+    cudaMalloc(&dev_ready, numNodes * sizeof(ReadyFlagType));
     createBVH(numNodes);
     collisionDetection.createQueries(numVerts);
     cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
-    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(unsigned char));
-    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
+    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(ReadyFlagType));
+    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
     int minGridSize;
 
     cudaOccupancyMaxPotentialBlockSize(&minGridSize, &suggestedBlocksize, buildBBoxesCG, 0, 0);
@@ -240,18 +260,21 @@ void BVH::Init(int _numTets, int _numVerts, int maxThreads)
 }
 
 void BVH::BuildBBoxes() {
-    if (isBuildBBCG) {
+    if (buildType == BuildType::Cooperative && isBuildBBCG) {
         void* args[] = { &numTets, &dev_BVHNodes, &dev_ready };
         cudaError_t error = cudaLaunchCooperativeKernel((void*)buildBBoxesCG, suggestedCGNumblocks, suggestedBlocksize, args);
         if (error != cudaSuccess) {
             std::cerr << "cudaLaunchCooperativeKernel failed: " << cudaGetErrorString(error) << std::endl;
         }
     }
-    else {
-        unsigned char treeBuild = 0;
+    else if (buildType == BuildType::Atomic) {
+        buildBBoxesAtomic << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+    }
+    else if (buildType == BuildType::Serial) {
+        ReadyFlagType treeBuild = 0;
         while (treeBuild == 0) {
             buildBBoxesSerial << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
-            cudaMemcpy(&treeBuild, dev_ready, sizeof(unsigned char), cudaMemcpyDeviceToHost);
+            cudaMemcpy(&treeBuild, dev_ready, sizeof(ReadyFlagType), cudaMemcpyDeviceToHost);
         }
     }
 }
@@ -270,11 +293,12 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
     BuildBBoxes();
 
     cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
-    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(unsigned char));
-    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(unsigned char));
+    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(ReadyFlagType));
+    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
 }
 
-BVH::BVH(const SimulationCUDAContext* simContext, const int _threadsPerBlock, size_t _maxQueries) : threadsPerBlock(_threadsPerBlock), collisionDetection(simContext, _threadsPerBlock, _maxQueries) {}
+BVH::BVH(const SimulationCUDAContext* simContext, const int _threadsPerBlock, size_t _maxQueries) :
+    threadsPerBlock(_threadsPerBlock), collisionDetection(simContext, _threadsPerBlock, _maxQueries), buildType(BuildType::Serial) {}
 
 BVH::~BVH()
 {
@@ -314,4 +338,14 @@ SingleQueryDisplay& BVH::GetSingleQueryDrawable(int i, const glm::vec3* Xs, Quer
 
 int BVH::GetNumQueries() const {
     return collisionDetection.GetNumQueries();
+}
+
+void BVH::SetBuildType(BuildType _buildType)
+{
+    buildType = _buildType;
+}
+
+BVH::BuildType BVH::GetBuildType()
+{
+    return buildType;
 }

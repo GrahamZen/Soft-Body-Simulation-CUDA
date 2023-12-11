@@ -35,7 +35,7 @@ template <typename T1, typename T2>
 bool compareDevVSHost(const T1* dev_ptr, const T2* host_ptr2, int size) {
     std::vector<T1> host_ptr(size);
     cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T1) * size, cudaMemcpyDeviceToHost);
-    return compareHostVSHost(host_ptr.data(), reinterpret_cast<T1*>(host_ptr2), size);
+    return utilityCore::compareHostVSHost(host_ptr.data(), reinterpret_cast<T1*>(host_ptr2), size);
 }
 
 template <typename T1, typename T2>
@@ -44,7 +44,7 @@ bool compareDevVSDev(const T1* dev_ptr, const T2* dev_ptr2, int size) {
     std::vector<T2> host_ptr2(size);
     cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T1) * size, cudaMemcpyDeviceToHost);
     cudaMemcpy(host_ptr2.data(), dev_ptr2, sizeof(T2) * size, cudaMemcpyDeviceToHost);
-    return compareHostVSHost(host_ptr.data(), reinterpret_cast<T1*>(host_ptr2.data()), size);
+    return utilityCore::compareHostVSHost(host_ptr.data(), reinterpret_cast<T1*>(host_ptr2.data()), size);
 }
 
 __inline__ __device__ float trace(const glm::mat3& a)

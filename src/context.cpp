@@ -376,6 +376,11 @@ void Context::Draw() {
     mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
 }
 
+void Context::SetBVHBuildType(BVH::BuildType buildType)
+{
+    mcrpSimContext->SetBVHBuildType(buildType);
+}
+
 void Context::Update() {
     PollEvents();
     if (panelModified) {
