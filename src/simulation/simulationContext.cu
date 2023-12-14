@@ -12,7 +12,11 @@
 #include <functional>
 
 template<typename Func>
-void measureExecutionTime(const Func& func, const std::string& message) {
+void measureExecutionTime(const Func& func, const std::string& message, bool print = false) {
+    if (!print) {
+        func();
+        return;
+    }
     cudaEvent_t start, stop;
     cudaEventCreate(&start);
     cudaEventCreate(&stop);
@@ -176,21 +180,21 @@ void SimulationCUDAContext::Update()
         for (auto softbody : softBodies) {
             softbody->Update();
         }
-        }, "[" + name + "]<CUDA Solver>");
+        }, "[" + name + "]<CUDA Solver>", context->logEnabled);
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         measureExecutionTime([&]() {
             m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
-            }, "[" + name + "]<" + buildTypeStr + "BVH construction>");
+            }, "[" + name + "]<" + buildTypeStr + "BVH construction>", context->logEnabled);
         if (context->guiData->BVHVis)
             m_bvh.PrepareRenderData();
     }
     measureExecutionTime([&]() {
         dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);
-        }, "[" + name + "]" + "<Fixed objects collision handling>");
+        }, "[" + name + "]" + "<Fixed objects collision handling>", context->logEnabled);
     if (context->guiData->handleCollision && softBodies.size() > 1) {
         measureExecutionTime([&]() {
             CCD();
-            }, "[" + name + "]" + "<CCD>");
+            }, "[" + name + "]" + "<CCD>", context->logEnabled);
     }
     else
         cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);

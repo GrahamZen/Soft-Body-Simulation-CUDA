@@ -86,10 +86,6 @@ width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera
     phi = glm::acos(glm::dot(glm::normalize(viewXZ), glm::vec3(0, 0, -1)));
     theta = glm::acos(glm::dot(glm::normalize(viewZY), glm::vec3(0, 1, 0)));
     zoom = glm::length(mpCamera->position - ogLookAt);
-    std::string filename = "logs/log_" + getCurrentTimeStamp() + ".txt";
-    auto logger = spdlog::basic_logger_mt("basic_logger", filename);
-    spdlog::set_default_logger(logger);
-    spdlog::set_level(spdlog::level::debug);
 }
 
 Context::~Context()
@@ -299,6 +295,15 @@ SimulationCUDAContext* Context::LoadSimContext() {
     if (json.contains("pause")) {
         pause = json["pause"].get<bool>();
     }
+    if (json.contains("enable log")) {
+        logEnabled = json["enable log"].get<bool>();
+    }
+    std::string filename = "logs/log_" + getCurrentTimeStamp() + ".txt";
+    if (logEnabled) {
+        auto logger = spdlog::basic_logger_mt("basic_logger", filename);
+        spdlog::set_default_logger(logger);
+        spdlog::set_level(spdlog::level::debug);
+    }
     int numIterations = 10;
     if (json.contains("num of iterations")) {
         numIterations = json["num of iterations"].get<int>();
@@ -344,7 +349,8 @@ SimulationCUDAContext* Context::LoadSimContext() {
             mpSimContexts.push_back(new SimulationCUDAContext(this, baseName, extForce, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
-            spdlog::info("{} #dof: {}, #ele: {}", "[" + baseName + "]", DOFs.back(), Eles.back());
+            if (logEnabled)
+                spdlog::info("{} #dof: {}, #ele: {}", "[" + baseName + "]", DOFs.back(), Eles.back());
         }
         mcrpSimContext = mpSimContexts[0];
     }

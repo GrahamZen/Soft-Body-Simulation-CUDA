@@ -95,6 +95,7 @@ private:
     SurfaceShader* mpProgFlat;
     int iteration = 0;
     bool pause = false;
+    bool logEnabled = false;
     std::vector<const char*> namesContexts;
     std::vector<int> DOFs;
     std::vector<int> Eles;
