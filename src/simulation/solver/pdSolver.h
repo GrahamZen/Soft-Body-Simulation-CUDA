@@ -19,8 +19,6 @@ protected:
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
     indexType* Tri;
-
-    int numTris; // The number of triangles
     int nnzNumber;
 
     bool solverReady = false;
@@ -28,8 +26,8 @@ private:
     float* Mass;
     float* V0;
 
-    csrcholInfo_t d_info = NULL;
-    void* buffer_gpu = NULL;
+    csrcholInfo_t d_info = nullptr;
+    void* buffer_gpu = nullptr;
     cusolverSpHandle_t cusolverHandle;
 
     float* masses;

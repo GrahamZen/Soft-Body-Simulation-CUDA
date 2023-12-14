@@ -46,22 +46,22 @@ void SurfaceShader::draw(Drawable& d, int textureSlot)
 
     if (attrPos != -1 && d.bindPos()) {
         glEnableVertexAttribArray(attrPos);
-        glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+        glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, nullptr);
     }
 
     if (attrNor != -1 && d.bindNor()) {
         glEnableVertexAttribArray(attrNor);
-        glVertexAttribPointer(attrNor, 4, GL_FLOAT, false, 0, NULL);
+        glVertexAttribPointer(attrNor, 4, GL_FLOAT, false, 0, nullptr);
     }
 
     if (attrUV != -1 && d.bindUV()) {
         glEnableVertexAttribArray(attrUV);
-        glVertexAttribPointer(attrUV, 2, GL_FLOAT, false, 0, NULL);
+        glVertexAttribPointer(attrUV, 2, GL_FLOAT, false, 0, nullptr);
     }
 
     if (attrCol != -1 && d.bindCol()) {
         glEnableVertexAttribArray(attrCol);
-        glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, NULL);
+        glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, nullptr);
     }
 
     // Bind the index buffer and then draw shapes from it.
@@ -85,13 +85,13 @@ void SurfaceShader::drawPoints(Drawable& d)
     // Bind and enable the position attribute
     if (attrPos != -1 && d.bindPos()) {
         glEnableVertexAttribArray(attrPos);
-        glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+        glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, nullptr);
     }
 
     // Bind and enable the color attribute
     if (attrCol != -1 && d.bindCol()) {
         glEnableVertexAttribArray(attrCol);
-        glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, NULL);
+        glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, nullptr);
     }
 
     // Draw points
@@ -112,24 +112,24 @@ void SurfaceShader::drawSingleQuery(SingleQueryDisplay& d)
     useMe();
     if (attrCol != -1 && d.bindCol()) {
         glEnableVertexAttribArray(attrCol);
-        glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, NULL);
+        glVertexAttribPointer(attrCol, 4, GL_FLOAT, false, 0, nullptr);
     }
     if (d.IsLine()) {
         if (attrPos != -1 && d.bindPos()) {
             glEnableVertexAttribArray(attrPos);
-            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, nullptr);
             glDrawArrays(d.drawMode(), 0, d.elemCount());
         }
     }
     else {
         if (attrPos != -1 && d.bindVertPos()) {
             glEnableVertexAttribArray(attrPos);
-            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, nullptr);
             glDrawArrays(GL_POINTS, 0, 1);
         }
         if (attrPos != -1 && d.bindTriPos()) {
             glEnableVertexAttribArray(attrPos);
-            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, nullptr);
             if (d.bindTriIdx()) {
                 glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, 0);
             }
@@ -140,7 +140,7 @@ void SurfaceShader::drawSingleQuery(SingleQueryDisplay& d)
         }
         if (attrPos != -1 && d.bindPos()) {
             glEnableVertexAttribArray(attrPos);
-            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, NULL);
+            glVertexAttribPointer(attrPos, 3, GL_FLOAT, false, 0, nullptr);
             glDrawArrays(d.drawMode(), 0, 2);
         }
     }

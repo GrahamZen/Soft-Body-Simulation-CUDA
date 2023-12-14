@@ -94,10 +94,10 @@ void ShaderProgram::setTime(int t)
 char* ShaderProgram::textFileRead(const char* fileName) {
     char* text;
 
-    if (fileName != NULL) {
+    if (fileName != nullptr) {
         FILE* file = fopen(fileName, "rt");
 
-        if (file != NULL) {
+        if (file != nullptr) {
             fseek(file, 0, SEEK_END);
             int count = ftell(file);
             rewind(file);

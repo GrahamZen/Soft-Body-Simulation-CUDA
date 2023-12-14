@@ -8,7 +8,7 @@
 #include <imgui_impl_opengl3.h>
 
 GLFWwindow* window;
-GuiDataContainer* imguiData = NULL;
+GuiDataContainer* imguiData = nullptr;
 ImGuiIO* io = nullptr;
 bool mouseOverImGuiWinow = false;
 
@@ -37,7 +37,7 @@ bool initOpenGL() {
     glfwWindowHint(GLFW_SAMPLES, 4);
     glfwWindowHint(GLFW_DEPTH_BITS, 24);
 
-    window = glfwCreateWindow(context->width, context->height, "CIS 565 Path Tracer", NULL, NULL);
+    window = glfwCreateWindow(context->width, context->height, "CIS 565 Path Tracer", nullptr, nullptr);
     if (!window) {
         glfwTerminate();
         return false;
