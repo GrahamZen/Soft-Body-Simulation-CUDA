@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include <vector>
 #include <GL/glew.h>
-#include <bvh.h>
+#include <collision/bvh.h>
 
 AABB computeBoundingBox(const thrust::device_ptr<glm::vec3>& begin, const thrust::device_ptr<glm::vec3>& end);
 

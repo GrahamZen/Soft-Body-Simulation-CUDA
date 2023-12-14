@@ -1,36 +1,9 @@
-#include <cuda.h>
 #include <thrust/device_ptr.h>
 #include <thrust/transform.h>
-#include <sceneStructs.h>
-#include <simulationContext.h>
+#include <simulation/simulationContext.h>
 #include <utilities.cuh>
-#include <iostream>
 #include <glm/gtc/matrix_transform.hpp>
-#include <bvh.cuh>
-#include <chrono>
-#include <spdlog/spdlog.h>
-#include <functional>
-#include <softBody.h>
-
-template<typename Func>
-void measureExecutionTime(const Func& func, const std::string& message, bool print = false) {
-    if (!print) {
-        func();
-        return;
-    }
-    cudaEvent_t start, stop;
-    cudaEventCreate(&start);
-    cudaEventCreate(&stop);
-    cudaEventRecord(start);
-    func();
-    cudaEventRecord(stop);
-    cudaEventSynchronize(stop);
-    float milliseconds = 0;
-    cudaEventElapsedTime(&milliseconds, start, stop);
-    spdlog::info("{} Time: {} milliseconds", message, milliseconds);
-    cudaEventDestroy(start);
-    cudaEventDestroy(stop);
-}
+#include <simulation/softBody.h>
 
 #define ERRORCHECK 1
 
@@ -165,31 +138,6 @@ void SimulationCUDAContext::CCD()
     mCollisionDetection.DetectCollision(dev_tIs, dev_Normals);
     int blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, dev_Vs, dev_tIs, dev_Normals, muT, muN, numVerts);
-}
-
-void SimulationCUDAContext::Update()
-{
-    measureExecutionTime([&]() {
-        for (auto softbody : softBodies) {
-            softbody->Update();
-        }
-        }, "[" + name + "]<CUDA Solver>", context->logEnabled);
-    if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
-        mCollisionDetection.PrepareRenderData();
-    }
-    measureExecutionTime([&]() {
-        dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);
-        }, "[" + name + "]" + "<Fixed objects collision handling>", context->logEnabled);
-    if (context->guiData->handleCollision && softBodies.size() > 1) {
-        measureExecutionTime([&]() {
-            CCD();
-            }, "[" + name + "]" + "<CCD>", context->logEnabled);
-    }
-    else
-        cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
-    if (context->guiData->ObjectVis) {
-        PrepareRenderData();
-    }
 }
 
 void SimulationCUDAContext::PrepareRenderData() {

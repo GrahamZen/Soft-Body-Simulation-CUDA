@@ -1,9 +1,8 @@
 #include <utilities.cuh>
-#include <cuda.h>
-#include <bvh.h>
-#include <sphere.h>
-#include <plane.h>
-#include <cylinder.h>
+#include <collision/bvh.h>
+#include <collision/rigid/sphere.h>
+#include <collision/rigid/plane.h>
+#include <collision/rigid/cylinder.h>
 
 __global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* Force,
     int numVerts, float mass, float dt, float damp,

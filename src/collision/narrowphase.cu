@@ -1,14 +1,14 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <bvh.h>
-#include <intersections.h>
+#include <collision/bvh.h>
+#include <collision/intersections.h>
 #include <cuda_runtime.h>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 #include <thrust/device_vector.h>
 #include <utilities.cuh>
-#include <simulationContext.h>
+#include <simulation/simulationContext.h>
 
 struct CompareQuery {
     __host__ __device__

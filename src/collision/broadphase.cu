@@ -4,10 +4,10 @@
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 #include <thrust/remove.h>
-#include <intersections.h>
+#include <collision/intersections.h>
 #include <cuda_runtime.h>
 #include <utilities.cuh>
-#include <bvh.cuh>
+#include <collision/bvh.cuh>
 #include <simulation/simulationContext.h>
 
 

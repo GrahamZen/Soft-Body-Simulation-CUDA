@@ -1,6 +1,6 @@
 #pragma once
 
-#include <solver.cuh>
+#include <simulation/solver/solver.h>
 class FEMSolver : public Solver {
 public:
     FEMSolver(SimulationCUDAContext*, SolverAttribute&, SolverData*);

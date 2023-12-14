@@ -2,7 +2,6 @@
 
 #include <def.h>
 #include <thrust/device_vector.h>
-#include <cuda_runtime.h>
 
 struct SolverAttribute {
     float mass = 1.0f;
@@ -15,19 +14,18 @@ struct SolverAttribute {
 class SimulationCUDAContext;
 
 struct SolverData {
-    indexType* Tet;
-    indexType* Tri;
-    glm::vec3* Force;
-    glm::vec3* V;
-    glm::vec3* X;
-    glm::vec3* X0;
-    glm::vec3* XTilt;
-    glm::vec3* Velocity;
-    int numTets;
-    int numVerts;
-    int numTris;
-    glm::vec3* dev_ExtForce;
-    glm::mat3* inv_Dm;
+    indexType* Tet = nullptr;
+    indexType* Tri = nullptr;
+    glm::vec3* Force = nullptr;
+    glm::vec3* V = nullptr;
+    glm::vec3* X = nullptr;
+    glm::vec3* X0 = nullptr;
+    glm::vec3* XTilt = nullptr;
+    glm::vec3* dev_ExtForce = nullptr;
+    glm::mat3* inv_Dm = nullptr;
+    int numTets = 0;
+    int numVerts = 0;
+    int numTris = 0;
 };
 
 class Solver {

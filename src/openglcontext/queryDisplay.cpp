@@ -2,7 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <queryDisplay.h>
-#include <bvh.h>
+#include <collision/bvh.h>
 
 QueryDisplay::QueryDisplay()
     : Drawable()

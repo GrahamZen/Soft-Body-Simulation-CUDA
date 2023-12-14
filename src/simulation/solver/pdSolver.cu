@@ -1,4 +1,4 @@
-#include <pdSolver.h>
+#include <simulation/solver/pdSolver.h>
 #include <utilities.cuh>
 #include <thrust/sort.h>
 #include <thrust/reduce.h>
@@ -7,7 +7,7 @@
 #include <cusolverSp.h>
 #include <cusolverSp_LOWLEVEL_PREVIEW.h>
 #include <cusparse.h>
-#include <simulationContext.h>
+#include <simulation/simulationContext.h>
 
 #define ERRORCHECK 1
 

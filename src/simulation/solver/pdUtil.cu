@@ -1,6 +1,5 @@
 #include <utilities.cuh>
 #include <svd3_cuda.h>
-#include <cuda.h>
 
 __device__ void svdGLM(const glm::mat3& A, glm::mat3& U, glm::mat3& S, glm::mat3& V)
 {

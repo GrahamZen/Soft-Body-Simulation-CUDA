@@ -2,7 +2,7 @@
 #include <ctime>
 #include <main.h>
 #include <preview.h>
-#include <bvh.h>
+#include <collision/bvh.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>

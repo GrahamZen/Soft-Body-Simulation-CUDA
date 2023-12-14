@@ -1,21 +1,4 @@
-#include <softBody.h>
-#include <simulation/simulationContext.h>
-#include <glm/glm.hpp>
-#include <glm/gtx/norm.hpp>
-#include <glm/gtc/matrix_transform.hpp>
-#include <utilities.cuh>
-#include <pdSolver.h>
-
-SoftBody::SoftBody(SimulationCUDAContext* context, SolverAttribute& _attrib, SolverData* dataPtr)
-    :solverData(*dataPtr), attrib(_attrib), solver(new PdSolver{ context, solverData }), threadsPerBlock(context->GetThreadsPerBlock())
-{
-    Mesh::numTets = solverData.numTets;
-    Mesh::numTris = solverData.numTris;
-    if (numTris == 0)
-        createTetrahedron();
-    else
-        createMesh();
-}
+#include <simulation/softBody.h>
 
 SoftBody::~SoftBody()
 {
@@ -25,11 +8,6 @@ SoftBody::~SoftBody()
     cudaFree(solverData.inv_Dm);
 
     delete solver;
-}
-
-void SoftBody::Update()
-{
-    solver->Update(solverData, attrib);
 }
 
 void SoftBody::Reset()

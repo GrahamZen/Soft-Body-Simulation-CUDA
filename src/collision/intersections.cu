@@ -4,7 +4,7 @@
 #include <glm/gtx/intersect.hpp>
 #include <glm/gtc/constants.hpp>
 
-#include <intersections.h>
+#include <collision/intersections.h>
 #include <utilities.h>
 #include <glm/gtx/norm.hpp>
 

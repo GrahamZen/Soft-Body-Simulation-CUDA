@@ -1,5 +1,5 @@
 #pragma once
-#include <femSolver.h>
+#include <simulation/solver/femSolver.h>
 #include <Eigen/Dense>
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
@@ -41,8 +41,4 @@ private:
 
     float* bHost;
     Eigen::SimplicialCholesky<Eigen::SparseMatrix<float>> cholesky_decomposition_;
-
-    // Methods
-    void _Update();
-    void SetForce(Eigen::MatrixX3d* fext);
 };

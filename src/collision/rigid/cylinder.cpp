@@ -1,4 +1,4 @@
-#include <cylinder.h>
+#include <collision/rigid/cylinder.h>
 #include <vector>
 #include <glm/gtx/string_cast.hpp>
 

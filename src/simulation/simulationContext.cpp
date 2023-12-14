@@ -1,8 +1,31 @@
-#include <simulationContext.h>
-#include <softBody.h>
+#include <simulation/simulationContext.h>
+#include <surfaceshader.h>
+#include <simulation/softBody.h>
 #include <map>
-#include <set>
-#include <utilities.cuh>
+#include <utilities.h>
+#include <chrono>
+#include <spdlog/spdlog.h>
+#include <functional>
+
+template<typename Func>
+void measureExecutionTime(const Func& func, const std::string& message, bool print = false) {
+    if (!print) {
+        func();
+        return;
+    }
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    func();
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    spdlog::info("{} Time: {} milliseconds", message, milliseconds);
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+}
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _name, const ExternalForce& _extForce, nlohmann::json& json,
     const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads, int _numIterations)
@@ -119,6 +142,32 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         cudaMalloc((void**)&dev_tIs, numVerts * sizeof(dataType));
     }
 }
+
+void SimulationCUDAContext::Update()
+{
+    measureExecutionTime([&]() {
+        for (auto softbody : softBodies) {
+            softbody->Update();
+        }
+        }, "[" + name + "]<CUDA Solver>", context->logEnabled);
+    if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
+        mCollisionDetection.PrepareRenderData();
+    }
+    measureExecutionTime([&]() {
+        dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);
+        }, "[" + name + "]" + "<Fixed objects collision handling>", context->logEnabled);
+    if (context->guiData->handleCollision && softBodies.size() > 1) {
+        measureExecutionTime([&]() {
+            CCD();
+            }, "[" + name + "]" + "<CCD>", context->logEnabled);
+    }
+    else
+        cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
+    if (context->guiData->ObjectVis) {
+        PrepareRenderData();
+    }
+}
+
 
 void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {
     softBodies[index]->SetAttributes(softBodyAttr);

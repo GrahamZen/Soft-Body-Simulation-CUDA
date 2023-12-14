@@ -1,12 +1,12 @@
 #include <context.h>
 #include <sceneStructs.h>
 #include <surfaceshader.h>
-#include <simulationContext.h>
+#include <simulation/simulationContext.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <sphere.h>
-#include <cylinder.h>
+#include <collision/rigid/cylinder.h>
 #include <plane.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>

@@ -1,7 +1,7 @@
 #include <fixedBodyData.h>
 #include <sphere.h>
 #include <plane.h>
-#include <cylinder.h>
+#include <collision/rigid/cylinder.h>
 #include <utilities.cuh>
 
 FixedBodyData::FixedBodyData() {}

@@ -3,7 +3,7 @@
 #include <vector>
 #include <mesh.h>
 #include <context.h>
-#include <femSolver.h>
+#include <simulation/solver/femSolver.h>
 
 class SimulationCUDAContext;
 class SolverData;

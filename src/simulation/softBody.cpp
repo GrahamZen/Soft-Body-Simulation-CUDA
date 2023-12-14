@@ -1,11 +1,22 @@
-#include <softBody.h>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <glm/glm.hpp>
-#include <bvh.cuh>
-#include <simulationContext.h>
+#include <simulation/softBody.h>
+#include <simulation/solver/pdSolver.h>
+#include <simulation/simulationContext.h>
+
+SoftBody::SoftBody(SimulationCUDAContext* context, SolverAttribute& _attrib, SolverData* dataPtr)
+    :solverData(*dataPtr), attrib(_attrib), solver(new PdSolver{ context, solverData }), threadsPerBlock(context->GetThreadsPerBlock())
+{
+    Mesh::numTets = solverData.numTets;
+    Mesh::numTris = solverData.numTris;
+    if (numTris == 0)
+        createTetrahedron();
+    else
+        createMesh();
+}
+
+void SoftBody::Update()
+{
+    solver->Update(solverData, attrib);
+}
 
 int SoftBody::GetNumVerts() const
 {

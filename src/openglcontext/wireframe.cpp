@@ -2,7 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <wireframe.h>
-#include <bvh.h>
+#include <collision/bvh.h>
 
 Wireframe::Wireframe()
     : Drawable()

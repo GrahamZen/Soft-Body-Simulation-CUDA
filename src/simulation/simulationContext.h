@@ -1,12 +1,11 @@
 #include <json.hpp>
-#include <surfaceshader.h>
 #include <context.h>
-#include <solver.cuh>
-#include <bvh.h>
-#include <sceneStructs.h>
+#include <simulation/solver/solver.h>
+#include <collision/bvh.h>
 #include <fixedBodyData.h>
 
 class SoftBody;
+class SurfaceShader;
 class DataLoader {
     friend class SimulationCUDAContext;
 public:

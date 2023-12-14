@@ -13,7 +13,7 @@
 #include <filesystem>
 #include <utilities.h>
 #include <bitset>
-#include <bvh.h>
+#include <collision/bvh.h>
 #include <sphere.h>
 #include <type_traits>
 

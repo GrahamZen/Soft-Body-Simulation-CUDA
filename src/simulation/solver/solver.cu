@@ -1,5 +1,5 @@
-#include <pdSolver.h>
-#include <simulationContext.h>
+#include <simulation/solver/pdSolver.h>
+#include <simulation/simulationContext.h>
 #include <utilities.cuh>
 
 Solver::Solver(SimulationCUDAContext* context) :mcrpSimContext(context), threadsPerBlock(context->GetThreadsPerBlock())

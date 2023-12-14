@@ -1,11 +1,11 @@
 #pragma once
 
-#include <bvh.h>
+#include <collision/bvh.h>
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
-#include <cuda_runtime.h>
 #include <utilities.cuh>
-#include <simulationContext.h>
+#include <simulation/simulationContext.h>
+#include <surfaceshader.h>
 
 __constant__ dataType AABBThreshold = 0.01;
 
@@ -108,7 +108,6 @@ void CollisionDetection::Draw(SurfaceShader* flatShaderProgram)
             mPSimContext->context->guiData->QueryDirty ? mPSimContext->context->guiData->mPQuery : nullptr));
         mPSimContext->context->guiData->QueryDirty = false;
     }
-
 }
 
 SingleQueryDisplay& CollisionDetection::GetSQDisplay(int i, const glm::vec3* X, Query* guiQuery)

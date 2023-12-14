@@ -1,7 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
-#include <bvh.cuh>
+#include <collision/bvh.cuh>
 #include <cuda_runtime.h>
 #include <cooperative_groups.h>
 #include <thrust/sort.h>
@@ -9,7 +9,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
 #include <utilities.cuh>
-#include <simulationContext.h>
+#include <simulation/simulationContext.h>
 
 //input the aabb box of a Tetrahedron
 //generate a 30-bit morton code
