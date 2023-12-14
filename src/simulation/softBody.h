@@ -23,6 +23,7 @@ public:
     void SetAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr);
 private:
     SolverData solverData;
+    SolverAttribute attrib;
     FEMSolver* solver;
     bool jump = false;
     glm::vec3* X0;

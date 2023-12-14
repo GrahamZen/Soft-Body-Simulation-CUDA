@@ -13,7 +13,7 @@
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-void PdSolver::SolverPrepare(SolverData& solverData)
+void PdSolver::SolverPrepare(SolverData& solverData, SolverAttribute& attrib)
 {
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
@@ -125,7 +125,7 @@ void PdSolver::SolverPrepare(SolverData& solverData)
 }
 
 
-void PdSolver::SolverStep(SolverData& solverData)
+void PdSolver::SolverStep(SolverData& solverData, SolverAttribute& attrib)
 {
 
     float dt = mcrpSimContext->GetDt();
@@ -167,15 +167,15 @@ void PdSolver::SolverStep(SolverData& solverData)
 }
 
 
-void PdSolver::Update(SolverData& solverData)
+void PdSolver::Update(SolverData& solverData, SolverAttribute& attrib)
 {
-    AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, jump, attrib.mass, mcrpSimContext->GetExtForce().jump);
+    AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, attrib.jump, attrib.mass, mcrpSimContext->GetExtForce().jump);
     if (!solverReady)
     {
-        SolverPrepare(solverData);
+        SolverPrepare(solverData, attrib);
         solverReady = true;
     }
-    SolverStep(solverData);
+    SolverStep(solverData, attrib);
 }
 
 
@@ -186,13 +186,4 @@ void PdSolver::Laplacian_Smoothing(float blendAlpha)
     //int blocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     //LaplacianGatherKern << < blocks, threadsPerBlock >> > (V, V_sum, V_num, solverData.numTets, solverData.Tet);
     //LaplacianKern << < (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (V, V_sum, V_num, solverData.numVerts, solverData.Tet, blendAlpha);
-}
-
-void PdSolver::setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)
-{
-    softBodyAttr.setJumpClean(jump);
-    if (softBodyAttr.stiffness_0.second)
-        attrib.stiffness_0 = softBodyAttr.stiffness_0.first;
-    if (softBodyAttr.stiffness_1.second)
-        attrib.stiffness_1 = softBodyAttr.stiffness_1.first;
 }

@@ -9,6 +9,7 @@ struct SolverAttribute {
     float stiffness_0 = 20000.0f;
     float stiffness_1 = 5000.0f;
     int numConstraints = 0;
+    bool jump = false;
 };
 
 class SimulationCUDAContext;
@@ -31,14 +32,13 @@ struct SolverData {
 
 class Solver {
 public:
-    Solver(SimulationCUDAContext*, SolverAttribute&);
+    Solver(SimulationCUDAContext*);
     virtual ~Solver();
 
-    virtual void Update(SolverData& solverData) = 0;
+    virtual void Update(SolverData& solverData, SolverAttribute& solverAttr) = 0;
 protected:
-    virtual void SolverPrepare(SolverData& solverData) = 0;
-    virtual void SolverStep(SolverData& solverData) = 0;
-    SolverAttribute attrib;
+    virtual void SolverPrepare(SolverData& solverData, SolverAttribute& solverAttr) = 0;
+    virtual void SolverStep(SolverData& solverData, SolverAttribute& solverAttr) = 0;
     const int threadsPerBlock;
     SimulationCUDAContext* mcrpSimContext;
 

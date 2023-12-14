@@ -10,17 +10,14 @@
 class SimulationCUDAContext;
 class PdSolver : public FEMSolver {
 public:
-    PdSolver(SimulationCUDAContext*, SolverAttribute&, const SolverData&);
+    PdSolver(SimulationCUDAContext*, const SolverData&);
     ~PdSolver();
-    virtual void Update(SolverData& solverData) override;
+    virtual void Update(SolverData& solverData, SolverAttribute& solverAttr) override;
 protected:
-    virtual void SolverPrepare(SolverData& solverData) override;
-    virtual void SolverStep(SolverData& solverData) override;
-    void setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr);
+    virtual void SolverPrepare(SolverData& solverData, SolverAttribute& solverAttr) override;
+    virtual void SolverStep(SolverData& solverData, SolverAttribute& solverAttr) override;
     void Laplacian_Smoothing(float blendAlpha = 0.5f);
 private:
-    bool jump = false;
-
     indexType* Tri;
 
     int numTris; // The number of triangles

@@ -7,7 +7,7 @@
 #include <pdSolver.h>
 
 SoftBody::SoftBody(SimulationCUDAContext* context, SolverAttribute& _attrib, SolverData* dataPtr)
-    :solverData(*dataPtr), solver(new PdSolver{ context, _attrib, solverData }), threadsPerBlock(context->GetThreadsPerBlock())
+    :solverData(*dataPtr), attrib(_attrib), solver(new PdSolver{ context, solverData }), threadsPerBlock(context->GetThreadsPerBlock())
 {
     Mesh::numTets = solverData.numTets;
     Mesh::numTris = solverData.numTris;
@@ -29,7 +29,7 @@ SoftBody::~SoftBody()
 
 void SoftBody::Update()
 {
-    solver->Update(solverData);
+    solver->Update(solverData, attrib);
 }
 
 void SoftBody::Reset()

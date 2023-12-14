@@ -2,7 +2,7 @@
 #include <simulationContext.h>
 #include <utilities.cuh>
 
-Solver::Solver(SimulationCUDAContext* context, SolverAttribute& _attrib) :mcrpSimContext(context), threadsPerBlock(context->GetThreadsPerBlock())
+Solver::Solver(SimulationCUDAContext* context) :mcrpSimContext(context), threadsPerBlock(context->GetThreadsPerBlock())
 {
 
 }
@@ -10,9 +10,9 @@ Solver::Solver(SimulationCUDAContext* context, SolverAttribute& _attrib) :mcrpSi
 Solver::~Solver() {
 }
 
-FEMSolver::FEMSolver(SimulationCUDAContext* context, SolverAttribute& _attrib) : Solver(context, _attrib) {}
+FEMSolver::FEMSolver(SimulationCUDAContext* context) : Solver(context) {}
 
-PdSolver::PdSolver(SimulationCUDAContext* context, SolverAttribute& _attrib, const SolverData& solverData) : FEMSolver(context, _attrib)
+PdSolver::PdSolver(SimulationCUDAContext* context, const SolverData& solverData) : FEMSolver(context)
 {
     cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(solverData.dev_ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
