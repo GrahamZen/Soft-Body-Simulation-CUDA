@@ -230,8 +230,8 @@ __global__ void buildBBoxesAtomic(int leafCount, BVHNode* nodes, BVH::ReadyFlagT
 void BVH::Init(int _numTets, int _numVerts, int maxThreads)
 {
     numTets = _numTets;
-    numVerts = _numVerts;
-    numNodes = numTets * 2 - 1;
+    int numVerts = _numVerts;
+    int numNodes = numTets * 2 - 1;
     cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode));
     cudaMalloc((void**)&dev_tI, numVerts * sizeof(dataType));
     cudaMemset(dev_tI, 0, numVerts * sizeof(dataType));
@@ -314,6 +314,7 @@ void BVH::PrepareRenderData()
 {
     glm::vec3* pos;
     Wireframe::MapDevicePosPtr(&pos);
+    int numNodes = numTets * 2 - 1;
     dim3 numThreadsPerBlock(numNodes / threadsPerBlock + 1);
     populateBVHNodeAABBPos << <numThreadsPerBlock, threadsPerBlock >> > (dev_BVHNodes, pos, numNodes);
     Wireframe::unMapDevicePtr();
@@ -328,9 +329,9 @@ void CollisionDetection::DetectCollision(dataType* tI, glm::vec3* nors)
 {
     thrust::device_ptr<dataType> dev_ptr(tI);
     thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
-    if (BroadPhase(mPSimContext->numTets, mPSimContext->dev_Tets, mPSimContext->dev_TetFathers)) {
-        PrepareRenderData(mPSimContext->dev_Xs);
-        NarrowPhase(mPSimContext->dev_Xs, mPSimContext->dev_XTilts, tI, nors);
+    if (BroadPhase()) {
+        PrepareRenderData();
+        NarrowPhase(tI, nors);
     }
 }
 

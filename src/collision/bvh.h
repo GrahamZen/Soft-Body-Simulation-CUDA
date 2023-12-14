@@ -71,11 +71,7 @@ private:
     AABB* dev_bboxes = nullptr;
     unsigned int* dev_mortonCodes = nullptr;
     ReadyFlagType* dev_ready = nullptr;
-
-    int numNodes;
     int numTets;
-    int numVerts;
-    int numEdges;
     dataType* dev_tI;
     int* dev_indicesToReport;
     const int threadsPerBlock;
@@ -92,17 +88,17 @@ public:
     CollisionDetection(const SimulationCUDAContext* simContext, const int threadsPerBlock, size_t maxNumQueries);
     ~CollisionDetection();
     void DetectCollision(dataType* tI, glm::vec3* nors);
-    bool DetectCollisionCandidates(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers);
     void Init(int numTets, int numVerts, int maxThreads);
-    bool BroadPhase(int numTets, const GLuint* tets, const GLuint* tetFathers);
-    void NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors);
-    void PrepareRenderData(const glm::vec3* Xs);
+    void PrepareRenderData();
     BVH& GetBVH();
     int GetNumQueries() const {
         return numQueries;
     }
     SingleQueryDisplay& GetSQDisplay(int i, const glm::vec3* Xs, Query* guiQuery);
 private:
+    bool BroadPhase();
+    void NarrowPhase(dataType*& tI, glm::vec3*& nors);
+    bool DetectCollisionCandidates(const BVHNode* dev_BVHNodes);
     Query* dev_queries;
     SingleQueryDisplay mSqDisplay;
     size_t* dev_numQueries;

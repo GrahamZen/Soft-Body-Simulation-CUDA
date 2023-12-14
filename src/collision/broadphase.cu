@@ -8,6 +8,7 @@
 #include <intersections.h>
 #include <cuda_runtime.h>
 #include <utilities.cuh>
+#include <simulation/simulationContext.h>
 
 
 struct QueryComparator {
@@ -203,16 +204,16 @@ __global__ void traverseTree(int numTets, const BVHNode* nodes, const GLuint* te
     }
 }
 
-bool CollisionDetection::DetectCollisionCandidates(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers) {
+bool CollisionDetection::DetectCollisionCandidates(const BVHNode* dev_BVHNodes) {
     bool overflowHappened = false;
     bool overflow;
-    dim3 numblocksTets = (numTets + threadsPerBlock - 1) / threadsPerBlock;
+    dim3 numblocksTets = (mPSimContext->numTets + threadsPerBlock - 1) / threadsPerBlock;
 
     cudaMemset(dev_numQueries, 0, sizeof(size_t));
     do {
         overflow = false;
         cudaMemset(dev_overflowFlag, 0, sizeof(bool));
-        traverseTree << <numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, tets, tetFathers, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag);
+        traverseTree << <numblocksTets, threadsPerBlock >> > (mPSimContext->numTets, dev_BVHNodes, mPSimContext->dev_Tets, mPSimContext->dev_TetFathers, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag);
         cudaMemcpy(&overflow, dev_overflowFlag, sizeof(bool), cudaMemcpyDeviceToHost);
         if (overflow) {
             overflowHappened = true;
@@ -279,9 +280,9 @@ void removeDuplicates(Query* dev_queries, size_t& dev_numQueries) {
     dev_numQueries = new_end_unique - dev_ptr;
 }
 
-bool CollisionDetection::BroadPhase(int numTets, const GLuint* tets, const GLuint* tetFathers)
+bool CollisionDetection::BroadPhase()
 {
-    if (!DetectCollisionCandidates(numTets, m_bvh.GetBVHNodes(), tets, tetFathers)) {
+    if (!DetectCollisionCandidates(m_bvh.GetBVHNodes())) {
         count = 0;
         return false;
     }

@@ -5,6 +5,7 @@
 #include <thrust/fill.h>
 #include <cuda_runtime.h>
 #include <utilities.cuh>
+#include <simulationContext.h>
 
 __constant__ dataType AABBThreshold = 0.01;
 
@@ -78,12 +79,12 @@ __global__ void processQueries(const Query* queries, int numQueries, glm::vec4* 
     }
 }
 
-void CollisionDetection::PrepareRenderData(const glm::vec3* Xs)
+void CollisionDetection::PrepareRenderData()
 {
     glm::vec3* pos;
     glm::vec4* col;
     MapDevicePosPtr(&pos, &col);
-    cudaMemcpy(pos, Xs, numVerts * sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+    cudaMemcpy(pos, mPSimContext->dev_Xs, numVerts * sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
     cudaMemset(col, 0, numVerts * sizeof(glm::vec4));
     dim3 numBlocks((numQueries + threadsPerBlock - 1) / threadsPerBlock);
     processQueries << <numBlocks, threadsPerBlock >> > (dev_queries, numQueries, col);

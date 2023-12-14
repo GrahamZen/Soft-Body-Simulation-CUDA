@@ -40,7 +40,7 @@ struct CompareQuery {
                 }
             }
         }
-        
+
     }
 };
 
@@ -148,7 +148,7 @@ __global__ void storeTi(int numQueries, Query* queries, dataType* tI, glm::vec3*
     if (index < numQueries)
     {
         Query& q = queries[index];
-        
+
         if (q.type == QueryType::EE)
         {
             if (q.toi < 1.0f)
@@ -238,10 +238,10 @@ __global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::ve
     }
 }
 
-void CollisionDetection::NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors)
+void CollisionDetection::NarrowPhase(dataType*& tI, glm::vec3*& nors)
 {
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, Xs, XTilts);
+    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, mPSimContext->dev_Xs, mPSimContext->dev_XTilts);
     thrust::device_ptr<Query> dev_queriesPtr(dev_queries);
 
     thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());

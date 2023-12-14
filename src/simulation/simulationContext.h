@@ -69,8 +69,6 @@ public:
     void CCD();
 private:
     ExternalForce extForce;
-    float floorY = 0.f;
-    glm::vec3 floorUp = glm::vec3(0.0f, 1.0f, 0.0f);
     void PrepareRenderData();
     int numIterations = 10;
     int threadsPerBlock = 64;
