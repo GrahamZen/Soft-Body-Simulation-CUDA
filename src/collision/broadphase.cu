@@ -233,6 +233,12 @@ bool CollisionDetection::DetectCollisionCandidates(int numTets, const BVHNode* d
     return numQueries > 0;
 }
 
+void CollisionDetection::Init(int numTets, int numVerts, int maxThreads)
+{
+    createQueries(numVerts);
+    m_bvh.Init(numTets, numVerts, maxThreads);
+}
+
 __global__ void sortEachQuery(size_t numQueries, Query* query)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
@@ -273,9 +279,9 @@ void removeDuplicates(Query* dev_queries, size_t& dev_numQueries) {
     dev_numQueries = new_end_unique - dev_ptr;
 }
 
-bool CollisionDetection::BroadPhase(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers)
+bool CollisionDetection::BroadPhase(int numTets, const GLuint* tets, const GLuint* tetFathers)
 {
-    if (!DetectCollisionCandidates(numTets, dev_BVHNodes, tets, tetFathers)) {
+    if (!DetectCollisionCandidates(numTets, m_bvh.GetBVHNodes(), tets, tetFathers)) {
         count = 0;
         return false;
     }

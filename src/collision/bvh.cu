@@ -9,6 +9,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
 #include <utilities.cuh>
+#include <simulationContext.h>
 
 //input the aabb box of a Tetrahedron
 //generate a 30-bit morton code
@@ -239,7 +240,6 @@ void BVH::Init(int _numTets, int _numVerts, int maxThreads)
     cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
     cudaMalloc(&dev_ready, numNodes * sizeof(ReadyFlagType));
     createBVH(numNodes);
-    collisionDetection.createQueries(numVerts);
     cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
     cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(ReadyFlagType));
     cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
@@ -297,8 +297,8 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
     cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
 }
 
-BVH::BVH(const SimulationCUDAContext* simContext, const int _threadsPerBlock, size_t _maxQueries) :
-    threadsPerBlock(_threadsPerBlock), collisionDetection(simContext, _threadsPerBlock, _maxQueries), buildType(BuildType::Serial) {}
+BVH::BVH(const int _threadsPerBlock) :
+    threadsPerBlock(_threadsPerBlock), buildType(BuildType::Serial) {}
 
 BVH::~BVH()
 {
@@ -319,25 +319,19 @@ void BVH::PrepareRenderData()
     Wireframe::unMapDevicePtr();
 }
 
-void BVH::DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors, const glm::vec3* X0)
+const BVHNode* BVH::GetBVHNodes() const
+{
+    return dev_BVHNodes;
+}
+
+void CollisionDetection::DetectCollision(dataType* tI, glm::vec3* nors)
 {
     thrust::device_ptr<dataType> dev_ptr(tI);
     thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
-    collisionDetection.DetectCollision(numTets, dev_BVHNodes, tets, tetFathers, Xs, XTilts, tI, nors);
-}
-
-Drawable& BVH::GetQueryDrawable()
-{
-    return collisionDetection;
-}
-
-SingleQueryDisplay& BVH::GetSingleQueryDrawable(int i, const glm::vec3* Xs, Query* guiQuery)
-{
-    return collisionDetection.GetSQDisplay(i, Xs, guiQuery);
-}
-
-int BVH::GetNumQueries() const {
-    return collisionDetection.GetNumQueries();
+    if (BroadPhase(mPSimContext->numTets, mPSimContext->dev_Tets, mPSimContext->dev_TetFathers)) {
+        PrepareRenderData(mPSimContext->dev_Xs);
+        NarrowPhase(mPSimContext->dev_Xs, mPSimContext->dev_XTilts, tI, nors);
+    }
 }
 
 void BVH::SetBuildType(BuildType _buildType)

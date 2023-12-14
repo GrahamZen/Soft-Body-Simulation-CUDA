@@ -92,7 +92,7 @@ private:
     std::vector<FixedBody*> fixedBodies;
     FixedBodyData dev_fixedBodies;
     std::vector<int> startIndices;
-    BVH m_bvh;
+    CollisionDetection mCollisionDetection;
     float damp = 0.999f;
     float muN = 0.5f;
     float muT = 0.5f;

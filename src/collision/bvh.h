@@ -51,45 +51,18 @@ public:
     glm::vec3 normal = glm::vec3(0.f);
 };
 
-class CollisionDetection : public QueryDisplay {
-public:
-    CollisionDetection(const SimulationCUDAContext* simContext, const int threadsPerBlock, size_t maxNumQueries);
-    ~CollisionDetection();
-    bool DetectCollisionCandidates(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers);
-    bool BroadPhase(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers);
-    void DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors, const glm::vec3* X0 = nullptr);
-    void NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors);
-    void PrepareRenderData(const glm::vec3* Xs);
-    int GetNumQueries() const {
-        return numQueries;
-    }
-    SingleQueryDisplay& GetSQDisplay(int i, const glm::vec3* Xs, Query* guiQuery);
-private:
-    Query* dev_queries;
-    SingleQueryDisplay mSqDisplay;
-    size_t* dev_numQueries;
-    size_t numQueries;
-    size_t maxNumQueries = 1 << 15;
-    bool* dev_overflowFlag;
-    const int threadsPerBlock;
-    const SimulationCUDAContext* mPSimContext;
-};
-
 class BVH : public Wireframe {
 public:
     enum class BuildType {
         Serial, Atomic, Cooperative
     };
     using ReadyFlagType = int;
-    BVH(const SimulationCUDAContext* simContext, const int threadsPerBlock, size_t _maxQueries);
+    BVH(const int threadsPerBlock);
     ~BVH();
     void Init(int numTets, int numVerts, int maxThreads);
     void PrepareRenderData();
+    const BVHNode* GetBVHNodes() const;
     void BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
-    void DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors, const glm::vec3* X0 = nullptr);
-    Drawable& GetQueryDrawable();
-    SingleQueryDisplay& GetSingleQueryDrawable(int i, const glm::vec3* Xs, Query* guiQuery);
-    int GetNumQueries() const;
     void SetBuildType(BuildType);
     BuildType GetBuildType();
 private:
@@ -112,5 +85,31 @@ private:
     int suggestedBlocksize;
     bool isBuildBBCG = false;
     BuildType buildType;
-    CollisionDetection collisionDetection;
+};
+
+class CollisionDetection : public QueryDisplay {
+public:
+    CollisionDetection(const SimulationCUDAContext* simContext, const int threadsPerBlock, size_t maxNumQueries);
+    ~CollisionDetection();
+    void DetectCollision(dataType* tI, glm::vec3* nors);
+    bool DetectCollisionCandidates(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers);
+    void Init(int numTets, int numVerts, int maxThreads);
+    bool BroadPhase(int numTets, const GLuint* tets, const GLuint* tetFathers);
+    void NarrowPhase(const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors);
+    void PrepareRenderData(const glm::vec3* Xs);
+    BVH& GetBVH();
+    int GetNumQueries() const {
+        return numQueries;
+    }
+    SingleQueryDisplay& GetSQDisplay(int i, const glm::vec3* Xs, Query* guiQuery);
+private:
+    Query* dev_queries;
+    SingleQueryDisplay mSqDisplay;
+    size_t* dev_numQueries;
+    size_t numQueries;
+    size_t maxNumQueries = 1 << 15;
+    bool* dev_overflowFlag;
+    const int threadsPerBlock;
+    const SimulationCUDAContext* mPSimContext;
+    BVH m_bvh;
 };

@@ -74,7 +74,7 @@ int SimulationCUDAContext::GetVertCnt() const {
 }
 
 int SimulationCUDAContext::GetNumQueries() const {
-    return m_bvh.GetNumQueries();
+    return mCollisionDetection.GetNumQueries();
 }
 
 int SimulationCUDAContext::GetTetCnt() const {
@@ -168,14 +168,14 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
 
 void SimulationCUDAContext::CCD()
 {
-    m_bvh.DetectCollision(dev_Tets, dev_TetFathers, dev_Xs, dev_XTilts, dev_tIs, dev_Normals, dev_X0s);
+    mCollisionDetection.DetectCollision(dev_tIs, dev_Normals);
     int blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, dev_Vs, dev_tIs, dev_Normals, muT, muN, numVerts);
 }
 
 void SimulationCUDAContext::Update()
 {
-    const std::string buildTypeStr = m_bvh.GetBuildType() == BVH::BuildType::Cooperative ? "Cooperative" : m_bvh.GetBuildType() == BVH::BuildType::Atomic ? "Atomic" : "Serial";
+    const std::string buildTypeStr = mCollisionDetection.GetBVH().GetBuildType() == BVH::BuildType::Cooperative ? "Cooperative" : mCollisionDetection.GetBVH().GetBuildType() == BVH::BuildType::Atomic ? "Atomic" : "Serial";
     measureExecutionTime([&]() {
         for (auto softbody : softBodies) {
             softbody->Update();
@@ -183,10 +183,10 @@ void SimulationCUDAContext::Update()
         }, "[" + name + "]<CUDA Solver>", context->logEnabled);
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         measureExecutionTime([&]() {
-            m_bvh.BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
+            mCollisionDetection.GetBVH().BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
             }, "[" + name + "]<" + buildTypeStr + "BVH construction>", context->logEnabled);
         if (context->guiData->BVHVis)
-            m_bvh.PrepareRenderData();
+            mCollisionDetection.GetBVH().PrepareRenderData();
     }
     measureExecutionTime([&]() {
         dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);

@@ -50,7 +50,7 @@ AABB AABB::expand(const AABB& aabb)const {
     };
 }
 
-CollisionDetection::CollisionDetection(const SimulationCUDAContext* simContext, const int _threadsPerBlock, size_t _maxNumQueries) : mPSimContext(simContext), threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxNumQueries)
+CollisionDetection::CollisionDetection(const SimulationCUDAContext* simContext, const int _threadsPerBlock, size_t _maxNumQueries) : mPSimContext(simContext), threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxNumQueries), m_bvh(_threadsPerBlock)
 {
     cudaMalloc(&dev_queries, maxNumQueries * sizeof(Query));
 
@@ -66,14 +66,6 @@ CollisionDetection::~CollisionDetection()
     cudaFree(dev_queries);
     cudaFree(dev_numQueries);
     cudaFree(dev_overflowFlag);
-}
-
-void CollisionDetection::DetectCollision(int numTets, const BVHNode* dev_BVHNodes, const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType*& tI, glm::vec3*& nors, const glm::vec3* X0)
-{
-    if (BroadPhase(numTets, dev_BVHNodes, tets, tetFathers)) {
-        PrepareRenderData(Xs);
-        NarrowPhase(Xs, XTilts, tI, nors);
-    }
 }
 
 __global__ void processQueries(const Query* queries, int numQueries, glm::vec4* color) {
@@ -96,6 +88,11 @@ void CollisionDetection::PrepareRenderData(const glm::vec3* Xs)
     dim3 numBlocks((numQueries + threadsPerBlock - 1) / threadsPerBlock);
     processQueries << <numBlocks, threadsPerBlock >> > (dev_queries, numQueries, col);
     unMapDevicePtr();
+}
+
+BVH& CollisionDetection::GetBVH()
+{
+    return m_bvh;
 }
 
 SingleQueryDisplay& CollisionDetection::GetSQDisplay(int i, const glm::vec3* X, Query* guiQuery)

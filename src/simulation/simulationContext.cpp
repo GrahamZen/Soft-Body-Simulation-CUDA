@@ -5,7 +5,7 @@
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _name, const ExternalForce& _extForce, nlohmann::json& json,
     const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads, int _numIterations)
-    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), numIterations(_numIterations), m_bvh(this, _threadsPerBlockBVH, 1 << 16), fixedBodies(_fixedBodies), dev_fixedBodies(_threadsPerBlock, _fixedBodies), name(_name)
+    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), numIterations(_numIterations), mCollisionDetection(this, _threadsPerBlockBVH, 1 << 16), fixedBodies(_fixedBodies), dev_fixedBodies(_threadsPerBlock, _fixedBodies), name(_name)
 {
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
@@ -113,7 +113,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         for (auto softBodyData : dataLoader.m_softBodyData) {
             softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
         }
-        m_bvh.Init(numTets, numVerts, maxThreads);
+        mCollisionDetection.Init(numTets, numVerts, maxThreads);
         cudaMalloc((void**)&dev_Normals, numVerts * sizeof(glm::vec3));
         cudaMalloc((void**)&dev_tIs, numVerts * sizeof(dataType));
     }
@@ -125,7 +125,7 @@ void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::Soft
 
 void SimulationCUDAContext::SetBVHBuildType(BVH::BuildType buildType)
 {
-    m_bvh.SetBuildType(buildType);
+    mCollisionDetection.GetBVH().SetBuildType(buildType);
 }
 
 void SimulationCUDAContext::Reset()
@@ -149,15 +149,15 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
     }
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         if (context->guiData->BVHVis) {
-            flatShaderProgram->draw(m_bvh, 0);
+            flatShaderProgram->draw(mCollisionDetection.GetBVH(), 0);
         }
         if (context->guiData->handleCollision) {
             shaderProgram->setModelMatrix(glm::mat4(1.f));
             if (context->guiData->QueryVis)
-                flatShaderProgram->drawPoints(m_bvh.GetQueryDrawable());
+                flatShaderProgram->drawPoints(mCollisionDetection);
             if (context->guiData->QueryDebugMode) {
                 glLineWidth(context->guiData->LineWidth);
-                flatShaderProgram->drawSingleQuery(m_bvh.GetSingleQueryDrawable(context->guiData->CurrQueryId, dev_Xs, context->guiData->QueryDirty ? context->guiData->mPQuery : nullptr));
+                flatShaderProgram->drawSingleQuery(mCollisionDetection.GetSQDisplay(context->guiData->CurrQueryId, dev_Xs, context->guiData->QueryDirty ? context->guiData->mPQuery : nullptr));
                 context->guiData->QueryDirty = false;
             }
         }
