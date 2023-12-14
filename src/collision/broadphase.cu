@@ -1,6 +1,5 @@
 #pragma once
 
-#include <bvh.h>
 #include <thrust/device_vector.h>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
@@ -8,6 +7,7 @@
 #include <intersections.h>
 #include <cuda_runtime.h>
 #include <utilities.cuh>
+#include <bvh.cuh>
 #include <simulation/simulationContext.h>
 
 
@@ -280,8 +280,18 @@ void removeDuplicates(Query* dev_queries, size_t& dev_numQueries) {
     dev_numQueries = new_end_unique - dev_ptr;
 }
 
+AABB CollisionDetection::GetAABB() const
+{
+    thrust::device_ptr<glm::vec3> dev_ptr(mPSimContext->dev_Xs);
+    thrust::device_ptr<glm::vec3> dev_ptrTilts(mPSimContext->dev_XTilts);
+    return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTilts, dev_ptrTilts + numVerts));
+}
+
 bool CollisionDetection::BroadPhase()
 {
+    const std::string buildTypeStr = buildType == BVH::BuildType::Cooperative ? "Cooperative" : buildType == BVH::BuildType::Atomic ? "Atomic" : "Serial";
+    m_bvh.BuildBVHTree(buildType, GetAABB(), mPSimContext->numTets, mPSimContext->dev_Xs, mPSimContext->dev_XTilts, mPSimContext->dev_Tets);
+
     if (!DetectCollisionCandidates(m_bvh.GetBVHNodes())) {
         count = 0;
         return false;

@@ -46,7 +46,7 @@ void QueryDisplay::MapDevicePosPtr(glm::vec3** bufPosDevPtr, glm::vec4** bufColD
     }
 }
 
-void QueryDisplay::unMapDevicePtr()
+void QueryDisplay::UnMapDevicePtr()
 {
     cudaGraphicsUnmapResources(1, &cuda_bufPos_resource, 0);
     cudaGraphicsUnmapResources(1, &cuda_bufCol_resource, 0);

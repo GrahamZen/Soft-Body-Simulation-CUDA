@@ -259,7 +259,7 @@ void BVH::Init(int _numTets, int _numVerts, int maxThreads)
     suggestedCGNumblocks = (numTets + suggestedBlocksize - 1) / suggestedBlocksize;
 }
 
-void BVH::BuildBBoxes() {
+void BVH::BuildBBoxes(BuildType buildType) {
     if (buildType == BuildType::Cooperative && isBuildBBCG) {
         void* args[] = { &numTets, &dev_BVHNodes, &dev_ready };
         cudaError_t error = cudaLaunchCooperativeKernel((void*)buildBBoxesCG, suggestedCGNumblocks, suggestedBlocksize, args);
@@ -279,7 +279,7 @@ void BVH::BuildBBoxes() {
     }
 }
 
-void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets)
+void BVH::BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets)
 {
     cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
 
@@ -290,7 +290,7 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
 
     buildSplitList << <numblocksTets, threadsPerBlock >> > (numTets, dev_mortonCodes, dev_BVHNodes);
 
-    BuildBBoxes();
+    BuildBBoxes(buildType);
 
     cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
     cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(ReadyFlagType));
@@ -298,7 +298,7 @@ void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, con
 }
 
 BVH::BVH(const int _threadsPerBlock) :
-    threadsPerBlock(_threadsPerBlock), buildType(BuildType::Serial) {}
+    threadsPerBlock(_threadsPerBlock) {}
 
 BVH::~BVH()
 {
@@ -317,7 +317,7 @@ void BVH::PrepareRenderData()
     int numNodes = numTets * 2 - 1;
     dim3 numThreadsPerBlock(numNodes / threadsPerBlock + 1);
     populateBVHNodeAABBPos << <numThreadsPerBlock, threadsPerBlock >> > (dev_BVHNodes, pos, numNodes);
-    Wireframe::unMapDevicePtr();
+    Wireframe::UnMapDevicePtr();
 }
 
 const BVHNode* BVH::GetBVHNodes() const
@@ -335,12 +335,12 @@ void CollisionDetection::DetectCollision(dataType* tI, glm::vec3* nors)
     }
 }
 
-void BVH::SetBuildType(BuildType _buildType)
+void CollisionDetection::SetBuildType(BVH::BuildType _buildType)
 {
     buildType = _buildType;
 }
 
-BVH::BuildType BVH::GetBuildType()
+BVH::BuildType CollisionDetection::GetBuildType()
 {
     return buildType;
 }

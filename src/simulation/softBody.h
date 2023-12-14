@@ -31,7 +31,7 @@ public:
     void Update();
     void Reset();
     void mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr);
-    void unMapDevicePtr();
+    void UnMapDevicePtr();
     GLuint* getTet()const { return Tet; }
     GLuint* getTri()const { return Tri; }
     glm::vec3* getX()const { return X; }

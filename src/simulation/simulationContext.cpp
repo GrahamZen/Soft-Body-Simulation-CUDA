@@ -125,7 +125,7 @@ void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::Soft
 
 void SimulationCUDAContext::SetBVHBuildType(BVH::BuildType buildType)
 {
-    mCollisionDetection.GetBVH().SetBuildType(buildType);
+    mCollisionDetection.SetBuildType(buildType);
 }
 
 void SimulationCUDAContext::Reset()
@@ -147,19 +147,5 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
             shaderProgram->draw(*fixedBody, 0);
         }
     }
-    if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
-        if (context->guiData->BVHVis) {
-            flatShaderProgram->draw(mCollisionDetection.GetBVH(), 0);
-        }
-        if (context->guiData->handleCollision) {
-            shaderProgram->setModelMatrix(glm::mat4(1.f));
-            if (context->guiData->QueryVis)
-                flatShaderProgram->drawPoints(mCollisionDetection);
-            if (context->guiData->QueryDebugMode) {
-                glLineWidth(context->guiData->LineWidth);
-                flatShaderProgram->drawSingleQuery(mCollisionDetection.GetSQDisplay(context->guiData->CurrQueryId, dev_Xs, context->guiData->QueryDirty ? context->guiData->mPQuery : nullptr));
-                context->guiData->QueryDirty = false;
-            }
-        }
-    }
+    mCollisionDetection.Draw(flatShaderProgram);
 }

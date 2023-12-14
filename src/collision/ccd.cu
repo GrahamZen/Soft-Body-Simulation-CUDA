@@ -81,19 +81,34 @@ __global__ void processQueries(const Query* queries, int numQueries, glm::vec4* 
 
 void CollisionDetection::PrepareRenderData()
 {
-    glm::vec3* pos;
-    glm::vec4* col;
-    MapDevicePosPtr(&pos, &col);
-    cudaMemcpy(pos, mPSimContext->dev_Xs, numVerts * sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
-    cudaMemset(col, 0, numVerts * sizeof(glm::vec4));
-    dim3 numBlocks((numQueries + threadsPerBlock - 1) / threadsPerBlock);
-    processQueries << <numBlocks, threadsPerBlock >> > (dev_queries, numQueries, col);
-    unMapDevicePtr();
+    if (mPSimContext->context->guiData->QueryVis) {
+        glm::vec3* pos;
+        glm::vec4* col;
+        MapDevicePosPtr(&pos, &col);
+        cudaMemcpy(pos, mPSimContext->dev_Xs, numVerts * sizeof(glm::vec3), cudaMemcpyDeviceToDevice);
+        cudaMemset(col, 0, numVerts * sizeof(glm::vec4));
+        dim3 numBlocks((numQueries + threadsPerBlock - 1) / threadsPerBlock);
+        processQueries << <numBlocks, threadsPerBlock >> > (dev_queries, numQueries, col);
+        UnMapDevicePtr();
+    }
+    if (mPSimContext->context->guiData->BVHVis) {
+        m_bvh.PrepareRenderData();
+    }
 }
 
-BVH& CollisionDetection::GetBVH()
+void CollisionDetection::Draw(SurfaceShader* flatShaderProgram)
 {
-    return m_bvh;
+    if (mPSimContext->context->guiData->BVHVis)
+        flatShaderProgram->draw(m_bvh, 0);
+    if (mPSimContext->context->guiData->QueryVis)
+        flatShaderProgram->drawPoints(*this);
+    if (mPSimContext->context->guiData->QueryDebugMode) {
+        glLineWidth(mPSimContext->context->guiData->LineWidth);
+        flatShaderProgram->drawSingleQuery(GetSQDisplay(mPSimContext->context->guiData->CurrQueryId, mPSimContext->dev_Xs,
+            mPSimContext->context->guiData->QueryDirty ? mPSimContext->context->guiData->mPQuery : nullptr));
+        mPSimContext->context->guiData->QueryDirty = false;
+    }
+
 }
 
 SingleQueryDisplay& CollisionDetection::GetSQDisplay(int i, const glm::vec3* X, Query* guiQuery)

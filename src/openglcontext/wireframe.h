@@ -18,7 +18,7 @@ public:
 
     void createBVH(int numNodes);
     void MapDevicePosPtr(glm::vec3** bufPosDevPtr);
-    void unMapDevicePtr();
+    void UnMapDevicePtr();
 protected:
     cudaGraphicsResource* cuda_bufPos_resource = nullptr;
 };

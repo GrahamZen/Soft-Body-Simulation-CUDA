@@ -64,7 +64,7 @@ void Wireframe::MapDevicePosPtr(glm::vec3** bufPosDevPtr)
     cudaGraphicsResourceGetMappedPointer((void**)bufPosDevPtr, &size, cuda_bufPos_resource);
 }
 
-void Wireframe::unMapDevicePtr()
+void Wireframe::UnMapDevicePtr()
 {
     cudaGraphicsUnmapResources(1, &cuda_bufPos_resource, 0);
 }

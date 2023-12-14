@@ -209,7 +209,7 @@ void Mesh::mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr)
     cudaGraphicsResourceGetMappedPointer((void**)bufNorDevPtr, &size, cuda_bufNor_resource);
 }
 
-void Mesh::unMapDevicePtr()
+void Mesh::UnMapDevicePtr()
 {
     cudaGraphicsUnmapResources(1, &cuda_bufPos_resource, 0);
     cudaGraphicsUnmapResources(1, &cuda_bufNor_resource, 0);

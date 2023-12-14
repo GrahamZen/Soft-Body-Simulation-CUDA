@@ -62,13 +62,6 @@ SimulationCUDAContext::~SimulationCUDAContext()
     cudaFree(dev_Normals);
 }
 
-AABB SimulationCUDAContext::GetAABB() const
-{
-    thrust::device_ptr<glm::vec3> dev_ptr(dev_Xs);
-    thrust::device_ptr<glm::vec3> dev_ptrTilts(dev_XTilts);
-    return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTilts, dev_ptrTilts + numVerts));
-}
-
 int SimulationCUDAContext::GetVertCnt() const {
     return numVerts;
 }
@@ -175,18 +168,13 @@ void SimulationCUDAContext::CCD()
 
 void SimulationCUDAContext::Update()
 {
-    const std::string buildTypeStr = mCollisionDetection.GetBVH().GetBuildType() == BVH::BuildType::Cooperative ? "Cooperative" : mCollisionDetection.GetBVH().GetBuildType() == BVH::BuildType::Atomic ? "Atomic" : "Serial";
     measureExecutionTime([&]() {
         for (auto softbody : softBodies) {
             softbody->Update();
         }
         }, "[" + name + "]<CUDA Solver>", context->logEnabled);
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
-        measureExecutionTime([&]() {
-            mCollisionDetection.GetBVH().BuildBVHTree(GetAABB(), numTets, dev_Xs, dev_XTilts, dev_Tets);
-            }, "[" + name + "]<" + buildTypeStr + "BVH construction>", context->logEnabled);
-        if (context->guiData->BVHVis)
-            mCollisionDetection.GetBVH().PrepareRenderData();
+        mCollisionDetection.PrepareRenderData();
     }
     measureExecutionTime([&]() {
         dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);
@@ -212,13 +200,13 @@ void SimulationCUDAContext::PrepareRenderData() {
             dim3 numThreadsPerBlock(softbody->getTetNumber() / threadsPerBlock + 1);
             PopulatePos << <numThreadsPerBlock, threadsPerBlock >> > (pos, softbody->getX(), softbody->getTet(), softbody->getTetNumber());
             RecalculateNormals << <softbody->getTetNumber() * 4 / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, 4 * softbody->getTetNumber());
-            softbody->Mesh::unMapDevicePtr();
+            softbody->Mesh::UnMapDevicePtr();
         }
         else {
             dim3 numThreadsPerBlock(softbody->getTriNumber() / threadsPerBlock + 1);
             PopulateTriPos << <numThreadsPerBlock, threadsPerBlock >> > (pos, softbody->getX(), softbody->getTri(), softbody->getTriNumber());
             RecalculateNormals << <softbody->getTriNumber() / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, softbody->getTriNumber());
-            softbody->Mesh::unMapDevicePtr();
+            softbody->Mesh::UnMapDevicePtr();
         }
     }
 }

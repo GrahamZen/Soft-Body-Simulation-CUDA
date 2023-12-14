@@ -25,7 +25,7 @@ public:
     void bindBGTexture() const;
     void loadBGTexture() const;
     void mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr);
-    void unMapDevicePtr();
+    void UnMapDevicePtr();
 protected:
     cudaGraphicsResource* cuda_bufPos_resource = nullptr;
     cudaGraphicsResource* cuda_bufNor_resource = nullptr;
