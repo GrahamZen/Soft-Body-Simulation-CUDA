@@ -80,7 +80,7 @@ __device__ void buildBBox(BVHNode& curr, const BVHNode& left, const BVHNode& rig
 
 // build the bounding box and morton code for each SoftBody
 __global__ void buildLeafMorton(int startIndex, int numTri, dataType minX, dataType minY, dataType minZ,
-    dataType maxX, dataType maxY, dataType maxZ, const GLuint* tet, const glm::vec3* X, const glm::vec3* XTilt, BVHNode* leafNodes,
+    dataType maxX, dataType maxY, dataType maxZ, const indexType* tet, const glm::vec3* X, const glm::vec3* XTilt, BVHNode* leafNodes,
     unsigned int* mortonCodes)
 {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
@@ -279,7 +279,7 @@ void BVH::BuildBBoxes(BuildType buildType) {
     }
 }
 
-void BVH::BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets)
+void BVH::BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const indexType* tets)
 {
     cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
 

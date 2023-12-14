@@ -1,37 +1,26 @@
 #include <json.hpp>
-#include <softBody.h>
 #include <surfaceshader.h>
+#include <context.h>
+#include <solver.cuh>
 #include <bvh.h>
 #include <sceneStructs.h>
 #include <fixedBodyData.h>
 
-struct SoftBodyData {
-    GLuint* Tets;
-    GLuint* Tris;
-    glm::vec3* dev_X;
-    glm::vec3* dev_X0;
-    glm::vec3* dev_XTilt;
-    glm::vec3* dev_V;
-    glm::vec3* dev_F;
-    int numTets;
-    int numVerts;
-    int numTris;
-};
-
+class SoftBody;
 class DataLoader {
     friend class SimulationCUDAContext;
 public:
     DataLoader(const int);
     void CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale,
-        const glm::vec3& rot, bool centralize, int startIndex, SoftBody::SoftBodyAttribute attrib);
-    void AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilt, glm::vec3*& gV, glm::vec3*& gF, GLuint*& gEdges, GLuint*& gTet, GLuint*& gTetFather, int& numVerts, int& numTets);
+        const glm::vec3& rot, bool centralize, int startIndex, SolverAttribute attrib);
+    void AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilt, glm::vec3*& gV, glm::vec3*& gF, indexType*& gEdges, indexType*& gTet, indexType*& gTetFather, int& numVerts, int& numTets);
 private:
-    static std::vector<GLuint> loadEleFile(const std::string& EleFilename, int startIndex, int& numTets);
+    static std::vector<indexType> loadEleFile(const std::string& EleFilename, int startIndex, int& numTets);
     static std::vector<glm::vec3> loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts);
-    static std::vector<GLuint> loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris);
-    void CollectEdges(const std::vector<GLuint>& triIdx);
-    std::vector<std::pair<SoftBodyData, SoftBody::SoftBodyAttribute>> m_softBodyData;
-    std::vector<std::vector<GLuint>> m_edges;
+    static std::vector<indexType> loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris);
+    void CollectEdges(const std::vector<indexType>& triIdx);
+    std::vector<std::pair<SolverData, SolverAttribute>> m_softBodyData;
+    std::vector<std::vector<indexType>> m_edges;
     int totalNumVerts = 0;
     int totalNumTets = 0;
     int totalNumEdges = 0;
@@ -80,9 +69,9 @@ private:
     glm::vec3* dev_Fs;
     dataType* dev_tIs;
     glm::vec3* dev_Normals;
-    GLuint* dev_Tets;
-    GLuint* dev_TetFathers;
-    GLuint* dev_Edges;
+    indexType* dev_Tets;
+    indexType* dev_TetFathers;
+    indexType* dev_Edges;
     int numVerts = 0;
     int numTets = 0;
     std::vector<const char*> namesSoftBodies;

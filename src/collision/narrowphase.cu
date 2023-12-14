@@ -62,7 +62,7 @@ struct EqualQuery {
     }
 };
 
-__device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const GLuint* tets, const glm::vec3* Xs, const glm::vec3* XTilts, int& hitTetId, glm::vec3& nor)
+__device__ dataType traverseTree(int vertIdx, const BVHNode* nodes, const indexType* tets, const glm::vec3* Xs, const glm::vec3* XTilts, int& hitTetId, glm::vec3& nor)
 {
     // record the closest intersection
     dataType closest = 1;

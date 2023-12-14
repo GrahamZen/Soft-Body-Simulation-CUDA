@@ -1,6 +1,6 @@
 #pragma once
 
-#include <glm/glm.hpp>
+#include <def.h>
 #include <GL/glew.h>
 #include <wireframe.h>
 #include <mesh.h>
@@ -8,15 +8,6 @@
 #include <singleQueryDisplay.h>
 
 class SoftBody;
-
-using dataType = double;
-using glmVec4 = glm::tvec4<dataType>;
-using glmVec3 = glm::tvec3<dataType>;
-using glmVec2 = glm::tvec2<dataType>;
-using glmMat4 = glm::tmat4x4<dataType>;
-using glmMat3 = glm::tmat3x3<dataType>;
-using glmMat2 = glm::tmat2x2<dataType>;
-
 class SimulationCUDAContext;
 class SurfaceShader;
 class AABB {
@@ -44,10 +35,10 @@ enum class QueryType {
 class Query {
 public:
     QueryType type;
-    GLuint v0;
-    GLuint v1;
-    GLuint v2;
-    GLuint v3;
+    indexType v0;
+    indexType v1;
+    indexType v2;
+    indexType v3;
     float toi = 0.f;
     glm::vec3 normal = glm::vec3(0.f);
 };
@@ -63,7 +54,7 @@ public:
     void Init(int numTets, int numVerts, int maxThreads);
     void PrepareRenderData();
     const BVHNode* GetBVHNodes() const;
-    void BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets);
+    void BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const indexType* tets);
 private:
     void BuildBBoxes(BuildType buildType);
     BVHNode* dev_BVHNodes = nullptr;
@@ -109,5 +100,5 @@ private:
     const int threadsPerBlock;
     const SimulationCUDAContext* mPSimContext;
     BVH m_bvh;
-    BVH::BuildType buildType;
+    BVH::BuildType buildType = BVH::BuildType::Atomic;
 };

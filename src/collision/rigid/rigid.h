@@ -3,7 +3,7 @@
 #include <drawable.h>
 #include <texture.h>
 #include <string>
-#include <glm/glm.hpp>
+#include <def.h>
 #include <cuda_gl_interop.h>
 
 enum class BodyType {

@@ -79,7 +79,7 @@ __global__ void AddExternal(glm::vec3* V, int numVerts, bool jump, float mass, g
     }
 }
 
-__device__ glm::mat3 Build_Edge_Matrix(const glm::vec3* X, const GLuint* Tet, int tet) {
+__device__ glm::mat3 Build_Edge_Matrix(const glm::vec3* X, const indexType* Tet, int tet) {
     glm::mat3 ret(0.0f);
     ret[0] = X[Tet[tet * 4]] - X[Tet[tet * 4 + 3]];
     ret[1] = X[Tet[tet * 4 + 1]] - X[Tet[tet * 4 + 3]];
@@ -88,7 +88,7 @@ __device__ glm::mat3 Build_Edge_Matrix(const glm::vec3* X, const GLuint* Tet, in
     return ret;
 }
 
-__global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const glm::vec3* X, const GLuint* Tet)
+__global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const glm::vec3* X, const indexType* Tet)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (index < numTets)
@@ -99,7 +99,7 @@ __global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const 
     }
 }
 
-__global__ void LaplacianGatherKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int numTets, const GLuint* Tet) {
+__global__ void LaplacianGatherKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int numTets, const indexType* Tet) {
     int tet = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (tet < numTets) {
         glm::vec3 sum = V[Tet[tet * 4]] + V[Tet[tet * 4 + 1]] + V[Tet[tet * 4 + 2]] + V[Tet[tet * 4 + 3]];
@@ -114,7 +114,7 @@ __global__ void LaplacianGatherKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, 
     }
 }
 
-__global__ void LaplacianKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int numVerts, const GLuint* Tet, float blendAlpha) {
+__global__ void LaplacianKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int numVerts, const indexType* Tet, float blendAlpha) {
     int i = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (i < numVerts) {
         V[i] = blendAlpha * V[i] + (1 - blendAlpha) * V_sum[i] / float(V_num[i]);
@@ -122,7 +122,7 @@ __global__ void LaplacianKern(glm::vec3* V, glm::vec3* V_sum, int* V_num, int nu
 }
 
 
-__global__ void PopulatePos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int numTets)
+__global__ void PopulatePos(glm::vec3* vertices, glm::vec3* X, indexType* Tet, int numTets)
 {
     int tet = (blockIdx.x * blockDim.x) + threadIdx.x;
 
@@ -143,7 +143,7 @@ __global__ void PopulatePos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int 
     }
 }
 
-__global__ void PopulateTriPos(glm::vec3* vertices, glm::vec3* X, GLuint* Tet, int numTris)
+__global__ void PopulateTriPos(glm::vec3* vertices, glm::vec3* X, indexType* Tet, int numTris)
 {
     int tri = (blockIdx.x * blockDim.x) + threadIdx.x;
 
@@ -170,7 +170,7 @@ __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int nu
     }
 }
 
-__global__ void ComputeForces(glm::vec3* Force, const glm::vec3* X, const GLuint* Tet, int numTets, const glm::mat3* inv_Dm, float stiffness_0, float stiffness_1) {
+__global__ void ComputeForces(glm::vec3* Force, const glm::vec3* X, const indexType* Tet, int numTets, const glm::mat3* inv_Dm, float stiffness_0, float stiffness_1) {
     int tet = blockIdx.x * blockDim.x + threadIdx.x;
     if (tet >= numTets) return;
 

@@ -61,7 +61,7 @@ __host__ __device__ void sortFour(T& a, T& b, T& c, T& d) {
     if (a > b) swap(a, b);
 }
 
-__device__ void fillQuery(Query* query, int tetId, int tet2Id, const GLuint* tets) {
+__device__ void fillQuery(Query* query, int tetId, int tet2Id, const indexType* tets) {
     for (int i = 0; i < 4; i++) {
         int vi = tets[tetId * 4 + i];
         int v20 = tets[tet2Id * 4 + 0];
@@ -130,7 +130,7 @@ __device__ void fillQuery(Query* query, int tetId, int tet2Id, const GLuint* tet
 }
 
 
-__global__ void traverseTree(int numTets, const BVHNode* nodes, const GLuint* tets, const GLuint* tetFathers, Query* queries, size_t* queryCount, size_t maxNumQueries, bool* overflowFlag)
+__global__ void traverseTree(int numTets, const BVHNode* nodes, const indexType* tets, const indexType* tetFathers, Query* queries, size_t* queryCount, size_t maxNumQueries, bool* overflowFlag)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index >= numTets) return;

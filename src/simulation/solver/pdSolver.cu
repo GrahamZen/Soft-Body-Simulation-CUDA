@@ -1,4 +1,4 @@
-#include <simulationContext.h>
+#include <pdSolver.h>
 #include <utilities.cuh>
 #include <thrust/sort.h>
 #include <thrust/reduce.h>
@@ -7,19 +7,20 @@
 #include <cusolverSp.h>
 #include <cusolverSp_LOWLEVEL_PREVIEW.h>
 #include <cusparse.h>
+#include <simulationContext.h>
 
 #define ERRORCHECK 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 
-void SoftBody::solverPrepare()
+void PdSolver::SolverPrepare(SolverData& solverData)
 {
-    int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
+    int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     float dt = mcrpSimContext->GetDt();
     float const m_1_dt2 = attrib.mass / (dt * dt);
-    int len = numVerts * 3 + 48 * numTets;
-    int ASize = 3 * numVerts;
+    int len = solverData.numVerts * 3 + 48 * solverData.numTets;
+    int ASize = 3 * solverData.numVerts;
 
     cudaMalloc((void**)&sn, sizeof(float) * ASize);
     cudaMalloc((void**)&b, sizeof(float) * ASize);
@@ -33,8 +34,8 @@ void SoftBody::solverPrepare()
     cudaMalloc((void**)&tmpVal, sizeof(int) * len);
     cudaMemset(tmpVal, 0, sizeof(int) * len);
 
-    computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, inv_Dm, Tet, attrib.stiffness_0, numTets, numVerts);
-    setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * numTets, m_1_dt2, numVerts);
+    computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, solverData.inv_Dm, solverData.Tet, attrib.stiffness_0, solverData.numTets, solverData.numVerts);
+    setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
 
@@ -124,7 +125,7 @@ void SoftBody::solverPrepare()
 }
 
 
-void SoftBody::PDSolverStep()
+void PdSolver::SolverStep(SolverData& solverData)
 {
 
     float dt = mcrpSimContext->GetDt();
@@ -134,31 +135,64 @@ void SoftBody::PDSolverStep()
     float const m_1_dt2 = 1.f / dt2_m_1;
 
 
-    int vertBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    int tetBlocks = (numTets + threadsPerBlock - 1) / threadsPerBlock;
+    int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
 
-    glm::vec3 gravity{0.0f, -mcrpSimContext->GetGravity() * attrib.mass, 0.0f};
-    thrust::fill(thrust::device, dev_ExtForce.begin(), dev_ExtForce.end(), gravity);
-    computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, X, V, thrust::raw_pointer_cast(dev_ExtForce.data()), masses, m_1_dt2, numVerts);
+    glm::vec3 gravity{ 0.0f, -mcrpSimContext->GetGravity() * attrib.mass, 0.0f };
+    thrust::device_ptr<glm::vec3> dev_ptr(solverData.dev_ExtForce);
+    thrust::fill(thrust::device, dev_ptr, dev_ptr + solverData.numVerts, gravity);
+    //computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, thrust::raw_pointer_cast(solverData.dev_ExtForce.data()), masses, m_1_dt2, solverData.numVerts);
+    computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, solverData.dev_ExtForce, masses, m_1_dt2, solverData.numVerts);
     checkCUDAError("computeSn");
     for (int i = 0; i < mcrpSimContext->GetNumIterations(); i++)
     {
-        cudaMemset(b, 0, sizeof(float) * numVerts * 3);
-        computeLocal << < tetBlocks, threadsPerBlock >> > (V0, attrib.stiffness_0, b, inv_Dm, sn, Tet, numTets);
-        addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, numVerts);
+        cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
+        computeLocal << < tetBlocks, threadsPerBlock >> > (V0, attrib.stiffness_0, b, solverData.inv_Dm, sn, solverData.Tet, solverData.numTets);
+        addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
 
         if (mcrpSimContext->IsEigenGlobalSolver())
         {
-            cudaMemcpy(bHost, b, sizeof(float) * (numVerts * 3), cudaMemcpyDeviceToHost);
-            Eigen::VectorXf bh = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(bHost, numVerts * 3);
+            cudaMemcpy(bHost, b, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToHost);
+            Eigen::VectorXf bh = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(bHost, solverData.numVerts * 3);
             Eigen::VectorXf res = cholesky_decomposition_.solve(bh);
-            cudaMemcpy(sn, res.data(), sizeof(float) * (numVerts * 3), cudaMemcpyHostToDevice);
+            cudaMemcpy(sn, res.data(), sizeof(float) * (solverData.numVerts * 3), cudaMemcpyHostToDevice);
         }
         else
         {
-            cusolverSpScsrcholSolve(cusolverHandle, numVerts * 3, b, sn, d_info, buffer_gpu);
+            cusolverSpScsrcholSolve(cusolverHandle, solverData.numVerts * 3, b, sn, d_info, buffer_gpu);
         }
     }
 
-    updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, XTilt, V, numVerts);
+    updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilt, solverData.V, solverData.numVerts);
+}
+
+
+void PdSolver::Update(SolverData& solverData)
+{
+    AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, jump, attrib.mass, mcrpSimContext->GetExtForce().jump);
+    if (!solverReady)
+    {
+        SolverPrepare(solverData);
+        solverReady = true;
+    }
+    SolverStep(solverData);
+}
+
+
+void PdSolver::Laplacian_Smoothing(float blendAlpha)
+{
+    //cudaMemset(V_sum, 0, sizeof(glm::vec3) * solverData.numVerts);
+    //cudaMemset(V_num, 0, sizeof(int) * solverData.numVerts);
+    //int blocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
+    //LaplacianGatherKern << < blocks, threadsPerBlock >> > (V, V_sum, V_num, solverData.numTets, solverData.Tet);
+    //LaplacianKern << < (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (V, V_sum, V_num, solverData.numVerts, solverData.Tet, blendAlpha);
+}
+
+void PdSolver::setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)
+{
+    softBodyAttr.setJumpClean(jump);
+    if (softBodyAttr.stiffness_0.second)
+        attrib.stiffness_0 = softBodyAttr.stiffness_0.first;
+    if (softBodyAttr.stiffness_1.second)
+        attrib.stiffness_1 = softBodyAttr.stiffness_1.first;
 }

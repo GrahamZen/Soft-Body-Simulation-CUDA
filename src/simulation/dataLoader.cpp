@@ -10,7 +10,7 @@ DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerB
 {
 }
 
-std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
+std::vector<indexType> DataLoader::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
 {
     std::string line;
     std::ifstream file(EleFilename);
@@ -24,7 +24,7 @@ std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int 
     std::istringstream iss(line);
     iss >> numTets;
 
-    std::vector<GLuint> Tet(numTets * 4);
+    std::vector<indexType> Tet(numTets * 4);
 
     int a, b, c, d, e;
     for (int tet = 0; tet < numTets && std::getline(file, line); ++tet) {
@@ -41,21 +41,21 @@ std::vector<GLuint> DataLoader::loadEleFile(const std::string& EleFilename, int 
     return Tet;
 }
 
-std::vector<GLuint> DataLoader::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
+std::vector<indexType> DataLoader::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
 {
     std::string line;
     std::ifstream file(faceFilename);
 
     if (!file.is_open()) {
         // std::cerr << "Unable to open face file" << std::endl;
-        return std::vector<GLuint>();
+        return std::vector<indexType>();
     }
 
     std::getline(file, line);
     std::istringstream iss(line);
     iss >> numTris;
 
-    std::vector<GLuint> Triangle(numTris * 3);
+    std::vector<indexType> Triangle(numTris * 3);
 
     int a, b, c, d, e;
     for (int tet = 0; tet < numTris && std::getline(file, line); ++tet) {
@@ -114,18 +114,18 @@ std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename,
     return X;
 }
 
-void DataLoader::CollectEdges(const std::vector<GLuint>& triIdx) {
-    std::set<std::pair<GLuint, GLuint>> uniqueEdges;
-    std::vector<GLuint> edges;
+void DataLoader::CollectEdges(const std::vector<indexType>& triIdx) {
+    std::set<std::pair<indexType, indexType>> uniqueEdges;
+    std::vector<indexType> edges;
 
     for (size_t i = 0; i < triIdx.size(); i += 3) {
-        GLuint v0 = triIdx[i];
-        GLuint v1 = triIdx[i + 1];
-        GLuint v2 = triIdx[i + 2];
+        indexType v0 = triIdx[i];
+        indexType v1 = triIdx[i + 1];
+        indexType v2 = triIdx[i + 2];
 
-        std::pair<GLuint, GLuint> edge1 = std::minmax(v0, v1);
-        std::pair<GLuint, GLuint> edge2 = std::minmax(v1, v2);
-        std::pair<GLuint, GLuint> edge3 = std::minmax(v2, v0);
+        std::pair<indexType, indexType> edge1 = std::minmax(v0, v1);
+        std::pair<indexType, indexType> edge2 = std::minmax(v1, v2);
+        std::pair<indexType, indexType> edge3 = std::minmax(v2, v0);
 
         uniqueEdges.insert(edge1);
         uniqueEdges.insert(edge2);

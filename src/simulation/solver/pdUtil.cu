@@ -15,7 +15,7 @@ __device__ void svdGLM(const glm::mat3& A, glm::mat3& U, glm::mat3& S, glm::mat3
 // Ai here is I
 // size of row, col, val are 48 * tetNumber + vertNumber
 // row, col, val are used to initialize sparse matrix SiTSi
-__global__ void computeSiTSi(int* outIdx, float* val, float* V0, glm::mat3* DmInv, GLuint* tetIndex, float weight, int tetNumber, int vertNumber)
+__global__ void computeSiTSi(int* outIdx, float* val, float* V0, const glm::mat3* DmInv, const indexType* tetIndex, float weight, int tetNumber, int vertNumber)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (index < tetNumber)
@@ -103,7 +103,7 @@ __global__ void computeSn(float* sn, float dt, float dt2_m_1, glm::vec3* pos, gl
     }
 }
 
-__global__ void computeLocal(const float* V0, const float wi, float* xProj, const glm::mat3* DmInv, const float* qn__1, const GLuint* tetIndex, int tetNumber)
+__global__ void computeLocal(const float* V0, const float wi, float* xProj, const glm::mat3* DmInv, const float* qn__1, const indexType* tetIndex, int tetNumber)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (index < tetNumber)

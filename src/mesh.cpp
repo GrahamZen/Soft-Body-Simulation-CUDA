@@ -199,7 +199,7 @@ void Mesh::createMesh()
     cudaGraphicsGLRegisterBuffer(&cuda_bufNor_resource, bufNor, cudaGraphicsMapFlagsWriteDiscard);
 }
 
-void Mesh::mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr)
+void Mesh::MapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr)
 {
     size_t size;
     cudaGraphicsMapResources(1, &cuda_bufPos_resource, 0);

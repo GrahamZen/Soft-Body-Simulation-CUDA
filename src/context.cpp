@@ -4,6 +4,7 @@
 #include <simulationContext.h>
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include <sphere.h>
 #include <cylinder.h>
 #include <plane.h>

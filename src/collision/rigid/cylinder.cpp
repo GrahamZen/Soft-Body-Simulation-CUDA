@@ -76,7 +76,7 @@ void Cylinder::create()
 
     generateIdx();
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufIdx);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size() * sizeof(GLuint), idx.data(), GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size() * sizeof(indexType), idx.data(), GL_STATIC_DRAW);
 
     generatePos();
     glBindBuffer(GL_ARRAY_BUFFER, bufPos);

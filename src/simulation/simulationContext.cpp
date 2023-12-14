@@ -1,4 +1,5 @@
 #include <simulationContext.h>
+#include <softBody.h>
 #include <map>
 #include <set>
 #include <utilities.cuh>
@@ -106,7 +107,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
             strcpy(name, baseName.c_str());
             namesSoftBodies.push_back(name);
             dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), faceFile.c_str(), pos, scale, rot, centralize, startIndex,
-                SoftBody::SoftBodyAttribute{ mass, stiffness_0, stiffness_1, constraints });
+                SolverAttribute{ mass, stiffness_0, stiffness_1, constraints });
         }
 
         dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_XTilts, dev_Vs, dev_Fs, dev_Edges, dev_Tets, dev_TetFathers, numVerts, numTets);
@@ -120,7 +121,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
 }
 
 void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {
-    softBodies[index]->setAttributes(softBodyAttr);
+    softBodies[index]->SetAttributes(softBodyAttr);
 }
 
 void SimulationCUDAContext::SetBVHBuildType(BVH::BuildType buildType)

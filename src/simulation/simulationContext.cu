@@ -10,6 +10,7 @@
 #include <chrono>
 #include <spdlog/spdlog.h>
 #include <functional>
+#include <softBody.h>
 
 template<typename Func>
 void measureExecutionTime(const Func& func, const std::string& message, bool print = false) {
@@ -75,12 +76,12 @@ int SimulationCUDAContext::GetTetCnt() const {
 }
 
 void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
-    bool centralize, int startIndex, SoftBody::SoftBodyAttribute attrib)
+    bool centralize, int startIndex, SolverAttribute attrib)
 {
-    SoftBodyData softBodyData;
+    SolverData softBodyData;
     auto vertices = loadNodeFile(nodeFileName, centralize, softBodyData.numVerts);
-    cudaMalloc((void**)&softBodyData.dev_X, sizeof(glm::vec3) * softBodyData.numVerts);
-    cudaMemcpy(softBodyData.dev_X, vertices.data(), sizeof(glm::vec3) * softBodyData.numVerts, cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&softBodyData.X, sizeof(glm::vec3) * softBodyData.numVerts);
+    cudaMemcpy(softBodyData.X, vertices.data(), sizeof(glm::vec3) * softBodyData.numVerts, cudaMemcpyHostToDevice);
 
     // transform
     glm::mat4 model = glm::mat4(1.0f);
@@ -90,18 +91,18 @@ void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, 
     model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
     model = glm::rotate(model, glm::radians(rot.z), glm::vec3(0.0f, 0.0f, 1.0f));
     int blocks = (softBodyData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    TransformVertices << < blocks, threadsPerBlock >> > (softBodyData.dev_X, model, softBodyData.numVerts);
+    TransformVertices << < blocks, threadsPerBlock >> > (softBodyData.X, model, softBodyData.numVerts);
 
     auto tetIdx = loadEleFile(eleFileName, startIndex, softBodyData.numTets);
-    cudaMalloc((void**)&softBodyData.Tets, sizeof(GLuint) * tetIdx.size());
-    cudaMemcpy(softBodyData.Tets, tetIdx.data(), sizeof(GLuint) * tetIdx.size(), cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&softBodyData.Tet, sizeof(indexType) * tetIdx.size());
+    cudaMemcpy(softBodyData.Tet, tetIdx.data(), sizeof(indexType) * tetIdx.size(), cudaMemcpyHostToDevice);
     auto triIdx = loadFaceFile(faceFileName, startIndex, softBodyData.numTris);
     if (!triIdx.empty()) {
-        cudaMalloc((void**)&softBodyData.Tris, sizeof(GLuint) * triIdx.size());
-        cudaMemcpy(softBodyData.Tris, triIdx.data(), sizeof(GLuint) * triIdx.size(), cudaMemcpyHostToDevice);
+        cudaMalloc((void**)&softBodyData.Tri, sizeof(indexType) * triIdx.size());
+        cudaMemcpy(softBodyData.Tri, triIdx.data(), sizeof(indexType) * triIdx.size(), cudaMemcpyHostToDevice);
     }
     else {
-        softBodyData.Tris = nullptr;
+        softBodyData.Tri = nullptr;
         softBodyData.numTris = 0;
     }
     CollectEdges(triIdx);
@@ -112,7 +113,7 @@ void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, 
 }
 
 void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilt,
-    glm::vec3*& gV, glm::vec3*& gF, GLuint*& gEdges, GLuint*& gTet, GLuint*& gTetFather, int& numVerts, int& numTets)
+    glm::vec3*& gV, glm::vec3*& gF, indexType*& gEdges, indexType*& gTet, indexType*& gTetFather, int& numVerts, int& numTets)
 {
     numVerts = totalNumVerts;
     numTets = totalNumTets;
@@ -123,34 +124,34 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
     cudaMalloc((void**)&gF, sizeof(glm::vec3) * totalNumVerts);
     cudaMemset(gV, 0, sizeof(glm::vec3) * totalNumVerts);
     cudaMemset(gF, 0, sizeof(glm::vec3) * totalNumVerts);
-    cudaMalloc((void**)&gEdges, sizeof(GLuint) * totalNumEdges * 2);
-    cudaMalloc((void**)&gTet, sizeof(GLuint) * totalNumTets * 4);
-    cudaMalloc((void**)&gTetFather, sizeof(GLuint) * totalNumTets);
+    cudaMalloc((void**)&gEdges, sizeof(indexType) * totalNumEdges * 2);
+    cudaMalloc((void**)&gTet, sizeof(indexType) * totalNumTets * 4);
+    cudaMalloc((void**)&gTetFather, sizeof(indexType) * totalNumTets);
     int vertOffset = 0, tetOffset = 0, edgeOffset = 0;
-    thrust::device_ptr<GLuint> dev_gTetPtr(gTet);
-    thrust::device_ptr<GLuint> dev_gEdgesPtr(gEdges);
-    thrust::device_ptr<GLuint> dev_gTetFatherPtr(gTetFather);
+    thrust::device_ptr<indexType> dev_gTetPtr(gTet);
+    thrust::device_ptr<indexType> dev_gEdgesPtr(gEdges);
+    thrust::device_ptr<indexType> dev_gTetFatherPtr(gTetFather);
     for (int i = 0; i < m_softBodyData.size(); i++)
     {
         auto& softBodyData = m_softBodyData[i];
         startIndices.push_back(vertOffset);
         auto& data = softBodyData.first;
-        cudaMemcpy(gX + vertOffset, data.dev_X, sizeof(glm::vec3) * data.numVerts, cudaMemcpyDeviceToDevice);
-        thrust::transform(data.Tets, data.Tets + data.numTets * 4, dev_gTetPtr + tetOffset, [vertOffset] __device__(GLuint x) {
+        cudaMemcpy(gX + vertOffset, data.X, sizeof(glm::vec3) * data.numVerts, cudaMemcpyDeviceToDevice);
+        thrust::transform(data.Tet, data.Tet + data.numTets * 4, dev_gTetPtr + tetOffset, [vertOffset] __device__(indexType x) {
             return x + vertOffset;
         });
         thrust::fill(dev_gTetFatherPtr + tetOffset / 4, dev_gTetFatherPtr + tetOffset / 4 + data.numTets, i);
-        cudaMemcpy(gEdges + edgeOffset, m_edges[i].data(), sizeof(GLuint) * m_edges[i].size(), cudaMemcpyHostToDevice);
+        cudaMemcpy(gEdges + edgeOffset, m_edges[i].data(), sizeof(indexType) * m_edges[i].size(), cudaMemcpyHostToDevice);
         thrust::transform(dev_gEdgesPtr + edgeOffset, dev_gEdgesPtr + edgeOffset + m_edges[i].size(), dev_gEdgesPtr + edgeOffset,
-            [vertOffset] __device__(GLuint x) {
+            [vertOffset] __device__(indexType x) {
             return x + vertOffset;
         });
-        cudaFree(data.dev_X);
-        data.dev_X = gX + vertOffset;
-        data.dev_X0 = gX0 + vertOffset;
-        data.dev_XTilt = gXTilt + vertOffset;
-        data.dev_V = gV + vertOffset;
-        data.dev_F = gF + vertOffset;
+        cudaFree(data.X);
+        data.X = gX + vertOffset;
+        data.X0 = gX0 + vertOffset;
+        data.XTilt = gXTilt + vertOffset;
+        data.V = gV + vertOffset;
+        data.Force = gF + vertOffset;
         vertOffset += data.numVerts;
         tetOffset += data.numTets * 4;
         edgeOffset += m_edges[i].size();
@@ -195,17 +196,17 @@ void SimulationCUDAContext::PrepareRenderData() {
     for (auto softbody : softBodies) {
         glm::vec3* pos;
         glm::vec4* nor;
-        softbody->Mesh::mapDevicePtr(&pos, &nor);
-        if (softbody->getTriNumber() == 0) {
-            dim3 numThreadsPerBlock(softbody->getTetNumber() / threadsPerBlock + 1);
-            PopulatePos << <numThreadsPerBlock, threadsPerBlock >> > (pos, softbody->getX(), softbody->getTet(), softbody->getTetNumber());
-            RecalculateNormals << <softbody->getTetNumber() * 4 / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, 4 * softbody->getTetNumber());
+        softbody->Mesh::MapDevicePtr(&pos, &nor);
+        if (softbody->GetNumTris() == 0) {
+            dim3 numThreadsPerBlock(softbody->GetNumTets() / threadsPerBlock + 1);
+            PopulatePos << <numThreadsPerBlock, threadsPerBlock >> > (pos, softbody->GetSolverData().X, softbody->GetSolverData().Tet, softbody->GetNumTets());
+            RecalculateNormals << <softbody->GetNumTets() * 4 / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, 4 * softbody->GetNumTets());
             softbody->Mesh::UnMapDevicePtr();
         }
         else {
-            dim3 numThreadsPerBlock(softbody->getTriNumber() / threadsPerBlock + 1);
-            PopulateTriPos << <numThreadsPerBlock, threadsPerBlock >> > (pos, softbody->getX(), softbody->getTri(), softbody->getTriNumber());
-            RecalculateNormals << <softbody->getTriNumber() / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, softbody->getTriNumber());
+            dim3 numThreadsPerBlock(softbody->GetNumTris() / threadsPerBlock + 1);
+            PopulateTriPos << <numThreadsPerBlock, threadsPerBlock >> > (pos, softbody->GetSolverData().X, softbody->GetSolverData().Tri, softbody->GetNumTris());
+            RecalculateNormals << <softbody->GetNumTris() / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, softbody->GetNumTris());
             softbody->Mesh::UnMapDevicePtr();
         }
     }
