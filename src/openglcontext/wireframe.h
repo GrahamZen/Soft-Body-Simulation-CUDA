@@ -2,7 +2,6 @@
 
 #include <drawable.h>
 #include <texture.h>
-#include <string>
 #include <glm/glm.hpp>
 #include <cuda_gl_interop.h>
 

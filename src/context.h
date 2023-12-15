@@ -1,7 +1,7 @@
 #pragma once
 #include <utilities.h>
-#include <vector>
 #include <collision/bvh.h>
+#include <vector>
 
 class SoftBody;
 class Camera;

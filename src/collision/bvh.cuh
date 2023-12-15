@@ -1,10 +1,10 @@
 #pragma once
+
+#include <collision/bvh.h>
+#include <glm/glm.hpp>
 #include <cuda_runtime_api.h>
 #include <thrust/device_vector.h>
-#include <glm/glm.hpp>
 #include <vector>
-#include <GL/glew.h>
-#include <collision/bvh.h>
 
 AABB computeBoundingBox(const thrust::device_ptr<glm::vec3>& begin, const thrust::device_ptr<glm::vec3>& end);
 

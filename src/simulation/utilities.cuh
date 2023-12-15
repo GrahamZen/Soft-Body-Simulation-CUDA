@@ -1,11 +1,9 @@
 #pragma once
 
-#include <cuda.h>
-#include <glm/glm.hpp>
-#include <vector>
-#include <GL/glew.h>
 #include <utilities.h>
+#include <glm/glm.hpp>
 #include <cuda_runtime.h>
+#include <vector>
 
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)
 void checkCUDAErrorFn(const char* msg, const char* file, int line);

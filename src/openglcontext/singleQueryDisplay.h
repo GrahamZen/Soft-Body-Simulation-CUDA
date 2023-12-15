@@ -1,7 +1,6 @@
 #pragma once
 
 #include <drawable.h>
-#include <string>
 #include <glm/glm.hpp>
 
 class Query;

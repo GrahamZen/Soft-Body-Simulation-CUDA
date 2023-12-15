@@ -1,14 +1,14 @@
 #pragma once
 
+#include <utilities.cuh>
+#include <collision/bvh.cuh>
+#include <simulation/simulationContext.h>
 #include <thrust/device_vector.h>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 #include <thrust/remove.h>
 #include <collision/intersections.h>
 #include <cuda_runtime.h>
-#include <utilities.cuh>
-#include <collision/bvh.cuh>
-#include <simulation/simulationContext.h>
 
 
 struct QueryComparator {

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <def.h>
-#include <GL/glew.h>
 #include <wireframe.h>
 #include <mesh.h>
 #include <queryDisplay.h>

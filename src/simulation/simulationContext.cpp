@@ -1,10 +1,10 @@
-#include <simulation/simulationContext.h>
-#include <surfaceshader.h>
-#include <simulation/softBody.h>
-#include <map>
 #include <utilities.h>
-#include <chrono>
+#include <surfaceshader.h>
+#include <simulation/simulationContext.h>
+#include <simulation/softBody.h>
 #include <spdlog/spdlog.h>
+#include <map>
+#include <chrono>
 #include <functional>
 
 template<typename Func>

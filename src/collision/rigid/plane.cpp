@@ -1,6 +1,7 @@
 #include <plane.h>
-#include <vector>
 #include <glm/gtx/string_cast.hpp>
+#include <vector>
+#include <iostream>
 
 Plane::Plane()
 {}

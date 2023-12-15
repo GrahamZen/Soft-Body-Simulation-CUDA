@@ -1,7 +1,7 @@
-#include <iostream>
 #include <singleQueryDisplay.h>
 #include <collision/bvh.h>
 #include <cuda_gl_interop.h>
+
 
 SingleQueryDisplay::SingleQueryDisplay()
     : Drawable()

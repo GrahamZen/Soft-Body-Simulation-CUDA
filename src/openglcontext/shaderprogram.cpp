@@ -1,10 +1,9 @@
 #include <shaderprogram.h>
+#include <fstream>
+#include <sstream>
+#include <filesystem> 
 #include <iostream>
 
-#include <sstream>
-#include <fstream>
-#include <string>
-#include <filesystem> 
 namespace fs = std::filesystem;
 
 std::string readShaderSource(const char* filePath) {

@@ -8,6 +8,3 @@ Solver::Solver(SimulationCUDAContext* context) :mcrpSimContext(context), threads
 
 Solver::~Solver() {
 }
-
-FEMSolver::FEMSolver(SimulationCUDAContext* context) : Solver(context) {}
-

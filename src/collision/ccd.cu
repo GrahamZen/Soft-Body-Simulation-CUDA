@@ -1,11 +1,11 @@
 #pragma once
 
+#include <utilities.cuh>
+#include <surfaceshader.h>
 #include <collision/bvh.h>
+#include <simulation/simulationContext.h>
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
-#include <utilities.cuh>
-#include <simulation/simulationContext.h>
-#include <surfaceshader.h>
 
 __constant__ dataType AABBThreshold = 0.01;
 

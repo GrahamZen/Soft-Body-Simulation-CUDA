@@ -1,15 +1,15 @@
 #pragma once
 
-#include <glm/glm.hpp>
+#include <utilities.cuh>
 #include <collision/bvh.cuh>
+#include <simulation/simulationContext.h>
+#include <glm/glm.hpp>
 #include <cuda_runtime.h>
 #include <cooperative_groups.h>
 #include <thrust/sort.h>
 #include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
-#include <utilities.cuh>
-#include <simulation/simulationContext.h>
 
 //input the aabb box of a Tetrahedron
 //generate a 30-bit morton code

@@ -1,11 +1,12 @@
 #pragma once
+
 #include <simulation/solver/femSolver.h>
+#include <context.h>
 #include <Eigen/Dense>
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
 #include <cusolverSp_LOWLEVEL_PREVIEW.h>
 #include <thrust/device_vector.h>
-#include <context.h>
 
 class SimulationCUDAContext;
 class PdSolver : public FEMSolver {

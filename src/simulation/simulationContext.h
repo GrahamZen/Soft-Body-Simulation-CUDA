@@ -1,8 +1,8 @@
-#include <json.hpp>
-#include <context.h>
-#include <simulation/solver/solver.h>
 #include <collision/bvh.h>
 #include <fixedBodyData.h>
+#include <simulation/solver/solver.h>
+#include <context.h>
+#include <json.hpp>
 
 class SoftBody;
 class SurfaceShader;

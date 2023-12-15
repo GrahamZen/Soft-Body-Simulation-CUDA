@@ -1,8 +1,6 @@
 #include <simulation/solver/explicit/explicitSolver.h>
 #include <simulation/solver/solverUtil.cuh>
 #include <simulation/simulationContext.h>
-#include <thrust/fill.h>
-#include <thrust/execution_policy.h>
 
 namespace ExplicitUtil
 {

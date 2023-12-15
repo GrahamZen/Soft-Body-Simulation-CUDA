@@ -1,11 +1,9 @@
 #ifndef SHADERPROGRAM_H
 #define SHADERPROGRAM_H
 
-#include <glm/glm.hpp>
-
 #include <drawable.h>
 #include <texture.h>
-
+#include <glm/glm.hpp>
 
 class ShaderProgram
 {

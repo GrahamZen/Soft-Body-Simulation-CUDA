@@ -1,9 +1,8 @@
 #pragma once
 
+#include <def.h>
 #include <drawable.h>
 #include <texture.h>
-#include <string>
-#include <def.h>
 #include <cuda_gl_interop.h>
 
 enum class BodyType {

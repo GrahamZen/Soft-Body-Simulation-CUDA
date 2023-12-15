@@ -1,8 +1,8 @@
 #pragma once
 
+#include <svd3_cuda.h>
 #include <glm/glm.hpp>
 #include <cuda_runtime.h>
-#include <svd3_cuda.h>
 
 __inline__ __device__ float trace(const glm::mat3& a)
 {

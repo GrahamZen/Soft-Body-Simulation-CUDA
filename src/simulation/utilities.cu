@@ -1,5 +1,4 @@
 #include <utilities.cuh>
-#include <cuda.h>
 #include <collision/bvh.h>
 #include <sphere.h>
 

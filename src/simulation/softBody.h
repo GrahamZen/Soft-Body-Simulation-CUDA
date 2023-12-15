@@ -1,9 +1,9 @@
 #pragma once
 
-#include <vector>
 #include <mesh.h>
 #include <context.h>
 #include <simulation/solver/femSolver.h>
+#include <vector>
 
 class SimulationCUDAContext;
 class SolverData;

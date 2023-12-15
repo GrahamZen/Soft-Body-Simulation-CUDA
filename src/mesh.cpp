@@ -1,8 +1,7 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
 #include <mesh.h>
 #include <collision/bvh.h>
+#include <fstream>
+#include <sstream>
 #include <cuda_gl_interop.h>
 
 Mesh::Mesh()

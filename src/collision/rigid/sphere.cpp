@@ -1,6 +1,7 @@
 #include <sphere.h>
-#include <vector>
 #include <glm/gtx/string_cast.hpp>
+#include <vector>
+#include <iostream>
 
 Sphere::Sphere()
 {}

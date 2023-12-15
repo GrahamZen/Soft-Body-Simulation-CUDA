@@ -1,12 +1,12 @@
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/solver/projective/pdUtil.cuh>
+#include <simulation/simulationContext.h>
 #include <thrust/sort.h>
 #include <thrust/reduce.h>
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 #include <cusolverSp.h>
 #include <cusparse.h>
-#include <simulation/simulationContext.h>
 
 PdSolver::PdSolver(SimulationCUDAContext* context, const SolverData& solverData) : FEMSolver(context)
 {

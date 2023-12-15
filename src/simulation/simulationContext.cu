@@ -1,9 +1,9 @@
+#include <utilities.cuh>
+#include <simulation/simulationContext.h>
+#include <simulation/softBody.h>
+#include <glm/gtc/matrix_transform.hpp>
 #include <thrust/device_ptr.h>
 #include <thrust/transform.h>
-#include <simulation/simulationContext.h>
-#include <utilities.cuh>
-#include <glm/gtc/matrix_transform.hpp>
-#include <simulation/softBody.h>
 
 #define ERRORCHECK 1
 

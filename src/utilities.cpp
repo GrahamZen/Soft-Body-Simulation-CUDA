@@ -4,17 +4,15 @@
 //  File: utilities.cpp
 //  A collection/kitchen sink of generally useful functions
 
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/string_cast.hpp>
-#include <iostream>
-#include <sstream>
-#include <string>
-#include <fstream>
-#include <filesystem>
 #include <utilities.h>
-#include <bitset>
 #include <collision/bvh.h>
 #include <sphere.h>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtx/string_cast.hpp>
+#include <sstream>
+#include <fstream>
+#include <filesystem>
+#include <bitset>
 #include <type_traits>
 
 template<typename T, typename = void>

@@ -1,15 +1,14 @@
-#include <context.h>
 #include <sceneStructs.h>
 #include <surfaceshader.h>
+#include <context.h>
 #include <simulation/simulationContext.h>
-#include <iostream>
-#include <fstream>
-#include <sstream>
 #include <collision/rigid/sphere.h>
 #include <collision/rigid/cylinder.h>
 #include <collision/rigid/plane.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <fstream>
+#include <sstream>
 
 std::string getCurrentTimeStamp() {
     auto now = std::chrono::system_clock::now();

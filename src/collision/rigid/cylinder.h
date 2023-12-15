@@ -1,8 +1,8 @@
 #pragma once
 
-#include <glm/glm.hpp>
 #include <rigid.h>
-#include <iostream>
+#include <glm/glm.hpp>
+
 
 class Cylinder : public FixedBody
 {

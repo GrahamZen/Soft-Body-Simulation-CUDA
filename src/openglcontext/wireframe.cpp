@@ -1,6 +1,3 @@
-#include <iostream>
-#include <fstream>
-#include <sstream>
 #include <wireframe.h>
 #include <collision/bvh.h>
 

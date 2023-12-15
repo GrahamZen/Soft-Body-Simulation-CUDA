@@ -2,7 +2,6 @@
 
 #include <def.h>
 #include <simulation/solver/solverUtil.cuh>
-#include <svd3_cuda.h>
 
 namespace PdUtil {
     __inline__ __device__ void setRowColVal(int index, int* row, int* col, float* val, int r, int c, float v)
@@ -20,7 +19,6 @@ namespace PdUtil {
 
     __device__ glm::mat3 Build_Edge_Matrix(const glm::vec3* X, const indexType* Tet, int tet);
 
-    __global__ void AddExternal(glm::vec3* V, int numVerts, bool jump, float mass, glm::vec3 vel);
     __global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const glm::vec3* X, const indexType* Tet);
     
     __global__ void computeLocal(const float* V0, const float wi, float* xProj, const glm::mat3* DmInv, const float* qn__1, const indexType* tetIndex, int tetNumber);
@@ -31,5 +29,4 @@ namespace PdUtil {
     __global__ void computeSiTSi(int* outIdx, float* val, float* V0, const glm::mat3* DmInv, const indexType* tetIndex, float weight, int tetNumber, int vertNumber);
     __global__ void updateVelPos(float* newPos, float dt_1, glm::vec3* pos, glm::vec3* vel, int numVerts);
     __global__ void initAMatrix(int* idx, int* row, int* col, int rowLen, int totalNumber);
-    __global__ void setExtForce(glm::vec3* ExtForce, glm::vec3 gravity, int numVerts);
 }
