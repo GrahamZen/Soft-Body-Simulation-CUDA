@@ -1,5 +1,5 @@
 #include <utilities.cuh>
-#include <collision/bvh.h>
+#include <collision/aabb.h>
 #include <collision/rigid/sphere.h>
 #include <collision/rigid/plane.h>
 #include <collision/rigid/cylinder.h>

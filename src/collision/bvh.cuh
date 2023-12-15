@@ -1,7 +1,6 @@
 #pragma once
 
-#include <collision/bvh.h>
-#include <glm/glm.hpp>
+#include <def.h>
 #include <cuda_runtime_api.h>
 #include <thrust/device_vector.h>
 #include <vector>

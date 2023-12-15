@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtx/intersect.hpp>
 #include <glm/gtc/constants.hpp>
+#include <cuda_runtime.h>
 #include <intersections.h>
 #include <iostream>
 

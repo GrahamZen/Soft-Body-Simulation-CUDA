@@ -2,6 +2,7 @@
 
 #include <utilities.cuh>
 #include <collision/bvh.cuh>
+#include <collision/bvh.h>
 #include <simulation/simulationContext.h>
 #include <thrust/device_vector.h>
 #include <thrust/sort.h>

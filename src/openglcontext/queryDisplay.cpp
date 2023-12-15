@@ -1,6 +1,4 @@
 #include <queryDisplay.h>
-#include <collision/bvh.h>
-
 #include <fstream>
 #include <sstream>
 

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <collision/bvh.h>
 #include <utilities.cuh>
 #include <collision/bvh.cuh>
 #include <simulation/simulationContext.h>

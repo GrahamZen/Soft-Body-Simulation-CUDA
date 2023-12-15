@@ -1,7 +1,7 @@
 #pragma once
 
 #include <def.h>
-#include <collision/bvh.h>
+#include <collision/aabb.h>
 
 /**
  * Handy-dandy hash function that provides seeds for random number generation.
@@ -46,4 +46,3 @@ __host__ __device__ dataType ccdCollisionTest(const Query& query, const glm::vec
 __host__ __device__ dataType ccdTriangleIntersectionTest(const glmVec3& x0, const glmVec3& v0,
     const glmVec3& x1, const glmVec3& x2, const glmVec3& x3, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
     const glmVec3& xTilt0, const glmVec3& xTilt1, const glmVec3& xTilt2, const glmVec3& xTilt3, glmVec3& n);
-__host__ __device__ dataType tetrahedronTrajIntersectionTest(const indexType* tets, const glmVec3& X0, const glmVec3& XTilt, const glm::vec3* Xs, const glm::vec3* XTilts, indexType tetId, glm::vec3& nor);

@@ -1,5 +1,5 @@
 #include <utilities.cuh>
-#include <collision/bvh.h>
+#include <collision/aabb.h>
 #include <sphere.h>
 
 #define checkCUDAError(msg) checkCUDAErrorFn(msg, FILENAME, __LINE__)

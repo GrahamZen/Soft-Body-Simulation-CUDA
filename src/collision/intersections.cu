@@ -1,6 +1,6 @@
 #pragma once
 
-#include <utilities.h>
+#include <collision/aabb.h>
 #include <collision/intersections.h>
 #include <glm/glm.hpp>
 #include <glm/gtx/intersect.hpp>

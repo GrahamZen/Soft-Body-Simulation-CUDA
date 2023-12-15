@@ -5,7 +5,7 @@
 //  A collection/kitchen sink of generally useful functions
 
 #include <utilities.h>
-#include <collision/bvh.h>
+#include <collision/aabb.h>
 #include <sphere.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>

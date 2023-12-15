@@ -1,5 +1,4 @@
 #include <wireframe.h>
-#include <collision/bvh.h>
 
 Wireframe::Wireframe()
     : Drawable()
