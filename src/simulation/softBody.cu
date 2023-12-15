@@ -2,10 +2,12 @@
 
 SoftBody::~SoftBody()
 {
-    cudaFree(solverData.Tet);
-    cudaFree(solverData.Force);
-    cudaFree(solverData.V);
-    cudaFree(solverData.inv_Dm);
+    if (solverData.inv_Dm)
+        cudaFree(solverData.inv_Dm);
+    if (solverData.dev_ExtForce)
+        cudaFree(solverData.dev_ExtForce);
+    if (solverData.V0)
+        cudaFree(solverData.V0);
 
     delete solver;
 }

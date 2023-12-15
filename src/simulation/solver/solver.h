@@ -23,6 +23,7 @@ struct SolverData {
     glm::vec3* XTilt = nullptr;
     glm::vec3* dev_ExtForce = nullptr;
     glm::mat3* inv_Dm = nullptr;
+    float* V0 = nullptr;
     int numTets = 0;
     int numVerts = 0;
     int numTris = 0;

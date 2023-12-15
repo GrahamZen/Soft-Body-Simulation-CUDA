@@ -6,7 +6,7 @@ class SolverData;
 
 class FEMSolver : public Solver {
 public:
-    FEMSolver(SimulationCUDAContext*);
+    FEMSolver(SimulationCUDAContext* context);
     virtual ~FEMSolver() = default;
 
     virtual void Update(SolverData& solverData, SolverAttribute& solverAttr) = 0;

@@ -26,6 +26,5 @@ private:
     SolverAttribute attrib;
     FEMSolver* solver;
     bool jump = false;
-    glm::vec3* X0;
     const int threadsPerBlock;
 };

@@ -48,16 +48,15 @@ public:
     void SetGlobalSolver(bool useEigen) { this->useEigen = useEigen; }
     bool IsEigenGlobalSolver() const { return useEigen; }
     void Draw(SurfaceShader*, SurfaceShader*);
-    AABB GetAABB() const;
     int GetTetCnt() const;
     int GetVertCnt() const;
     int GetThreadsPerBlock() const { return threadsPerBlock; }
     int GetNumQueries() const;
     int GetNumIterations() const { return numIterations; }
-    void CCD();
 private:
-    ExternalForce extForce;
+    void CCD();
     void PrepareRenderData();
+    ExternalForce extForce;
     int numIterations = 10;
     int threadsPerBlock = 64;
     bool useEigen = true;

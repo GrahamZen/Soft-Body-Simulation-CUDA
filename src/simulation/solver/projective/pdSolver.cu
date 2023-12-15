@@ -34,7 +34,7 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverAttribute& attrib)
     cudaMalloc((void**)&tmpVal, sizeof(int) * len);
     cudaMemset(tmpVal, 0, sizeof(int) * len);
 
-    computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, V0, solverData.inv_Dm, solverData.Tet, attrib.stiffness_0, solverData.numTets, solverData.numVerts);
+    computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, solverData.V0, solverData.inv_Dm, solverData.Tet, attrib.stiffness_0, solverData.numTets, solverData.numVerts);
     setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
@@ -147,7 +147,7 @@ void PdSolver::SolverStep(SolverData& solverData, SolverAttribute& attrib)
     for (int i = 0; i < mcrpSimContext->GetNumIterations(); i++)
     {
         cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
-        computeLocal << < tetBlocks, threadsPerBlock >> > (V0, attrib.stiffness_0, b, solverData.inv_Dm, sn, solverData.Tet, solverData.numTets);
+        computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, attrib.stiffness_0, b, solverData.inv_Dm, sn, solverData.Tet, solverData.numTets);
         addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
 
         if (mcrpSimContext->IsEigenGlobalSolver())
@@ -176,14 +176,4 @@ void PdSolver::Update(SolverData& solverData, SolverAttribute& attrib)
         solverReady = true;
     }
     SolverStep(solverData, attrib);
-}
-
-
-void PdSolver::Laplacian_Smoothing(float blendAlpha)
-{
-    //cudaMemset(V_sum, 0, sizeof(glm::vec3) * solverData.numVerts);
-    //cudaMemset(V_num, 0, sizeof(int) * solverData.numVerts);
-    //int blocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    //LaplacianGatherKern << < blocks, threadsPerBlock >> > (V, V_sum, V_num, solverData.numTets, solverData.Tet);
-    //LaplacianKern << < (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (V, V_sum, V_num, solverData.numVerts, solverData.Tet, blendAlpha);
 }

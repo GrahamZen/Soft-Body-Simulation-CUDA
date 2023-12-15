@@ -115,6 +115,7 @@ ${PROJECT_SOURCE_DIR}/src
 ${PROJECT_SOURCE_DIR}/src/openglcontext 
 ${PROJECT_SOURCE_DIR}/src/simulation
 ${PROJECT_SOURCE_DIR}/src/simulation/solver
+${PROJECT_SOURCE_DIR}/src/simulation/solver/projective
 ${PROJECT_SOURCE_DIR}/src/collision 
 ${PROJECT_SOURCE_DIR}/src/collision/rigid
 )
