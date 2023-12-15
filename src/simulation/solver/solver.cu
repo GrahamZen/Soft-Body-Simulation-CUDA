@@ -1,4 +1,4 @@
-#include <simulation/solver/pdSolver.h>
+#include <simulation/solver/projective/pdSolver.h>
 #include <simulation/simulationContext.h>
 #include <utilities.cuh>
 

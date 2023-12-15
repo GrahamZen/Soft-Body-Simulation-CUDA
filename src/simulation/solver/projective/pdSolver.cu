@@ -1,4 +1,4 @@
-#include <simulation/solver/pdSolver.h>
+#include <simulation/solver/projective/pdSolver.h>
 #include <utilities.cuh>
 #include <thrust/sort.h>
 #include <thrust/reduce.h>

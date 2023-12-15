@@ -5,9 +5,9 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <sphere.h>
+#include <collision/rigid/sphere.h>
 #include <collision/rigid/cylinder.h>
-#include <plane.h>
+#include <collision/rigid/plane.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
 

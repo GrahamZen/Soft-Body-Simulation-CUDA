@@ -1,5 +1,5 @@
 #include <simulation/softBody.h>
-#include <simulation/solver/pdSolver.h>
+#include <simulation/solver/projective/pdSolver.h>
 #include <simulation/simulationContext.h>
 
 SoftBody::SoftBody(SimulationCUDAContext* context, SolverAttribute& _attrib, SolverData* dataPtr)
