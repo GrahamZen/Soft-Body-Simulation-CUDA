@@ -1,17 +1,34 @@
 #include <simulation/solver/projective/pdSolver.h>
-#include <utilities.cuh>
+#include <simulation/solver/projective/pdUtil.cuh>
 #include <thrust/sort.h>
 #include <thrust/reduce.h>
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 #include <cusolverSp.h>
-#include <cusolverSp_LOWLEVEL_PREVIEW.h>
 #include <cusparse.h>
 #include <simulation/simulationContext.h>
 
-#define ERRORCHECK 1
+PdSolver::PdSolver(SimulationCUDAContext* context, const SolverData& solverData) : FEMSolver(context)
+{
+    cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::vec3) * solverData.numVerts);
+    cudaMemset(solverData.dev_ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
+    cudaMalloc((void**)&solverData.V0, sizeof(float) * solverData.numTets);
+    cudaMemset(solverData.V0, 0, sizeof(float) * solverData.numTets);
+    cudaMalloc((void**)&solverData.inv_Dm, sizeof(glm::mat4) * solverData.numTets);
 
-#define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+    int blocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
+    PdUtil::computeInvDmV0 << < blocks, threadsPerBlock >> > (solverData.V0, solverData.inv_Dm, solverData.numTets, solverData.X, solverData.Tet);
+}
+
+PdSolver::~PdSolver() {
+    cudaFree(sn);
+    cudaFree(b);
+    cudaFree(masses);
+
+    free(bHost);
+    cudaFree(buffer_gpu);
+}
+
 
 void PdSolver::SolverPrepare(SolverData& solverData, SolverAttribute& attrib)
 {
@@ -34,8 +51,8 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverAttribute& attrib)
     cudaMalloc((void**)&tmpVal, sizeof(int) * len);
     cudaMemset(tmpVal, 0, sizeof(int) * len);
 
-    computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, solverData.V0, solverData.inv_Dm, solverData.Tet, attrib.stiffness_0, solverData.numTets, solverData.numVerts);
-    setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
+    PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, solverData.V0, solverData.inv_Dm, solverData.Tet, attrib.stiffness_0, solverData.numTets, solverData.numVerts);
+    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
 
@@ -92,7 +109,7 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverAttribute& attrib)
 
     int blocks = (nnzNumber + threadsPerBlock - 1) / threadsPerBlock;
 
-    initAMatrix << < blocks, threadsPerBlock >> > (newIdx, ARowTmp, ACol, ASize, nnzNumber);
+    PdUtil::initAMatrix << < blocks, threadsPerBlock >> > (newIdx, ARowTmp, ACol, ASize, nnzNumber);
 
     // transform ARow into csr format
     cusparseHandle_t handle;
@@ -142,13 +159,12 @@ void PdSolver::SolverStep(SolverData& solverData, SolverAttribute& attrib)
     thrust::device_ptr<glm::vec3> dev_ptr(solverData.dev_ExtForce);
     thrust::fill(thrust::device, dev_ptr, dev_ptr + solverData.numVerts, gravity);
     //computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, thrust::raw_pointer_cast(solverData.dev_ExtForce.data()), masses, m_1_dt2, solverData.numVerts);
-    computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, solverData.dev_ExtForce, masses, m_1_dt2, solverData.numVerts);
-    checkCUDAError("computeSn");
+    PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, solverData.dev_ExtForce, masses, m_1_dt2, solverData.numVerts);
     for (int i = 0; i < mcrpSimContext->GetNumIterations(); i++)
     {
         cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
-        computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, attrib.stiffness_0, b, solverData.inv_Dm, sn, solverData.Tet, solverData.numTets);
-        addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
+        PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, attrib.stiffness_0, b, solverData.inv_Dm, sn, solverData.Tet, solverData.numTets);
+        PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
 
         if (mcrpSimContext->IsEigenGlobalSolver())
         {
@@ -163,7 +179,7 @@ void PdSolver::SolverStep(SolverData& solverData, SolverAttribute& attrib)
         }
     }
 
-    updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilt, solverData.V, solverData.numVerts);
+    PdUtil::updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilt, solverData.V, solverData.numVerts);
 }
 
 

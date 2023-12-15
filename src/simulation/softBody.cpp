@@ -4,7 +4,7 @@
 #include <simulation/simulationContext.h>
 
 SoftBody::SoftBody(SimulationCUDAContext* context, SolverAttribute& _attrib, SolverData* dataPtr)
-    :solverData(*dataPtr), attrib(_attrib), solver(new ExplicitSolver{ context, solverData }), threadsPerBlock(context->GetThreadsPerBlock())
+    :solverData(*dataPtr), attrib(_attrib), solver(new PdSolver{ context, solverData }), threadsPerBlock(context->GetThreadsPerBlock())
 {
     Mesh::numTets = solverData.numTets;
     Mesh::numTris = solverData.numTris;
