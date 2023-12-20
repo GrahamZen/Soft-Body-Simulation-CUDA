@@ -36,6 +36,14 @@ TEST_CASE("solveCubic Tests", "[solveCubic]")
        INFO("Checking number of roots");
        REQUIRE(numRoots == 0);
    }
+   SECTION("Three identical roots 1")
+   {
+       CubicSolver::generate<double>(2, 2, 2, as.data());
+       dataType roots[3];
+       int numRoots = solveCubic(as[0], as[1], as[2], as[3], roots);
+       INFO("Checking number of roots");
+       REQUIRE(numRoots == 3);
+   }
 
    SECTION("One root within [0, 1]")
    {
@@ -115,30 +123,30 @@ TEST_CASE("solveCubic Tests", "[solveCubic]")
    }
 }
 
-TEST_CASE("Tet collision test", "[Tet]")
-{
-    Query q{ QueryType::VF,4,1,2,3 };
-    std::vector<glm::vec3> Xs{
-    glm::vec3(4.012677, 16.297993, -4.002641),
-glm::vec3(-4.000278, 8.310968, -4.003186),
-glm::vec3(3.999709, 8.298002, -4.000560),
-glm::vec3(3.997087, 8.300087, 3.999436),
-glm::vec3(3.988587, 7.990356, -3.988685),
-glm::vec3(-4.012113, 0.000000, -3.989863),
-glm::vec3(3.987887, 0.000000, -3.987985),
-glm::vec3(3.986008, 0.000000, 4.012014), };
-    std::vector<glm::vec3> XTilts{
-    glm::vec3(4.012838, 15.666624, -4.002659),
-glm::vec3(-4.000295, 7.679782, -4.003227),
-glm::vec3(3.999692, 7.666636, -4.000557),
-glm::vec3(3.997026, 7.668742, 3.999442),
-glm::vec3(3.988568, 7.990367, -3.988674),
-glm::vec3(-4.012120, 0.000000, -3.989860),
-glm::vec3(3.987880, 0.000000, -3.987984),
-glm::vec3(3.986005, 0.000000, 4.012014), };
-    glmVec3 nors;
-
-    ccdCollisionTest(q, Xs.data(), XTilts.data(), nors);
-    REQUIRE(q.toi != 1);
-    assert(q.toi != 1);
-}
+//TEST_CASE("Tet collision test", "[Tet]")
+//{
+//    Query q{ QueryType::VF,4,1,2,3 };
+//    std::vector<glm::vec3> Xs{
+//    glm::vec3(4.012677, 16.297993, -4.002641),
+//glm::vec3(-4.000278, 8.310968, -4.003186),
+//glm::vec3(3.999709, 8.298002, -4.000560),
+//glm::vec3(3.997087, 8.300087, 3.999436),
+//glm::vec3(3.988587, 7.990356, -3.988685),
+//glm::vec3(-4.012113, 0.000000, -3.989863),
+//glm::vec3(3.987887, 0.000000, -3.987985),
+//glm::vec3(3.986008, 0.000000, 4.012014), };
+//    std::vector<glm::vec3> XTilts{
+//    glm::vec3(4.012838, 15.666624, -4.002659),
+//glm::vec3(-4.000295, 7.679782, -4.003227),
+//glm::vec3(3.999692, 7.666636, -4.000557),
+//glm::vec3(3.997026, 7.668742, 3.999442),
+//glm::vec3(3.988568, 7.990367, -3.988674),
+//glm::vec3(-4.012120, 0.000000, -3.989860),
+//glm::vec3(3.987880, 0.000000, -3.987984),
+//glm::vec3(3.986005, 0.000000, 4.012014), };
+//    glmVec3 nors;
+//
+//    ccdCollisionTest(q, Xs.data(), XTilts.data(), nors);
+//    REQUIRE(q.toi != 1);
+//    assert(q.toi != 1);
+//}

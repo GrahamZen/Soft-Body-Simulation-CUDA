@@ -59,18 +59,34 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverAttribute& attrib)
     int* AIdxHost = (int*)malloc(sizeof(int) * len);
     float* tmpValHost = (float*)malloc(sizeof(float) * len);
 
+    thrust::device_ptr<int> AIdx_dev(AIdx);
+    thrust::device_ptr<float> tmpVal_dev(tmpVal);
+
+    thrust::sort_by_key(AIdx_dev, AIdx_dev + len, tmpVal_dev);
+
     cudaMemcpy(AIdxHost, AIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
     cudaMemcpy(tmpValHost, tmpVal, sizeof(float) * len, cudaMemcpyDeviceToHost);
 
-    std::vector<Eigen::Triplet<float>> A_triplets;
-
-    for (auto i = 0; i < len; ++i)
-    {
-        A_triplets.push_back({ AIdxHost[i] / ASize, AIdxHost[i] % ASize, tmpValHost[i] });
-    }
     Eigen::SparseMatrix<float> A(ASize, ASize);
+    A.reserve(len);
+    int i, startIdx = 0;
+    for (int j = 0; j < ASize; ++j) {
+        bool notStarted = true;
+        for (i = startIdx; i < len; ++i) {
+            int col = AIdxHost[i] / ASize;
+            if (col > j) break;
+            if (notStarted) {
+                A.startVec(j);
+                notStarted = false;
+            }
+            int row = AIdxHost[i] % ASize;
 
-    A.setFromTriplets(A_triplets.begin(), A_triplets.end());
+            A.insertBack(row, col) = tmpValHost[i];
+        }
+        startIdx = i;
+    }
+    A.finalize();
+    A.makeCompressed();
     cholesky_decomposition_.compute(A);
 
     free(AIdxHost);
@@ -81,9 +97,6 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverAttribute& attrib)
 
     cudaMalloc((void**)&newIdx, sizeof(int) * len);
     cudaMalloc((void**)&newVal, sizeof(float) * len);
-
-    thrust::sort_by_key(thrust::device, AIdx, AIdx + len, tmpVal);
-
 
     thrust::pair<int*, float*> newEnd = thrust::reduce_by_key(thrust::device, AIdx, AIdx + len, tmpVal, newIdx, newVal);
 

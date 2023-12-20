@@ -300,7 +300,7 @@ __host__ __device__ dataType ccdCollisionTest(const Query& query, const glm::vec
             d = signed_vf_distance(xt0, xt1, xt2, xt3, &n, w);
             inside = (glm::min(-w[1], glm::min(-w[2], -w[3])) >= -1e-3);
         }
-        else if(query.type == QueryType::EE)
+        else if (query.type == QueryType::EE)
         {
             d = signed_ee_distance(xt0, xt1, xt2, xt3, &n, w);
             inside = (glm::min(w[0], glm::min(w[1], glm::min(-w[2], -w[3]))) >= -1e-3);

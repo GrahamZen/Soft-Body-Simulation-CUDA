@@ -4,55 +4,48 @@
 namespace PdUtil {
     // Should compute SiTAiTAiSi, which is a sparse matrix
     // Ai here is I
-    // size of row, col, val are 48 * tetNumber + vertNumber
+    // size of row, col, val are 48 * numTets + numVerts
     // row, col, val are used to initialize sparse matrix SiTSi
-    __global__ void computeSiTSi(int* outIdx, float* val, float* V0, const glm::mat3* DmInv, const indexType* tetIndex, float weight, int tetNumber, int vertNumber)
+    __global__ void computeSiTSi(int* outIdx, float* val, const float* V0, const glm::mat3* DmInvs, const indexType* Tets, float weight, int numTets, int numVerts)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < tetNumber)
+        if (index < numTets)
         {
             //int posStart = index * 12;
-            int v0Ind = tetIndex[index * 4 + 0] * 3;
-            int v1Ind = tetIndex[index * 4 + 1] * 3;
-            int v2Ind = tetIndex[index * 4 + 2] * 3;
-            int v3Ind = tetIndex[index * 4 + 3] * 3;
+            int v0Ind = Tets[index * 4 + 0] * 3;
+            int v1Ind = Tets[index * 4 + 1] * 3;
+            int v2Ind = Tets[index * 4 + 2] * 3;
+            int v3Ind = Tets[index * 4 + 3] * 3;
 
-            // there are tetNumber of Dm_1 in total
-            glm::mat3 Dm_1 = glm::transpose(DmInv[index]);
+            // there are numTets of AiSi in total
 
-            glm::mat4x3 DmP;
-            DmP[0] = Dm_1[0];
-            DmP[1] = Dm_1[1];
-            DmP[2] = Dm_1[2];
-            glm::vec3 ptt = glm::vec3(-Dm_1[0][0] - Dm_1[1][0] - Dm_1[2][0], -Dm_1[0][1] - Dm_1[1][1] - Dm_1[2][1], -Dm_1[0][2] - Dm_1[1][2] - Dm_1[2][2]);
-            DmP[3] = ptt;
-            glm::mat3x4 DmPT = glm::transpose(DmP);
-            glm::mat4x4 st = DmPT * DmP;
+            glm::mat4x3 AiSi = glm::transpose(DmInvs[index]) * glm::mat4x3{ 1, 0, 0, 0, 1, 0, 0, 0, 1, -1, -1, -1 };
+            glm::mat4x4 SiTAiAiSi = glm::transpose(AiSi) * AiSi;
 
             int start = index * 48;
-            int rowLen = 3 * vertNumber;
+            int rowLen = 3 * numVerts;
             for (int i = 0; i < 4; i++)
             {
-                int vr = tetIndex[index * 4 + i] * 3;
+                int vr = Tets[index * 4 + i] * 3;
                 for (int j = 0; j < 4; j++)
                 {
-                    int vc = tetIndex[index * 4 + j] * 3;
+                    int vc = Tets[index * 4 + j] * 3;
                     for (int k = 0; k < 3; k++)
                     {
-                        wrapRowColVal(start + (i * 12 + j * 3 + k), outIdx, val, vc + k, vr + k, st[j][i] * weight * V0[index], rowLen);
+                        wrapRowColVal(start + (i * 12 + j * 3 + k), outIdx, val, vc + k, vr + k, SiTAiAiSi[j][i] * weight * V0[index], rowLen);
                     }
                 }
             }
         }
     }
 
-    __global__ void setMDt_2(int* outIdx, float* val, int startIndex, float massDt_2, int vertNumber)
+    __global__ void setMDt_2(int* outIdx, float* val, int startIndex, float massDt_2, int numVerts)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < vertNumber)
+        if (index < numVerts)
         {
             int offset = index * 3;
-            int rowLen = vertNumber * 3;
+            int rowLen = numVerts * 3;
             wrapRowColVal(startIndex + offset + 0, outIdx, val, offset, offset, massDt_2, rowLen);
             wrapRowColVal(startIndex + offset + 1, outIdx, val, offset + 1, offset + 1, massDt_2, rowLen);
             wrapRowColVal(startIndex + offset + 2, outIdx, val, offset + 2, offset + 2, massDt_2, rowLen);
@@ -94,71 +87,62 @@ namespace PdUtil {
         }
     }
 
-    __global__ void computeLocal(const float* V0, const float wi, float* xProj, const glm::mat3* DmInv, const float* qn__1, const indexType* tetIndex, int tetNumber)
+    __global__ void computeLocal(const float* V0, const float wi, float* xProj, const glm::mat3* DmInvs, const float* qn, const indexType* Tets, int numTets)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < tetNumber)
+        if (index < numTets)
         {
-            const int v0Ind = tetIndex[index * 4 + 0] * 3;
-            const int v1Ind = tetIndex[index * 4 + 1] * 3;
-            const int v2Ind = tetIndex[index * 4 + 2] * 3;
-            const int v3Ind = tetIndex[index * 4 + 3] * 3;
-            const glm::vec3 v0 = glm::vec3(qn__1[v0Ind + 0], qn__1[v0Ind + 1], qn__1[v0Ind + 2]);
-            const glm::vec3 v1 = glm::vec3(qn__1[v1Ind + 0], qn__1[v1Ind + 1], qn__1[v1Ind + 2]);
-            const glm::vec3 v2 = glm::vec3(qn__1[v2Ind + 0], qn__1[v2Ind + 1], qn__1[v2Ind + 2]);
-            const glm::vec3 v3 = glm::vec3(qn__1[v3Ind + 0], qn__1[v3Ind + 1], qn__1[v3Ind + 2]);
-            const glm::mat3 Dm_1 = DmInv[index];
+            const int v0Ind = Tets[index * 4 + 0] * 3;
+            const int v1Ind = Tets[index * 4 + 1] * 3;
+            const int v2Ind = Tets[index * 4 + 2] * 3;
+            const int v3Ind = Tets[index * 4 + 3] * 3;
+            const glm::vec3 v0 = glm::vec3(qn[v0Ind + 0], qn[v0Ind + 1], qn[v0Ind + 2]);
+            const glm::vec3 v1 = glm::vec3(qn[v1Ind + 0], qn[v1Ind + 1], qn[v1Ind + 2]);
+            const glm::vec3 v2 = glm::vec3(qn[v2Ind + 0], qn[v2Ind + 1], qn[v2Ind + 2]);
+            const glm::vec3 v3 = glm::vec3(qn[v3Ind + 0], qn[v3Ind + 1], qn[v3Ind + 2]);
+            const glm::mat3 DmInv = DmInvs[index];
 
-            const glm::mat3 A = glm::mat3(v0 - v3, v1 - v3, v2 - v3) * Dm_1;
+            glm::mat3 R = glm::mat3(v0 - v3, v1 - v3, v2 - v3) * DmInv;
+            glm::mat3 U;
+            glm::mat3 S;
 
-            glm::mat3x3 U1;
-            glm::mat3x3 V1;
-            glm::mat3x3 S1;
-            glm::mat3x3 R1;
+            svd(R[0][0], R[1][0], R[2][0], R[0][1], R[1][1], R[2][1], R[0][2], R[1][2], R[2][2],
+                U[0][0], U[1][0], U[2][0], U[0][1], U[1][1], U[2][1], U[0][2], U[1][2], U[2][2],
+                S[0][0], S[1][0], S[2][0], S[0][1], S[1][1], S[2][1], S[0][2], S[1][2], S[2][2],
+                R[0][0], R[1][0], R[2][0], R[0][1], R[1][1], R[2][1], R[0][2], R[1][2], R[2][2]);
 
-            svd(A[0][0], A[1][0], A[2][0], A[0][1], A[1][1], A[2][1], A[0][2], A[1][2], A[2][2],
-                U1[0][0], U1[1][0], U1[2][0], U1[0][1], U1[1][1], U1[2][1], U1[0][2], U1[1][2], U1[2][2],
-                S1[0][0], S1[1][0], S1[2][0], S1[0][1], S1[1][1], S1[2][1], S1[0][2], S1[1][2], S1[2][2],
-                V1[0][0], V1[1][0], V1[2][0], V1[0][1], V1[1][1], V1[2][1], V1[0][2], V1[1][2], V1[2][2]);
+            R = U * glm::transpose(R);
 
-            R1 = U1 * glm::transpose(V1);
-
-            if (glm::determinant(R1) < 0)
+            if (glm::determinant(R) < 0)
             {
-                R1[2] = -R1[2];
+                R[2] = -R[2];
             }
 
-            const glm::mat3 Dm_1_T = glm::transpose(Dm_1);
+            const glm::mat4x3 piTAiSi = glm::abs(V0[index]) * wi * R * glm::transpose(DmInv)
+                * glm::mat4x3{ 1, 0, 0, 0, 1, 0, 0, 0, 1, -1, -1, -1 };
 
-            const glm::mat4x3 Dm_1r = glm::abs(V0[index]) * wi * R1 * glm::mat4x3{
-                glm::vec3(Dm_1_T[0][0], Dm_1_T[0][1], Dm_1_T[0][2]),
-                glm::vec3(Dm_1_T[1][0], Dm_1_T[1][1], Dm_1_T[1][2]),
-                glm::vec3(Dm_1_T[2][0], Dm_1_T[2][1], Dm_1_T[2][2]),
-                glm::vec3(-Dm_1[0][0] - Dm_1[0][1] - Dm_1[0][2], -Dm_1[1][0] - Dm_1[1][1] - Dm_1[1][2], -Dm_1[2][0] - Dm_1[2][1] - Dm_1[2][2])
-            };
+            atomicAdd(&(xProj[v0Ind + 0]), piTAiSi[0][0]);
+            atomicAdd(&(xProj[v0Ind + 1]), piTAiSi[0][1]);
+            atomicAdd(&(xProj[v0Ind + 2]), piTAiSi[0][2]);
 
-            atomicAdd(&(xProj[v0Ind + 0]), Dm_1r[0][0]);
-            atomicAdd(&(xProj[v0Ind + 1]), Dm_1r[0][1]);
-            atomicAdd(&(xProj[v0Ind + 2]), Dm_1r[0][2]);
+            atomicAdd(&(xProj[v1Ind + 0]), piTAiSi[1][0]);
+            atomicAdd(&(xProj[v1Ind + 1]), piTAiSi[1][1]);
+            atomicAdd(&(xProj[v1Ind + 2]), piTAiSi[1][2]);
 
-            atomicAdd(&(xProj[v1Ind + 0]), Dm_1r[1][0]);
-            atomicAdd(&(xProj[v1Ind + 1]), Dm_1r[1][1]);
-            atomicAdd(&(xProj[v1Ind + 2]), Dm_1r[1][2]);
+            atomicAdd(&(xProj[v2Ind + 0]), piTAiSi[2][0]);
+            atomicAdd(&(xProj[v2Ind + 1]), piTAiSi[2][1]);
+            atomicAdd(&(xProj[v2Ind + 2]), piTAiSi[2][2]);
 
-            atomicAdd(&(xProj[v2Ind + 0]), Dm_1r[2][0]);
-            atomicAdd(&(xProj[v2Ind + 1]), Dm_1r[2][1]);
-            atomicAdd(&(xProj[v2Ind + 2]), Dm_1r[2][2]);
-
-            atomicAdd(&(xProj[v3Ind + 0]), Dm_1r[3][0]);
-            atomicAdd(&(xProj[v3Ind + 1]), Dm_1r[3][1]);
-            atomicAdd(&(xProj[v3Ind + 2]), Dm_1r[3][2]);
+            atomicAdd(&(xProj[v3Ind + 0]), piTAiSi[3][0]);
+            atomicAdd(&(xProj[v3Ind + 1]), piTAiSi[3][1]);
+            atomicAdd(&(xProj[v3Ind + 2]), piTAiSi[3][2]);
         }
     }
 
-    __global__ void computeM_h2Sn(float* b, float* sn, float massDt_2, int vertNumber)
+    __global__ void computeM_h2Sn(float* b, float* sn, float massDt_2, int numVerts)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < vertNumber)
+        if (index < numVerts)
         {
             int offset = index * 3;
             b[offset + 0] = sn[offset + 0] * massDt_2;
@@ -167,10 +151,10 @@ namespace PdUtil {
         }
     }
 
-    __global__ void addM_h2Sn(float* b, float* masses, int vertNumber)
+    __global__ void addM_h2Sn(float* b, float* masses, int numVerts)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < vertNumber)
+        if (index < numVerts)
         {
             int offset = index * 3;
             b[offset + 0] = b[offset + 0] + masses[offset + 0];
