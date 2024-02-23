@@ -53,8 +53,16 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     if (json.contains("softBodies")) {
         for (const auto& sbJson : json["softBodies"]) {
             auto& sbDefJson = softBodyDefs.at(std::string(sbJson["name"]));
-            std::string nodeFile = sbDefJson["nodeFile"];
-            std::string eleFile = sbDefJson["eleFile"];
+            std::string nodeFile;
+            std::string mshFile;
+            std::string eleFile;
+            if (sbDefJson.contains("nodeFile")) {
+                nodeFile = sbDefJson["nodeFile"];
+                eleFile = sbDefJson["eleFile"];
+            }
+            if (sbDefJson.contains("mshFile")) {
+                mshFile = sbDefJson["mshFile"];
+            }
             std::string faceFile;
             if (sbDefJson.contains("faceFile")) {
                 faceFile = sbDefJson["faceFile"];
@@ -125,12 +133,26 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
             }
             bool centralize = sbDefJson["centralize"].get<bool>();
             int startIndex = sbDefJson["start index"].get<int>();
-            std::string baseName = nodeFile.substr(nodeFile.find_last_of('/') + 1);
-            char* name = new char[baseName.size() + 1];
-            strcpy(name, baseName.c_str());
-            namesSoftBodies.push_back(name);
-            dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), faceFile.c_str(), pos, scale, rot, centralize, startIndex,
-                SolverAttribute{ mass, stiffness_0, stiffness_1, constraints });
+            if (!mshFile.empty()) {
+                std::string baseName = mshFile.substr(nodeFile.find_last_of('/') + 1);
+                char* name = new char[baseName.size() + 1];
+                strcpy(name, baseName.c_str());
+                namesSoftBodies.push_back(name);
+                dataLoader.CollectData(mshFile.c_str(), pos, scale, rot, centralize, startIndex,
+                    SolverAttribute{ mass, stiffness_0, stiffness_1, constraints });
+            }
+            else if (!nodeFile.empty()) {
+                std::string baseName = nodeFile.substr(nodeFile.find_last_of('/') + 1);
+                char* name = new char[baseName.size() + 1];
+                strcpy(name, baseName.c_str());
+                namesSoftBodies.push_back(name);
+                dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), faceFile.c_str(), pos, scale, rot, centralize, startIndex,
+                    SolverAttribute{ mass, stiffness_0, stiffness_1, constraints });
+            }
+            else {
+                throw std::runtime_error("Msh or node file must be provided!!!");
+            }
+
         }
 
         dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_XTilts, dev_Vs, dev_Fs, dev_Edges, dev_Tets, dev_TetFathers, numVerts, numTets);

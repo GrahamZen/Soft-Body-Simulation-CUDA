@@ -196,7 +196,8 @@ __host__ __device__ T newtonsMethod(T a, T b, T c, T d, T x0,
         // quadratic approximation around x0, assuming y' = 0
         T y0 = d + x0 * (c + x0 * (b + x0 * a)),
             ddy0 = 2 * b + x0 * (6 * a);
-        x0 += init_dir * sqrt(abs(2 * y0 / ddy0));
+        if (ddy0 != 0)
+            x0 += init_dir * sqrt(abs(2 * y0 / ddy0));
     }
     for (int iter = 0; iter < 100; iter++) {
         T y = d + x0 * (c + x0 * (b + x0 * a));

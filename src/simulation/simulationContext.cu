@@ -4,6 +4,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <thrust/device_ptr.h>
 #include <thrust/transform.h>
+#include <simulation/MshLoader.h>
 
 #define ERRORCHECK 1
 
@@ -70,6 +71,54 @@ void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, 
     cudaMalloc((void**)&softBodyData.Tet, sizeof(indexType) * tetIdx.size());
     cudaMemcpy(softBodyData.Tet, tetIdx.data(), sizeof(indexType) * tetIdx.size(), cudaMemcpyHostToDevice);
     auto triIdx = loadFaceFile(faceFileName, startIndex, softBodyData.numTris);
+    if (!triIdx.empty()) {
+        cudaMalloc((void**)&softBodyData.Tri, sizeof(indexType) * triIdx.size());
+        cudaMemcpy(softBodyData.Tri, triIdx.data(), sizeof(indexType) * triIdx.size(), cudaMemcpyHostToDevice);
+    }
+    else {
+        softBodyData.Tri = nullptr;
+        softBodyData.numTris = 0;
+    }
+    CollectEdges(triIdx);
+    totalNumVerts += softBodyData.numVerts;
+    totalNumTets += softBodyData.numTets;
+
+    m_softBodyData.push_back({ softBodyData, attrib });
+}
+
+void DataLoader::CollectData(const char* mshFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
+    bool centralize, int startIndex, SolverAttribute attrib)
+{
+    SolverData softBodyData;
+    igl::MshLoader _loader(mshFileName);
+    auto nodes = _loader.get_nodes();
+    std::vector<float> vertices(nodes.size());
+    softBodyData.numVerts = nodes.size() / 3;
+    std::transform(nodes.begin(), nodes.end(), vertices.begin(), [](igl::MshLoader::Float f) {
+        return static_cast<float>(f);
+        });
+    cudaMalloc((void**)&softBodyData.X, sizeof(glm::vec3) * softBodyData.numVerts);
+    cudaMemcpy(softBodyData.X, vertices.data(), sizeof(glm::vec3) * softBodyData.numVerts, cudaMemcpyHostToDevice);
+
+    // transform
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::translate(model, pos);
+    model = glm::scale(model, scale);
+    model = glm::rotate(model, glm::radians(rot.x), glm::vec3(1.0f, 0.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
+    model = glm::rotate(model, glm::radians(rot.z), glm::vec3(0.0f, 0.0f, 1.0f));
+    int blocks = (softBodyData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    TransformVertices << < blocks, threadsPerBlock >> > (softBodyData.X, model, softBodyData.numVerts);
+
+    auto elements = _loader.get_elements();
+    std::vector<indexType> tetIdx(elements.size());
+    std::transform(elements.begin(), elements.end(), tetIdx.begin(), [](int i) {
+        return static_cast<indexType>(i);
+        });
+    softBodyData.numTets = tetIdx.size() / 4;
+    cudaMalloc((void**)&softBodyData.Tet, sizeof(indexType) * tetIdx.size());
+    cudaMemcpy(softBodyData.Tet, tetIdx.data(), sizeof(indexType) * tetIdx.size(), cudaMemcpyHostToDevice);
+    std::vector<indexType> triIdx;
     if (!triIdx.empty()) {
         cudaMalloc((void**)&softBodyData.Tri, sizeof(indexType) * triIdx.size());
         cudaMemcpy(softBodyData.Tri, triIdx.data(), sizeof(indexType) * triIdx.size(), cudaMemcpyHostToDevice);
