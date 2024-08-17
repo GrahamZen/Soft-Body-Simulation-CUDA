@@ -25,20 +25,21 @@ SimulationCUDAContext::~SimulationCUDAContext()
     for (auto name : namesSoftBodies) {
         delete[]name;
     }
-    cudaFree(dev_Xs);
-    cudaFree(dev_Tets);
-    cudaFree(dev_Vs);
-    cudaFree(dev_Fs);
-    cudaFree(dev_X0s);
-    cudaFree(dev_XTilts);
+    cudaFree(mSolverData.X);
+    cudaFree(mSolverData.Tet);
+    cudaFree(mSolverData.V);
+    cudaFree(mSolverData.Force);
+    cudaFree(mSolverData.X0);
+    cudaFree(mSolverData.XTilt);
     for (auto softbody : softBodies) {
         delete softbody;
     }
     cudaFree(dev_Normals);
+    delete mSolver;
 }
 
 int SimulationCUDAContext::GetVertCnt() const {
-    return numVerts;
+    return mSolverData.numVerts;
 }
 
 int SimulationCUDAContext::GetNumQueries() const {
@@ -46,7 +47,7 @@ int SimulationCUDAContext::GetNumQueries() const {
 }
 
 int SimulationCUDAContext::GetTetCnt() const {
-    return numTets;
+    return mSolverData.numTets;
 }
 
 void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
@@ -185,8 +186,8 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
 void SimulationCUDAContext::CCD()
 {
     mCollisionDetection.DetectCollision(dev_tIs, dev_Normals);
-    int blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    CCDKernel << <blocks, threadsPerBlock >> > (dev_Xs, dev_XTilts, dev_Vs, dev_tIs, dev_Normals, muT, muN, numVerts);
+    int blocks = (mSolverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    CCDKernel << <blocks, threadsPerBlock >> > (mSolverData.X, mSolverData.XTilt, mSolverData.V, dev_tIs, dev_Normals, mSolverParams.muT, mSolverParams.muN, mSolverData.numVerts);
 }
 
 void SimulationCUDAContext::PrepareRenderData() {

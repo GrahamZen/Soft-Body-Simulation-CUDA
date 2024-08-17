@@ -17,14 +17,12 @@ public:
     int GetNumVerts()const;
     int GetNumTets()const;
     int GetNumTris()const;
-    void Update();
     void Reset();
     const SolverData& GetSolverData() const;
     void SetAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr);
 private:
     SolverData solverData;
     SolverAttribute attrib;
-    FEMSolver* solver;
     bool jump = false;
     const int threadsPerBlock;
 };

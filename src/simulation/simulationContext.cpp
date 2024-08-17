@@ -1,5 +1,6 @@
 #include <utilities.h>
 #include <surfaceshader.h>
+#include <simulation/solver/projective/pdSolver.h>
 #include <simulation/simulationContext.h>
 #include <simulation/softBody.h>
 #include <spdlog/spdlog.h>
@@ -27,16 +28,17 @@ void measureExecutionTime(const Func& func, const std::string& message, bool pri
     cudaEventDestroy(stop);
 }
 
-SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _name, const ExternalForce& _extForce, nlohmann::json& json,
+SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _name, nlohmann::json& json,
     const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads, int _numIterations)
-    :context(ctx), extForce(_extForce), threadsPerBlock(_threadsPerBlock), numIterations(_numIterations), mCollisionDetection(this, _threadsPerBlockBVH, 1 << 16), fixedBodies(_fixedBodies), dev_fixedBodies(_threadsPerBlock, _fixedBodies), name(_name)
+    :context(ctx), threadsPerBlock(_threadsPerBlock), mCollisionDetection(this, _threadsPerBlockBVH, 1 << 16), fixedBodies(_fixedBodies), dev_fixedBodies(_threadsPerBlock, _fixedBodies), name(_name)
 {
+    mSolver = new PdSolver{ mSolverData };
     DataLoader dataLoader(threadsPerBlock);
     if (json.contains("dt")) {
-        dt = json["dt"].get<float>();
+        mSolverParams.dt = json["dt"].get<float>();
     }
     if (json.contains("gravity")) {
-        gravity = json["gravity"].get<float>();
+        mSolverParams.gravity = json["gravity"].get<float>();
     }
     if (json.contains("pause")) {
         context->guiData->Pause = json["pause"].get<bool>();
@@ -154,29 +156,26 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
             }
 
         }
-
-        dataLoader.AllocData(startIndices, dev_Xs, dev_X0s, dev_XTilts, dev_Vs, dev_Fs, dev_Edges, dev_Tets, dev_TetFathers, numVerts, numTets);
+        dataLoader.AllocData(startIndices, mSolverData.X, mSolverData.X0, mSolverData.XTilt, mSolverData.V, mSolverData.Force, dev_Edges, mSolverData.Tet, dev_TetFathers, mSolverData.numVerts, mSolverData.numTets);
         for (auto softBodyData : dataLoader.m_softBodyData) {
             softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
         }
-        mCollisionDetection.Init(numTets, numVerts, maxThreads);
-        cudaMalloc((void**)&dev_Normals, numVerts * sizeof(glm::vec3));
-        cudaMalloc((void**)&dev_tIs, numVerts * sizeof(dataType));
+        mCollisionDetection.Init(mSolverData.numTets, mSolverData.numVerts, maxThreads);
+        cudaMalloc((void**)&dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
+        cudaMalloc((void**)&dev_tIs, mSolverData.numVerts * sizeof(dataType));
     }
 }
 
 void SimulationCUDAContext::Update()
 {
     measureExecutionTime([&]() {
-        for (auto softbody : softBodies) {
-            softbody->Update();
-        }
+        //mSolver->Update();
         }, "[" + name + "]<CUDA Solver>", context->logEnabled);
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         mCollisionDetection.PrepareRenderData();
     }
     measureExecutionTime([&]() {
-        dev_fixedBodies.HandleCollisions(dev_XTilts, dev_Vs, numVerts, muT, muN);
+        dev_fixedBodies.HandleCollisions(mSolverData.XTilt, mSolverData.V, mSolverData.numVerts, mSolverParams.muT, mSolverParams.muN);
         }, "[" + name + "]" + "<Fixed objects collision handling>", context->logEnabled);
     if (context->guiData->handleCollision && softBodies.size() > 1) {
         measureExecutionTime([&]() {
@@ -184,7 +183,7 @@ void SimulationCUDAContext::Update()
             }, "[" + name + "]" + "<CCD>", context->logEnabled);
     }
     else
-        cudaMemcpy(dev_Xs, dev_XTilts, sizeof(glm::vec3) * numVerts, cudaMemcpyDeviceToDevice);
+        cudaMemcpy(mSolverData.X, mSolverData.XTilt, sizeof(glm::vec3) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
     if (context->guiData->ObjectVis) {
         PrepareRenderData();
     }
@@ -198,6 +197,14 @@ void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::Soft
 void SimulationCUDAContext::SetBVHBuildType(BVH::BuildType buildType)
 {
     mCollisionDetection.SetBuildType(buildType);
+}
+
+void SimulationCUDAContext::SetGlobalSolver(bool useEigen)
+{
+    PdSolver* pdsolver = nullptr;
+    if (pdsolver = dynamic_cast<PdSolver*>(mSolver)) {
+        pdsolver->SetGlobalSolver(useEigen);
+    }
 }
 
 void SimulationCUDAContext::Reset()
@@ -220,4 +227,9 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
         }
     }
     mCollisionDetection.Draw(flatShaderProgram);
+}
+
+const SolverParams& SimulationCUDAContext::GetSolverParams() const
+{
+    return mSolverParams;
 }

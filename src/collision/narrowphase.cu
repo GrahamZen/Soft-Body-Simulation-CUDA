@@ -172,14 +172,14 @@ __global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::ve
 void CollisionDetection::NarrowPhase(dataType*& tI, glm::vec3*& nors)
 {
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, mPSimContext->dev_Xs, mPSimContext->dev_XTilts);
+    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, mPSimContext->mSolverData.X, mPSimContext->mSolverData.XTilt);
     thrust::device_ptr<Query> dev_queriesPtr(dev_queries);
 
     thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());
     auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
     int numQueries = new_end - dev_queriesPtr;
     numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    //computeNewVel << <numBlocksQuery, threadsPerBlock >> > (numQueries, Xs, XTilts, dev_queries, mPSimContext->dev_Vs);
+    //computeNewVel << <numBlocksQuery, threadsPerBlock >> > (numQueries, Xs, XTilts, dev_queries, mPSimContext->mSolverData.V);
     storeTi << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, tI, nors);
     cudaDeviceSynchronize();
 }

@@ -8,8 +8,6 @@ SoftBody::~SoftBody()
         cudaFree(solverData.dev_ExtForce);
     if (solverData.V0)
         cudaFree(solverData.V0);
-
-    delete solver;
 }
 
 void SoftBody::Reset()

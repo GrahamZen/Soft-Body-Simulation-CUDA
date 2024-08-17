@@ -208,13 +208,13 @@ __global__ void traverseTree(int numTets, const BVHNode* nodes, const indexType*
 bool CollisionDetection::DetectCollisionCandidates(const BVHNode* dev_BVHNodes) {
     bool overflowHappened = false;
     bool overflow;
-    dim3 numblocksTets = (mPSimContext->numTets + threadsPerBlock - 1) / threadsPerBlock;
+    dim3 numblocksTets = (mPSimContext->mSolverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
 
     cudaMemset(dev_numQueries, 0, sizeof(size_t));
     do {
         overflow = false;
         cudaMemset(dev_overflowFlag, 0, sizeof(bool));
-        traverseTree << <numblocksTets, threadsPerBlock >> > (mPSimContext->numTets, dev_BVHNodes, mPSimContext->dev_Tets, mPSimContext->dev_TetFathers, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag);
+        traverseTree << <numblocksTets, threadsPerBlock >> > (mPSimContext->mSolverData.numTets, dev_BVHNodes, mPSimContext->mSolverData.Tet, mPSimContext->dev_TetFathers, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag);
         cudaMemcpy(&overflow, dev_overflowFlag, sizeof(bool), cudaMemcpyDeviceToHost);
         if (overflow) {
             overflowHappened = true;
@@ -283,15 +283,15 @@ void removeDuplicates(Query* dev_queries, size_t& dev_numQueries) {
 
 AABB CollisionDetection::GetAABB() const
 {
-    thrust::device_ptr<glm::vec3> dev_ptr(mPSimContext->dev_Xs);
-    thrust::device_ptr<glm::vec3> dev_ptrTilts(mPSimContext->dev_XTilts);
+    thrust::device_ptr<glm::vec3> dev_ptr(mPSimContext->mSolverData.X);
+    thrust::device_ptr<glm::vec3> dev_ptrTilts(mPSimContext->mSolverData.XTilt);
     return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTilts, dev_ptrTilts + numVerts));
 }
 
 bool CollisionDetection::BroadPhase()
 {
     const std::string buildTypeStr = buildType == BVH::BuildType::Cooperative ? "Cooperative" : buildType == BVH::BuildType::Atomic ? "Atomic" : "Serial";
-    m_bvh.BuildBVHTree(buildType, GetAABB(), mPSimContext->numTets, mPSimContext->dev_Xs, mPSimContext->dev_XTilts, mPSimContext->dev_Tets);
+    m_bvh.BuildBVHTree(buildType, GetAABB(), mPSimContext->mSolverData.numTets, mPSimContext->mSolverData.X, mPSimContext->mSolverData.XTilt, mPSimContext->mSolverData.Tet);
 
     if (!DetectCollisionCandidates(m_bvh.GetBVHNodes())) {
         count = 0;

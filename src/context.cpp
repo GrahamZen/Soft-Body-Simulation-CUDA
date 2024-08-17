@@ -287,7 +287,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
         return nullptr;
     }
     int maxThreads = GetMaxCGThreads();
-    SimulationCUDAContext::ExternalForce extForce;
+    SolverParams::ExternalForce extForce;
     nlohmann::json json;
     fileStream >> json;
     fileStream.close();
@@ -346,7 +346,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
             if (contextJson.contains("fixedBodies")) {
                 fixBodies = ReadFixedBodies(contextJson["fixedBodies"], fixedBodyDefs);
             }
-            mpSimContexts.push_back(new SimulationCUDAContext(this, baseName, extForce, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
+            mpSimContexts.push_back(new SimulationCUDAContext(this, baseName, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
             if (logEnabled)
@@ -362,9 +362,9 @@ void Context::InitDataContainer() {
     guiData->theta = theta;
     guiData->cameraLookAt = ogLookAt;
     guiData->zoom = zoom;
-    guiData->Dt = mcrpSimContext->GetDt();
+    guiData->Dt = mcrpSimContext->GetSolverParams().dt;
     guiData->Pause = false;
-    guiData->UseEigen = mcrpSimContext->IsEigenGlobalSolver();
+    guiData->UseEigen = false;
     guiData->softBodyAttr.currSoftBodyId = 0;
     guiData->currSimContextId = 0;
 }

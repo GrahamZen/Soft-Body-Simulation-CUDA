@@ -6,11 +6,11 @@ class SolverData;
 
 class FEMSolver : public Solver {
 public:
-    FEMSolver(SimulationCUDAContext* context);
+    FEMSolver();
     virtual ~FEMSolver() = default;
 
-    virtual void Update(SolverData& solverData, SolverAttribute& solverAttr) = 0;
+    virtual void Update(SolverData& solverData, SolverParams& solverParams) = 0;
 protected:
-    virtual void SolverPrepare(SolverData& solverData, SolverAttribute& solverAttr) = 0;
-    virtual void SolverStep(SolverData& solverData, SolverAttribute& solverAttr) = 0;
+    virtual void SolverPrepare(SolverData& solverData, SolverParams& solverParams) = 0;
+    virtual void SolverStep(SolverData& solverData, SolverParams& solverParams) = 0;
 };
