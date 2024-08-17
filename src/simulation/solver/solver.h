@@ -1,7 +1,6 @@
 #pragma once
 
 #include <def.h>
-#include <thrust/device_vector.h>
 
 struct SolverAttribute {
     float mass = 1.0f;

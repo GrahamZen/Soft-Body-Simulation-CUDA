@@ -5,8 +5,10 @@
 #include <thrust/reduce.h>
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
-#include <cusolverSp.h>
-#include <cusparse.h>
+#include <thrust/device_vector.h>
+#include <cusolverDn.h>
+#include <cublas_v2.h>
+#include <utilities.cuh>
 
 PdSolver::PdSolver(SimulationCUDAContext* context, const SolverData& solverData) : FEMSolver(context)
 {
@@ -24,9 +26,10 @@ PdSolver::~PdSolver() {
     cudaFree(sn);
     cudaFree(b);
     cudaFree(masses);
-
+    cudaFree(d_A);
+    cudaFree(d_info);
+    cudaFree(d_work);
     free(bHost);
-    cudaFree(buffer_gpu);
 }
 
 
@@ -59,97 +62,67 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverAttribute& attrib)
     int* AIdxHost = (int*)malloc(sizeof(int) * len);
     float* tmpValHost = (float*)malloc(sizeof(float) * len);
 
-    thrust::device_ptr<int> AIdx_dev(AIdx);
-    thrust::device_ptr<float> tmpVal_dev(tmpVal);
-
-    thrust::sort_by_key(AIdx_dev, AIdx_dev + len, tmpVal_dev);
-
     cudaMemcpy(AIdxHost, AIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
     cudaMemcpy(tmpValHost, tmpVal, sizeof(float) * len, cudaMemcpyDeviceToHost);
 
-    Eigen::SparseMatrix<float> A(ASize, ASize);
-    A.reserve(len);
-    int i, startIdx = 0;
-    for (int j = 0; j < ASize; ++j) {
-        bool notStarted = true;
-        for (i = startIdx; i < len; ++i) {
-            int col = AIdxHost[i] / ASize;
-            if (col > j) break;
-            if (notStarted) {
-                A.startVec(j);
-                notStarted = false;
-            }
-            int row = AIdxHost[i] % ASize;
+    std::vector<Eigen::Triplet<float>> A_triplets;
 
-            A.insertBack(row, col) = tmpValHost[i];
-        }
-        startIdx = i;
+    for (auto i = 0; i < len; ++i)
+    {
+        A_triplets.push_back({ AIdxHost[i] / ASize, AIdxHost[i] % ASize, tmpValHost[i] });
     }
-    A.finalize();
-    A.makeCompressed();
+    Eigen::SparseMatrix<float> A(ASize, ASize);
+
+    A.setFromTriplets(A_triplets.begin(), A_triplets.end());
     cholesky_decomposition_.compute(A);
 
     free(AIdxHost);
     free(tmpValHost);
 
-    int* newIdx;
-    float* newVal;
+    Eigen::MatrixXf ADense = Eigen::MatrixXf(A);
 
-    cudaMalloc((void**)&newIdx, sizeof(int) * len);
-    cudaMalloc((void**)&newVal, sizeof(float) * len);
+    cusolverDnCreate(&cusolverHandle);
+    cusolverDnCreateParams(&params);
 
-    thrust::pair<int*, float*> newEnd = thrust::reduce_by_key(thrust::device, AIdx, AIdx + len, tmpVal, newIdx, newVal);
+    // Matrix dimension and leading dimension
+    int n = ASize;  // Matrix size (assuming square matrix)
+    int lda = ASize;  // Leading dimension of A
+    int info = 0;
+    size_t workspaceInBytesOnDevice = 0; /* size of workspace */
+    size_t workspaceInBytesOnHost = 0;   /* size of workspace */
+    void* h_work = nullptr;              /* host workspace */
+    // Allocate memory for dense matrix A
+    cudaMalloc(&d_A, sizeof(float) * n * n);
+    cudaMalloc(reinterpret_cast<void**>(&d_info), sizeof(int));
 
-    int* ARow;
-    int* ACol;
-    float* AVal;
+    // Copy your matrix data from host to device
+    // Assuming h_A is the host matrix with size n x n
+    cudaMemcpy(d_A, ADense.data(), sizeof(float) * n * n, cudaMemcpyHostToDevice);
 
-    nnzNumber = newEnd.first - newIdx;
-    std::cout << nnzNumber << std::endl;
+    cusolverDnXpotrf_bufferSize(
+        cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, n, cudaDataType::CUDA_R_32F, d_A, lda,
+        cudaDataType::CUDA_R_32F, &workspaceInBytesOnDevice, &workspaceInBytesOnHost);
 
-    cudaMalloc((void**)&ARow, sizeof(int) * nnzNumber);
-    cudaMemset(ARow, 0, sizeof(int) * nnzNumber);
+    cudaMalloc(reinterpret_cast<void**>(&d_work), workspaceInBytesOnDevice);
+    if (0 < workspaceInBytesOnHost) {
+        h_work = reinterpret_cast<void*>(malloc(workspaceInBytesOnHost));
+        if (h_work == nullptr) {
+            throw std::runtime_error("Error: h_work not allocated.");
+        }
+    }
 
-    cudaMalloc((void**)&ACol, sizeof(int) * nnzNumber);
-    cudaMemset(ACol, 0, sizeof(int) * nnzNumber);
+    cusolverDnXpotrf(cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, n, cudaDataType::CUDA_R_32F,
+        d_A, lda, cudaDataType::CUDA_R_32F, d_work, workspaceInBytesOnDevice,
+        h_work, workspaceInBytesOnHost, d_info);
+    cudaMemcpy(&info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
 
-    cudaMalloc((void**)&AVal, sizeof(float) * nnzNumber);
-    cudaMemcpy(AVal, newVal, sizeof(float) * nnzNumber, cudaMemcpyDeviceToDevice);
+    std::printf("after Xpotrf: info = %d\n", info);
+    if (0 > info) {
+        std::printf("%d-th parameter is wrong \n", -info);
+        exit(1);
+    }
 
-    int* ARowTmp;
-    cudaMalloc((void**)&ARowTmp, sizeof(int) * nnzNumber);
-    cudaMemset(ARowTmp, 0, sizeof(int) * nnzNumber);
-
-    int blocks = (nnzNumber + threadsPerBlock - 1) / threadsPerBlock;
-
-    PdUtil::initAMatrix << < blocks, threadsPerBlock >> > (newIdx, ARowTmp, ACol, ASize, nnzNumber);
-
-    // transform ARow into csr format
-    cusparseHandle_t handle;
-    cusparseCreate(&handle);
-    cusparseXcoo2csr(handle, ARowTmp, nnzNumber, ASize, ARow, CUSPARSE_INDEX_BASE_ZERO);
-
-    cusparseMatDescr_t descrA;
-    cusolverSpCreate(&cusolverHandle);
-    cusparseCreateMatDescr(&descrA);
-    cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
-    cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
-
-    size_t cholSize = 0;
-    size_t internalSize = 0;
-    cusolverSpCreateCsrcholInfo(&d_info);
-    cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnzNumber, descrA, ARow, ACol, d_info);
-    cusolverSpScsrcholBufferInfo(cusolverHandle, ASize, nnzNumber, descrA, AVal, ARow, ACol, d_info, &internalSize, &cholSize);
-    cudaMalloc(&buffer_gpu, sizeof(char) * cholSize);
-    cusolverSpScsrcholFactor(cusolverHandle, ASize, nnzNumber, descrA, AVal, ARow, ACol, d_info, buffer_gpu);
-
-    cudaFree(newIdx);
-    cudaFree(newVal);
-    cudaFree(ARowTmp);
-    cudaFree(ARow);
-    cudaFree(ACol);
-    cudaFree(AVal);
-
+    free(h_work);
     cudaFree(AIdx);
     cudaFree(tmpVal);
 }
@@ -188,7 +161,10 @@ void PdSolver::SolverStep(SolverData& solverData, SolverAttribute& attrib)
         }
         else
         {
-            cusolverSpScsrcholSolve(cusolverHandle, solverData.numVerts * 3, b, sn, d_info, buffer_gpu);
+            cusolverDnXpotrs(cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, solverData.numVerts * 3, 1, /* nrhs */
+                cudaDataType::CUDA_R_32F, d_A, solverData.numVerts * 3,
+                cudaDataType::CUDA_R_32F, b, solverData.numVerts * 3, d_info);
+            cudaMemcpy(sn, b, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToDevice);
         }
     }
 

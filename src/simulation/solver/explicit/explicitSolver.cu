@@ -4,6 +4,7 @@
 #include <simulation/simulationContext.h>
 #include <thrust/fill.h>
 #include <thrust/execution_policy.h>
+#include <thrust/device_vector.h>
 
 ExplicitSolver::ExplicitSolver(SimulationCUDAContext* context, const SolverData& solverData) : FEMSolver(context)
 {

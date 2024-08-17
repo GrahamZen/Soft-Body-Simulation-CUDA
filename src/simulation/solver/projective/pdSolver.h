@@ -5,8 +5,8 @@
 #include <Eigen/Dense>
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
+#include <cusolverDn.h>
 #include <cusolverSp_LOWLEVEL_PREVIEW.h>
-#include <thrust/device_vector.h>
 
 class SimulationCUDAContext;
 class PdSolver : public FEMSolver {
@@ -24,10 +24,12 @@ private:
 
     float* Mass;
 
-    csrcholInfo_t d_info = nullptr;
-    void* buffer_gpu = nullptr;
-    cusolverSpHandle_t cusolverHandle;
+    cusolverDnParams_t params;
+    int* d_info = nullptr;    /* error info */
+    cusolverDnHandle_t cusolverHandle;
+    void* d_work = nullptr;              /* device workspace */
 
+    float* d_A;
     float* masses;
     float* sn;
     float* b;
