@@ -11,17 +11,16 @@
 class SimulationCUDAContext;
 class PdSolver : public FEMSolver {
 public:
-    PdSolver(SimulationCUDAContext*, const SolverData&);
+    PdSolver(int threadsPerBlock, const SolverData&);
     ~PdSolver();
-    virtual void Update(SolverData& solverData, SolverAttribute& solverAttr) override;
+    void SetGlobalSolver(bool useEigen) { this->useEigen = useEigen; }
+    virtual void Update(SolverData& solverData, SolverParams& solverParams) override;
 protected:
-    virtual void SolverPrepare(SolverData& solverData, SolverAttribute& solverAttr) override;
-    virtual void SolverStep(SolverData& solverData, SolverAttribute& solverAttr) override;
+    virtual void SolverPrepare(SolverData& solverData, SolverParams& solverParams) override;
+    virtual void SolverStep(SolverData& solverData, SolverParams& solverParams) override;
 private:
+    bool useEigen = false;
     int nnzNumber;
-
-    bool solverReady = false;
-
     float* Mass;
 
     cusolverDnParams_t params;

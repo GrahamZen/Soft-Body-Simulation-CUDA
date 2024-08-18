@@ -6,7 +6,7 @@
 #include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
 
-ExplicitSolver::ExplicitSolver(SimulationCUDAContext* context, const SolverData& solverData) : FEMSolver(context)
+ExplicitSolver::ExplicitSolver(int threadsPerBlock, const SolverData& solverData) : FEMSolver(threadsPerBlock)
 {
     if (!solverData.dev_ExtForce)
         cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::vec3) * solverData.numVerts);
@@ -26,28 +26,28 @@ ExplicitSolver::~ExplicitSolver()
 }
 
 
-void ExplicitSolver::SolverPrepare(SolverData& solverData, SolverAttribute& attrib)
+void ExplicitSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
 {
 }
 
 
-void ExplicitSolver::SolverStep(SolverData& solverData, SolverAttribute& attrib)
+void ExplicitSolver::SolverStep(SolverData& solverData, SolverParams& solverParams)
 {
-    glm::vec3 gravity{ 0.0f, -mcrpSimContext->GetGravity() * attrib.mass, 0.0f };
+    glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.solverAttr.mass, 0.0f };
     thrust::device_ptr<glm::vec3> dev_ptr(solverData.Force);
     thrust::fill(thrust::device, dev_ptr, dev_ptr + solverData.numVerts, gravity);
     Laplacian_Smoothing(solverData, 0.5);
-    ExplicitUtil::ComputeForcesSVD << <(solverData.numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.Force, solverData.XTilt, solverData.Tet, solverData.numTets, solverData.inv_Dm, attrib.stiffness_0, attrib.stiffness_1);
-    ExplicitUtil::EulerMethod << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.XTilt, solverData.V, solverData.Force, solverData.numVerts, attrib.mass, mcrpSimContext->GetDt());
+    ExplicitUtil::ComputeForcesSVD << <(solverData.numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.Force, solverData.XTilt, solverData.Tet, solverData.numTets, solverData.inv_Dm, solverParams.solverAttr.stiffness_0, solverParams.solverAttr.stiffness_1);
+    ExplicitUtil::EulerMethod << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.XTilt, solverData.V, solverData.Force, solverData.numVerts, solverParams.solverAttr.mass, solverParams.dt);
 }
 
 
-void ExplicitSolver::Update(SolverData& solverData, SolverAttribute& attrib)
+void ExplicitSolver::Update(SolverData& solverData, SolverParams& solverParams)
 {
-    AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, attrib.jump, attrib.mass, mcrpSimContext->GetExtForce().jump);
+    AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, solverParams.solverAttr.jump, solverParams.solverAttr.mass, solverParams.extForce.jump);
     for (size_t i = 0; i < 10; i++)
     {
-        SolverStep(solverData, attrib);
+        SolverStep(solverData, solverParams);
     }
 }
 

@@ -10,21 +10,18 @@ class SolverData;
 
 class SoftBody : public Mesh {
 public:
-    SoftBody(SimulationCUDAContext*, SolverAttribute&, SolverData*);
+    SoftBody(SimulationCUDAContext*, SolverAttribute&, SoftBodyData*);
     ~SoftBody();
     SoftBody(const SoftBody&) = delete;
     SoftBody& operator=(const SoftBody&) = delete;
-    int GetNumVerts()const;
     int GetNumTets()const;
     int GetNumTris()const;
-    void Update();
     void Reset();
-    const SolverData& GetSolverData() const;
+    const SoftBodyData& GetSoftBodyData() const;
     void SetAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr);
 private:
-    SolverData solverData;
+    SoftBodyData softBodyData;
     SolverAttribute attrib;
-    FEMSolver* solver;
     bool jump = false;
     const int threadsPerBlock;
 };

@@ -1,41 +1,29 @@
 #include <simulation/softBody.h>
-#include <simulation/solver/projective/pdSolver.h>
-#include <simulation/solver/explicit/explicitSolver.h>
 #include <simulation/simulationContext.h>
 
-SoftBody::SoftBody(SimulationCUDAContext* context, SolverAttribute& _attrib, SolverData* dataPtr)
-    :solverData(*dataPtr), attrib(_attrib), solver(new PdSolver{ context, solverData }), threadsPerBlock(context->GetThreadsPerBlock())
+SoftBody::SoftBody(SimulationCUDAContext* context, SolverAttribute& _attrib, SoftBodyData* dataPtr)
+    :softBodyData(*dataPtr), attrib(_attrib), threadsPerBlock(context->GetThreadsPerBlock())
 {
-    Mesh::numTets = solverData.numTets;
-    Mesh::numTris = solverData.numTris;
+    Mesh::numTets = softBodyData.numTets;
+    Mesh::numTris = softBodyData.numTris;
     if (numTris == 0)
         createTetrahedron();
     else
         createMesh();
 }
 
-void SoftBody::Update()
-{
-    solver->Update(solverData, attrib);
-}
-
-int SoftBody::GetNumVerts() const
-{
-    return solverData.numVerts;
-}
-
 int SoftBody::GetNumTets() const
 {
-    return solverData.numTets;
+    return softBodyData.numTets;
 }
 
 int SoftBody::GetNumTris() const
 {
     return numTris;
 }
-const SolverData& SoftBody::GetSolverData()const
+const SoftBodyData& SoftBody::GetSoftBodyData()const
 {
-    return solverData;
+    return softBodyData;
 }
 
 void SoftBody::SetAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)

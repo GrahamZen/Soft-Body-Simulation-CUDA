@@ -2,4 +2,6 @@
 
 #include <simulation/solver/femSolver.h>
 
-FEMSolver::FEMSolver(SimulationCUDAContext* context) : Solver(context) {}
+
+FEMSolver::FEMSolver(int threadsPerBlock) : Solver(threadsPerBlock) {
+}
