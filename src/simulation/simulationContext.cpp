@@ -157,7 +157,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         }
         dataLoader.AllocData(startIndices, mSolverData.X, mSolverData.X0, mSolverData.XTilt, mSolverData.V, mSolverData.Force, dev_Edges, mSolverData.Tet, dev_TetFathers, mSolverData.numVerts, mSolverData.numTets);
         for (auto softBodyData : dataLoader.m_softBodyData) {
-            softBodies.push_back(new SoftBody(this, softBodyData.second, &softBodyData.first));
+            softBodies.push_back(new SoftBody(this, std::get<2>(softBodyData), &std::get<1>(softBodyData)));
         }
         mCollisionDetection.Init(mSolverData.numTets, mSolverData.numVerts, maxThreads);
         cudaMalloc((void**)&dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
@@ -169,7 +169,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
 void SimulationCUDAContext::Update()
 {
     measureExecutionTime([&]() {
-        //mSolver->Update();
+        mSolver->Update(mSolverData, mSolverParams);
         }, "[" + name + "]<CUDA Solver>", context->logEnabled);
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         mCollisionDetection.PrepareRenderData();
@@ -209,9 +209,10 @@ void SimulationCUDAContext::SetGlobalSolver(bool useEigen)
 
 void SimulationCUDAContext::Reset()
 {
-    for (auto softbody : softBodies) {
-        softbody->Reset();
-    }
+    cudaMemcpy(mSolverData.X, mSolverData.X0, sizeof(glm::vec3) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(mSolverData.XTilt, mSolverData.X0, sizeof(glm::vec3) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
+    cudaMemset(mSolverData.V, 0, sizeof(glm::vec3) * mSolverData.numVerts);
+    cudaMemset(mSolverData.Force, 0, sizeof(glm::vec3) * mSolverData.numVerts);
 }
 
 void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* flatShaderProgram)

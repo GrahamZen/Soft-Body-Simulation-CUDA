@@ -20,7 +20,7 @@ private:
     static std::vector<glm::vec3> loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts);
     static std::vector<indexType> loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris);
     void CollectEdges(const std::vector<indexType>& triIdx);
-    std::vector<std::pair<SolverData, SolverAttribute>> m_softBodyData;
+    std::vector<std::tuple<SolverData, SoftBodyData, SolverAttribute>> m_softBodyData;
     std::vector<std::vector<indexType>> m_edges;
     int totalNumVerts = 0;
     int totalNumTets = 0;

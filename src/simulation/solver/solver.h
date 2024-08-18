@@ -14,7 +14,6 @@ class SimulationCUDAContext;
 
 struct SolverData {
     indexType* Tet = nullptr;
-    indexType* Tri = nullptr;
     glm::vec3* Force = nullptr;
     glm::vec3* V = nullptr;
     glm::vec3* X = nullptr;
@@ -25,7 +24,13 @@ struct SolverData {
     float* V0 = nullptr;
     int numTets = 0;
     int numVerts = 0;
+};
+
+struct SoftBodyData {
+    indexType* Tet = nullptr;
+    indexType* Tri = nullptr;
     int numTris = 0;
+    int numTets = 0;
 };
 
 struct SolverParams {
