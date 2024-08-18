@@ -5,7 +5,7 @@
 class SimulationCUDAContext;
 class ExplicitSolver : public FEMSolver {
 public:
-    ExplicitSolver(const SolverData&, int threadsPerBlock);
+    ExplicitSolver(int threadsPerBlock, const SolverData& solverData);
     ~ExplicitSolver();
     virtual void Update(SolverData& solverData, SolverParams& solverParams) override;
 protected:

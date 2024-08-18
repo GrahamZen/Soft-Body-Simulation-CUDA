@@ -6,7 +6,7 @@
 #include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
 
-ExplicitSolver::ExplicitSolver(const SolverData& solverData, int threadsPerBlock)
+ExplicitSolver::ExplicitSolver(int threadsPerBlock, const SolverData& solverData) : FEMSolver(threadsPerBlock)
 {
     if (!solverData.dev_ExtForce)
         cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::vec3) * solverData.numVerts);
@@ -33,7 +33,7 @@ void ExplicitSolver::SolverPrepare(SolverData& solverData, SolverParams& solverP
 
 void ExplicitSolver::SolverStep(SolverData& solverData, SolverParams& solverParams)
 {
-    glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.solverAttr.mass, 0.0f};
+    glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.solverAttr.mass, 0.0f };
     thrust::device_ptr<glm::vec3> dev_ptr(solverData.Force);
     thrust::fill(thrust::device, dev_ptr, dev_ptr + solverData.numVerts, gravity);
     Laplacian_Smoothing(solverData, 0.5);

@@ -1,9 +1,8 @@
 #include <simulation/solver/femSolver.h>
 #include <simulation/simulationContext.h>
 
-Solver::Solver()
+Solver::Solver(int threadsPerBlock) : threadsPerBlock(threadsPerBlock)
 {
-
 }
 
 Solver::~Solver() {

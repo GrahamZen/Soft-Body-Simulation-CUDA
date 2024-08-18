@@ -43,7 +43,7 @@ struct SolverParams {
 
 class Solver {
 public:
-    Solver();
+    Solver(int threadsPerBlock);
     virtual ~Solver();
 
     virtual void Update(SolverData& solverData, SolverParams& solverParams) = 0;

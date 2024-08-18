@@ -2,4 +2,6 @@
 
 #include <simulation/solver/femSolver.h>
 
-FEMSolver::FEMSolver() : Solver() {}
+
+FEMSolver::FEMSolver(int threadsPerBlock) : Solver(threadsPerBlock) {
+}

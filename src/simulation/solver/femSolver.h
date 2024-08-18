@@ -6,7 +6,7 @@ class SolverData;
 
 class FEMSolver : public Solver {
 public:
-    FEMSolver();
+    FEMSolver(int threadsPerBlock);
     virtual ~FEMSolver() = default;
 
     virtual void Update(SolverData& solverData, SolverParams& solverParams) = 0;

@@ -11,7 +11,7 @@
 class SimulationCUDAContext;
 class PdSolver : public FEMSolver {
 public:
-    PdSolver(const SolverData&);
+    PdSolver(int threadsPerBlock, const SolverData&);
     ~PdSolver();
     void SetGlobalSolver(bool useEigen) { this->useEigen = useEigen; }
     virtual void Update(SolverData& solverData, SolverParams& solverParams) override;

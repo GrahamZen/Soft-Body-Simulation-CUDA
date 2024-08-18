@@ -10,7 +10,7 @@
 #include <cublas_v2.h>
 #include <utilities.cuh>
 
-PdSolver::PdSolver(const SolverData& solverData)
+PdSolver::PdSolver(int threadsPerBlock, const SolverData& solverData) : FEMSolver(threadsPerBlock)
 {
     cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(solverData.dev_ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
