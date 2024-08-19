@@ -1,3 +1,5 @@
+#pragma once
+
 #include <collision/bvh.h>
 #include <fixedBodyData.h>
 #include <simulation/solver/solver.h>
