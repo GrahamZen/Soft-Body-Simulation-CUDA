@@ -1,13 +1,11 @@
 #include <simulation/solver/linear/cholesky.h>
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/solver/projective/pdUtil.cuh>
-#include <simulation/simulationContext.h>
 
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
-#include <utilities.cuh>
 
 PdSolver::PdSolver(int threadsPerBlock, const SolverData& solverData) : FEMSolver(threadsPerBlock)
 {
