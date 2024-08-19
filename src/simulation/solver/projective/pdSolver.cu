@@ -6,8 +6,9 @@
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
 #include <thrust/device_vector.h>
-#include <cusolverDn.h>
-#include <cublas_v2.h>
+#include <thrust/host_vector.h>
+#include <cusolverSp.h>
+#include <cusparse.h>
 #include <utilities.cuh>
 
 PdSolver::PdSolver(int threadsPerBlock, const SolverData& solverData) : FEMSolver(threadsPerBlock)
@@ -23,12 +24,15 @@ PdSolver::PdSolver(int threadsPerBlock, const SolverData& solverData) : FEMSolve
 }
 
 PdSolver::~PdSolver() {
+    if (cholSpData) {
+        free(cholSpData);
+    }
+    if (cholDnData) {
+        free(cholDnData);
+    }
     cudaFree(sn);
     cudaFree(b);
     cudaFree(masses);
-    cudaFree(d_A);
-    cudaFree(d_info);
-    cudaFree(d_work);
     free(bHost);
 }
 
@@ -40,7 +44,16 @@ __global__ void FillMatrixA(int* AIdx, float* tmpVal, float* d_A, int n, int ASi
     atomicAdd(&d_A[row * ASize + col], tmpVal[idx]);
 }
 
-void PdSolver::InitCholeskyDecomp(int ASize) {
+CholeskyDnData::~CholeskyDnData()
+{
+    cudaFree(d_info);
+    cudaFree(d_A);
+    cudaFree(d_work);
+}
+
+CholeskyDnData::CholeskyDnData(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len) {
+    cudaMalloc(&d_A, sizeof(float) * ASize * ASize);
+    FillMatrixA << < (len + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (AIdx, tmpVal, d_A, len, ASize);
     cusolverDnCreate(&cusolverHandle);
     cusolverDnCreateParams(&params);
 
@@ -83,6 +96,83 @@ void PdSolver::InitCholeskyDecomp(int ASize) {
     free(h_work);
 }
 
+CholeskySpData::~CholeskySpData()
+{
+    cusolverSpDestroyCsrcholInfo(d_info);
+    cusparseDestroyMatDescr(descrA);
+    cusolverSpDestroy(cusolverHandle);
+    cudaFree(buffer_gpu);
+}
+
+CholeskySpData::CholeskySpData(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len) {
+    int* newIdx;
+    float* newVal;
+
+    cudaMalloc((void**)&newIdx, sizeof(int) * len);
+    cudaMalloc((void**)&newVal, sizeof(float) * len);
+
+    thrust::sort_by_key(thrust::device, AIdx, AIdx + len, tmpVal);
+
+
+    thrust::pair<int*, float*> newEnd = thrust::reduce_by_key(thrust::device, AIdx, AIdx + len, tmpVal, newIdx, newVal);
+
+    int* ARow;
+    int* ACol;
+    float* AVal;
+
+    nnz = newEnd.first - newIdx;
+    std::cout << nnz << std::endl;
+
+    cudaMalloc((void**)&ARow, sizeof(int) * nnz);
+    cudaMemset(ARow, 0, sizeof(int) * nnz);
+
+    cudaMalloc((void**)&ACol, sizeof(int) * nnz);
+    cudaMemset(ACol, 0, sizeof(int) * nnz);
+
+    cudaMalloc((void**)&AVal, sizeof(float) * nnz);
+    cudaMemcpy(AVal, newVal, sizeof(float) * nnz, cudaMemcpyDeviceToDevice);
+
+    int* ARowTmp;
+    cudaMalloc((void**)&ARowTmp, sizeof(int) * nnz);
+    cudaMemset(ARowTmp, 0, sizeof(int) * nnz);
+
+    int blocks = (nnz + threadsPerBlock - 1) / threadsPerBlock;
+
+    PdUtil::initAMatrix << < blocks, threadsPerBlock >> > (newIdx, ARowTmp, ACol, ASize, nnz);
+
+    // transform ARow into csr format
+    cusparseHandle_t handle;
+    cusparseCreate(&handle);
+    cusparseXcoo2csr(handle, ARowTmp, nnz, ASize, ARow, CUSPARSE_INDEX_BASE_ZERO);
+
+    cusparseMatDescr_t descrA;
+    cusolverSpCreate(&cusolverHandle);
+    cusparseCreateMatDescr(&descrA);
+    cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
+    cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
+
+    size_t cholSize = 0;
+    size_t internalSize = 0;
+    cusolverSpCreateCsrcholInfo(&d_info);
+    cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnz, descrA, ARow, ACol, d_info);
+    cusolverSpScsrcholBufferInfo(cusolverHandle, ASize, nnz, descrA, AVal, ARow, ACol, d_info, &internalSize, &cholSize);
+    cudaMalloc(&buffer_gpu, sizeof(char) * cholSize);
+    cusolverSpScsrcholFactor(cusolverHandle, ASize, nnz, descrA, AVal, ARow, ACol, d_info, buffer_gpu);
+
+    cudaFree(newIdx);
+    cudaFree(newVal);
+    cudaFree(ARowTmp);
+    cudaFree(ARow);
+    cudaFree(ACol);
+    cudaFree(AVal);
+}
+
+void CholeskyDnData::Solve(float* d_b, int bSize, float* d_x) {
+    cusolverDnXpotrs(cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, bSize, 1, /* nrhs */
+        cudaDataType::CUDA_R_32F, d_A, bSize,
+        cudaDataType::CUDA_R_32F, d_b, bSize, d_info);
+    cudaMemcpy(d_x, d_b, sizeof(float) * (bSize), cudaMemcpyDeviceToDevice);
+}
 
 void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
 {
@@ -108,10 +198,26 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
     PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, solverData.V0, solverData.inv_Dm, solverData.Tet, solverParams.solverAttr.stiffness_0, solverData.numTets, solverData.numVerts);
     PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
 
-    cudaMalloc(&d_A, sizeof(float) * ASize * ASize);
-    FillMatrixA << < (len + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (AIdx, tmpVal, d_A, len, ASize);
+    bHost = (float*)malloc(sizeof(float) * ASize);
+    int* AIdxHost = (int*)malloc(sizeof(int) * len);
+    float* tmpValHost = (float*)malloc(sizeof(float) * len);
 
-    InitCholeskyDecomp(ASize);
+    cudaMemcpy(AIdxHost, AIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
+    cudaMemcpy(tmpValHost, tmpVal, sizeof(float) * len, cudaMemcpyDeviceToHost);
+
+    std::vector<Eigen::Triplet<float>> A_triplets;
+
+    for (auto i = 0; i < len; ++i)
+    {
+        A_triplets.push_back({ AIdxHost[i] / ASize, AIdxHost[i] % ASize, tmpValHost[i] });
+    }
+    Eigen::SparseMatrix<float> A(ASize, ASize);
+
+    A.setFromTriplets(A_triplets.begin(), A_triplets.end());
+    cholesky_decomposition_.compute(A);
+
+    cholDnData = new CholeskyDnData(threadsPerBlock, AIdx, tmpVal, ASize, len);
+    //cholSpData = new CholeskySpData(threadsPerBlock, AIdx, tmpVal, ASize, len);
 
     cudaFree(AIdx);
     cudaFree(tmpVal);
@@ -127,14 +233,12 @@ void PdSolver::SolverStep(SolverData& solverData, SolverParams& solverParams)
     float const dt2_m_1 = dt2 / solverParams.solverAttr.mass;
     float const m_1_dt2 = 1.f / dt2_m_1;
 
-
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
 
     glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.solverAttr.mass, 0.0f };
     thrust::device_ptr<glm::vec3> dev_ptr(solverData.dev_ExtForce);
     thrust::fill(thrust::device, dev_ptr, dev_ptr + solverData.numVerts, gravity);
-    //computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, thrust::raw_pointer_cast(solverData.dev_ExtForce.data()), masses, m_1_dt2, solverData.numVerts);
     PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, solverData.dev_ExtForce, masses, m_1_dt2, solverData.numVerts);
     for (int i = 0; i < solverParams.numIterations; i++)
     {
@@ -151,10 +255,7 @@ void PdSolver::SolverStep(SolverData& solverData, SolverParams& solverParams)
         }
         else
         {
-            cusolverDnXpotrs(cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, solverData.numVerts * 3, 1, /* nrhs */
-                cudaDataType::CUDA_R_32F, d_A, solverData.numVerts * 3,
-                cudaDataType::CUDA_R_32F, b, solverData.numVerts * 3, d_info);
-            cudaMemcpy(sn, b, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToDevice);
+            cholDnData->Solve(b, solverData.numVerts * 3, sn);
         }
     }
 
@@ -171,4 +272,9 @@ void PdSolver::Update(SolverData& solverData, SolverParams& solverParams)
         solverReady = true;
     }
     SolverStep(solverData, solverParams);
+}
+
+void CholeskySpData::Solve(float* d_b, int bSize, float* d_x)
+{
+    cusolverSpScsrcholSolve(cusolverHandle, bSize, d_b, d_x, d_info, buffer_gpu);
 }
