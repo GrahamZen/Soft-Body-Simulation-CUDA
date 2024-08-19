@@ -19,6 +19,7 @@ protected:
     virtual void SolverPrepare(SolverData& solverData, SolverParams& solverParams) override;
     virtual void SolverStep(SolverData& solverData, SolverParams& solverParams) override;
 private:
+    void InitCholeskyDecomp(int ASize);
     bool useEigen = false;
     int nnzNumber;
     float* Mass;

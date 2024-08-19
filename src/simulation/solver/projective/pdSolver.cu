@@ -32,72 +32,30 @@ PdSolver::~PdSolver() {
     free(bHost);
 }
 
+__global__ void FillMatrixA(int* AIdx, float* tmpVal, float* d_A, int n, int ASize) {
+    int idx = blockIdx.x * blockDim.x + threadIdx.x;
+    if (idx >= n) return;
+    int row = AIdx[idx] / ASize;
+    int col = AIdx[idx] % ASize;
+    atomicAdd(&d_A[row * ASize + col], tmpVal[idx]);
+}
 
-void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
-{
-    int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    float dt = solverParams.dt;
-    float const m_1_dt2 = solverParams.solverAttr.mass / (dt * dt);
-    int len = solverData.numVerts * 3 + 48 * solverData.numTets;
-    int ASize = 3 * solverData.numVerts;
-
-    cudaMalloc((void**)&sn, sizeof(float) * ASize);
-    cudaMalloc((void**)&b, sizeof(float) * ASize);
-    cudaMalloc((void**)&masses, sizeof(float) * ASize);
-
-    int* AIdx;
-    cudaMalloc((void**)&AIdx, sizeof(int) * len);
-    cudaMemset(AIdx, 0, sizeof(int) * len);
-
-    float* tmpVal;
-    cudaMalloc((void**)&tmpVal, sizeof(int) * len);
-    cudaMemset(tmpVal, 0, sizeof(int) * len);
-
-    PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, solverData.V0, solverData.inv_Dm, solverData.Tet, solverParams.solverAttr.stiffness_0, solverData.numTets, solverData.numVerts);
-    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
-
-    bHost = (float*)malloc(sizeof(float) * ASize);
-
-    int* AIdxHost = (int*)malloc(sizeof(int) * len);
-    float* tmpValHost = (float*)malloc(sizeof(float) * len);
-
-    cudaMemcpy(AIdxHost, AIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
-    cudaMemcpy(tmpValHost, tmpVal, sizeof(float) * len, cudaMemcpyDeviceToHost);
-
-    std::vector<Eigen::Triplet<float>> A_triplets;
-
-    for (auto i = 0; i < len; ++i)
-    {
-        A_triplets.push_back({ AIdxHost[i] / ASize, AIdxHost[i] % ASize, tmpValHost[i] });
-    }
-    Eigen::SparseMatrix<float> A(ASize, ASize);
-
-    A.setFromTriplets(A_triplets.begin(), A_triplets.end());
-    cholesky_decomposition_.compute(A);
-
-    free(AIdxHost);
-    free(tmpValHost);
-
-    Eigen::MatrixXf ADense = Eigen::MatrixXf(A);
-
+void PdSolver::InitCholeskyDecomp(int ASize) {
     cusolverDnCreate(&cusolverHandle);
     cusolverDnCreateParams(&params);
 
     // Matrix dimension and leading dimension
-    int n = ASize;  // Matrix size (assuming square matrix)
-    int lda = ASize;  // Leading dimension of A
+    int n = ASize;
+    int lda = n;  // Leading dimension of A
     int info = 0;
     size_t workspaceInBytesOnDevice = 0; /* size of workspace */
     size_t workspaceInBytesOnHost = 0;   /* size of workspace */
     void* h_work = nullptr;              /* host workspace */
     // Allocate memory for dense matrix A
-    cudaMalloc(&d_A, sizeof(float) * n * n);
     cudaMalloc(reinterpret_cast<void**>(&d_info), sizeof(int));
 
     // Copy your matrix data from host to device
     // Assuming h_A is the host matrix with size n x n
-    cudaMemcpy(d_A, ADense.data(), sizeof(float) * n * n, cudaMemcpyHostToDevice);
 
     cusolverDnXpotrf_bufferSize(
         cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, n, cudaDataType::CUDA_R_32F, d_A, lda,
@@ -123,6 +81,38 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
     }
 
     free(h_work);
+}
+
+
+void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
+{
+    int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
+    float dt = solverParams.dt;
+    float const m_1_dt2 = solverParams.solverAttr.mass / (dt * dt);
+    int len = solverData.numVerts * 3 + 48 * solverData.numTets;
+    int ASize = 3 * solverData.numVerts;
+
+    cudaMalloc((void**)&sn, sizeof(float) * ASize);
+    cudaMalloc((void**)&b, sizeof(float) * ASize);
+    cudaMalloc((void**)&masses, sizeof(float) * ASize);
+
+    int* AIdx;
+    cudaMalloc((void**)&AIdx, sizeof(int) * len);
+    cudaMemset(AIdx, 0, sizeof(int) * len);
+
+    float* tmpVal;
+    cudaMalloc((void**)&tmpVal, sizeof(int) * len);
+    cudaMemset(tmpVal, 0, sizeof(int) * len);
+
+    PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, solverData.V0, solverData.inv_Dm, solverData.Tet, solverParams.solverAttr.stiffness_0, solverData.numTets, solverData.numVerts);
+    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
+
+    cudaMalloc(&d_A, sizeof(float) * ASize * ASize);
+    FillMatrixA << < (len + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (AIdx, tmpVal, d_A, len, ASize);
+
+    InitCholeskyDecomp(ASize);
+
     cudaFree(AIdx);
     cudaFree(tmpVal);
 }
