@@ -1,6 +1,7 @@
 #include <simulation/solver/linear/cholesky.h>
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/solver/projective/pdUtil.cuh>
+#include <fixedBodyData.h>
 
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>
@@ -71,7 +72,7 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
     A.setFromTriplets(A_triplets.begin(), A_triplets.end());
     cholesky_decomposition_.compute(A);
 
-    ls = new CholeskySplinearSolver(threadsPerBlock, AIdx, tmpVal, ASize, len);
+    ls = new CholeskyDnlinearSolver(threadsPerBlock, AIdx, tmpVal, ASize, len);
 
     cudaFree(AIdx);
     cudaFree(tmpVal);
@@ -116,7 +117,6 @@ void PdSolver::SolverStep(SolverData& solverData, SolverParams& solverParams)
     PdUtil::updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilt, solverData.V, solverData.numVerts);
 }
 
-
 void PdSolver::Update(SolverData& solverData, SolverParams& solverParams)
 {
     AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, solverParams.solverAttr.jump, solverParams.solverAttr.mass, solverParams.extForce.jump);
@@ -126,4 +126,11 @@ void PdSolver::Update(SolverData& solverData, SolverParams& solverParams)
         solverReady = true;
     }
     SolverStep(solverData, solverParams);
+    if (solverParams.handleCollision) {
+        solverParams.pCollisionDetection->DetectCollision(solverData.dev_tIs, solverData.dev_Normals);
+        int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+        PdUtil::CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilt, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts);
+    }else
+        cudaMemcpy(solverData.X, solverData.XTilt, sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
+    solverData.pFixedBodies->HandleCollisions(solverData.XTilt, solverData.V, solverData.numVerts, solverParams.muT, solverParams.muN);
 }

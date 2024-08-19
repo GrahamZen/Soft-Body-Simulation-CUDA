@@ -19,8 +19,6 @@
  * of memory management
  */
 
-__global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, glm::vec3* V, dataType* tI, glm::vec3* normal, float muT, float muN, int numVerts);
-
 SimulationCUDAContext::~SimulationCUDAContext()
 {
     for (auto name : namesSoftBodies) {
@@ -35,7 +33,7 @@ SimulationCUDAContext::~SimulationCUDAContext()
     for (auto softbody : softBodies) {
         delete softbody;
     }
-    cudaFree(dev_Normals);
+    cudaFree(mSolverData.dev_Normals);
     delete mSolver;
 }
 
@@ -44,7 +42,7 @@ int SimulationCUDAContext::GetVertCnt() const {
 }
 
 int SimulationCUDAContext::GetNumQueries() const {
-    return mCollisionDetection.GetNumQueries();
+    return mSolverParams.pCollisionDetection->GetNumQueries();
 }
 
 int SimulationCUDAContext::GetTetCnt() const {
@@ -188,13 +186,6 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
     }
     cudaMemcpy(gX0, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(gXTilt, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
-}
-
-void SimulationCUDAContext::CCD()
-{
-    mCollisionDetection.DetectCollision(dev_tIs, dev_Normals);
-    int blocks = (mSolverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    CCDKernel << <blocks, threadsPerBlock >> > (mSolverData.X, mSolverData.XTilt, mSolverData.V, dev_tIs, dev_Normals, mSolverParams.muT, mSolverParams.muN, mSolverData.numVerts);
 }
 
 void SimulationCUDAContext::PrepareRenderData() {

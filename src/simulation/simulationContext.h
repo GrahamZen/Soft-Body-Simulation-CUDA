@@ -51,20 +51,15 @@ public:
     int GetThreadsPerBlock() const { return threadsPerBlock; }
     int GetNumQueries() const;
 private:
-    void CCD();
     void PrepareRenderData();
     int threadsPerBlock = 64;
     SolverData mSolverData;
-    dataType* dev_tIs;
-    glm::vec3* dev_Normals;
     indexType* dev_TetFathers;
     indexType* dev_Edges;
     std::vector<const char*> namesSoftBodies;
     std::vector<SoftBody*> softBodies;
     std::vector<FixedBody*> fixedBodies;
-    FixedBodyData dev_fixedBodies;
     std::vector<int> startIndices;
-    CollisionDetection mCollisionDetection;
 
     Context* context = nullptr;
     const std::string name;

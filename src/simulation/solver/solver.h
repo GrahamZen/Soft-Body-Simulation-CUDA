@@ -11,6 +11,8 @@ struct SolverAttribute {
 };
 
 class SimulationCUDAContext;
+class CollisionDetection;
+class FixedBodyData;
 
 struct SolverData {
     indexType* Tet = nullptr;
@@ -21,6 +23,9 @@ struct SolverData {
     glm::vec3* XTilt = nullptr;
     glm::vec3* dev_ExtForce = nullptr;
     glm::mat3* inv_Dm = nullptr;
+    dataType* dev_tIs = nullptr;
+    glm::vec3* dev_Normals = nullptr;
+    FixedBodyData* pFixedBodies = nullptr;
     float* V0 = nullptr;
     int numTets = 0;
     int numVerts = 0;
@@ -44,8 +49,11 @@ struct SolverParams {
     float dt = 0.001f;
     float gravity = 9.8f;
     int numIterations = 10;
+    bool handleCollision = true;
+    CollisionDetection* pCollisionDetection = nullptr;
 };
 
+class CollisionDetection;
 class Solver {
 public:
     Solver(int threadsPerBlock);

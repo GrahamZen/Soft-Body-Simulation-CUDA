@@ -4,6 +4,7 @@
 #include <simulation/solver/solverUtil.cuh>
 
 namespace PdUtil {
+    __global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, glm::vec3* V, dataType* tI, glm::vec3* normal, float muT, float muN, int numVerts);
     __inline__ __device__ void setRowColVal(int index, int* row, int* col, float* val, int r, int c, float v)
     {
         row[index] = r;

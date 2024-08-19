@@ -25,29 +25,6 @@ __global__ void UpdateParticles(glm::vec3* X, glm::vec3* V, const glm::vec3* For
     }
 }
 
-__global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilt, glm::vec3* V, dataType* tI, glm::vec3* normals, float muT, float muN, int numVerts) {
-    int idx = threadIdx.x + blockIdx.x * blockDim.x;
-    if (idx >= numVerts) return;
-    float interval = glm::length(XTilt - X);
-
-    if (tI[idx] < 1.0f)
-    {
-        glm::vec3 normal = normals[idx];
-        glm::vec3 vel = XTilt[idx] - X[idx];
-        glm::vec3 velNormal = glm::dot(vel, normal) * normal;
-        glm::vec3 vT = vel - velNormal;
-        float mag_vT = glm::length(vT);
-        float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(velNormal) / mag_vT, 0.0f);
-        //V[idx] = -muN * velNormal + a * vT;
-        //V[idx] = X[idx] - XTilt[idx];
-    }
-    else
-    {
-        X[idx] = XTilt[idx];
-    }
-    //XTilt[idx] = X[idx];
-}
-
 __global__ void handleFloorCollision(glm::vec3* X, glm::vec3* V, int numVerts, Plane* planes, int numPlanes, float muT, float muN) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numVerts) return;
