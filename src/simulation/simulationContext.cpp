@@ -170,6 +170,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
 
 void SimulationCUDAContext::Update()
 {
+    mSolverParams.handleCollision = (context->guiData->handleCollision && context->guiData->BVHEnabled);
     mSolver->Update(mSolverData, mSolverParams);
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
         mSolverParams.pCollisionDetection->PrepareRenderData();
@@ -217,7 +218,8 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
             shaderProgram->draw(*fixedBody, 0);
         }
     }
-    mSolverParams.pCollisionDetection->Draw(flatShaderProgram);
+    if (context->guiData->handleCollision && context->guiData->BVHEnabled) 
+        mSolverParams.pCollisionDetection->Draw(flatShaderProgram);
 }
 
 const SolverParams& SimulationCUDAContext::GetSolverParams() const
