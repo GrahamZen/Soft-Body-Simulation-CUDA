@@ -122,7 +122,6 @@ CholeskySplinearSolver::CholeskySplinearSolver(int threadsPerBlock, int* AIdx, f
     cusparseCreate(&handle);
     cusparseXcoo2csr(handle, ARowTmp, nnz, ASize, ARow, CUSPARSE_INDEX_BASE_ZERO);
 
-    cusparseMatDescr_t descrA;
     cusolverSpCreate(&cusolverHandle);
     cusparseCreateMatDescr(&descrA);
     cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
@@ -131,6 +130,7 @@ CholeskySplinearSolver::CholeskySplinearSolver(int threadsPerBlock, int* AIdx, f
     size_t cholSize = 0;
     size_t internalSize = 0;
     cusolverSpCreateCsrcholInfo(&d_info);
+    ApproximateMinimumDegree(ASize, ARow, ACol, AVal);
     cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnz, descrA, ARow, ACol, d_info);
     cusolverSpScsrcholBufferInfo(cusolverHandle, ASize, nnz, descrA, AVal, ARow, ACol, d_info, &internalSize, &cholSize);
     cudaMalloc(&buffer_gpu, sizeof(char) * cholSize);
@@ -154,4 +154,81 @@ void CholeskyDnlinearSolver::Solve(float* d_b, int bSize, float* d_x) {
 void CholeskySplinearSolver::Solve(float* d_b, int bSize, float* d_x)
 {
     cusolverSpScsrcholSolve(cusolverHandle, bSize, d_b, d_x, d_info, buffer_gpu);
+}
+
+void CholeskySplinearSolver::ApproximateMinimumDegree(int ASize, int* dev_ARow, int* dev_ACol, float* dev_AVal)
+{
+    size_t size_perm = 0;
+    void* buffer_cpu = nullptr;
+    int* h_csrRowPtrA = new int[ASize + 1];
+    int* h_csrColIndA = new int[nnz];
+    float* h_csrValA = new float[nnz];
+
+    cudaMemcpy(h_csrRowPtrA, dev_ARow, sizeof(int) * (ASize + 1), cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_csrColIndA, dev_ACol, sizeof(int) * nnz, cudaMemcpyDeviceToHost);
+    cudaMemcpy(h_csrValA, dev_AVal, sizeof(float) * nnz, cudaMemcpyDeviceToHost);
+
+    int colsA = ASize, rowsA = ASize, nnzA = nnz;
+
+    int*  h_Q = (int*)malloc(sizeof(int) * colsA);
+    int*  h_csrRowPtrB = (int*)malloc(sizeof(int) * (rowsA + 1));
+    int*  h_csrColIndB = (int*)malloc(sizeof(int) * nnzA);
+    double*  h_csrValB = (double*)malloc(sizeof(double) * nnzA);
+    int*  h_mapBfromA = (int*)malloc(sizeof(int) * nnzA);
+
+    assert(NULL != h_Q);
+    assert(NULL != h_csrRowPtrB);
+    assert(NULL != h_csrColIndB);
+    assert(NULL != h_csrValB);
+    assert(NULL != h_mapBfromA);
+
+    (cusolverSpXcsrsymamdHost(
+        cusolverHandle, rowsA, nnzA,
+        descrA, h_csrRowPtrA, h_csrColIndA,
+        h_Q));
+
+    // B = Q*A*Q^T
+    memcpy(h_csrRowPtrB, h_csrRowPtrA, sizeof(int) * (rowsA + 1));
+    memcpy(h_csrColIndB, h_csrColIndA, sizeof(int) * nnzA);
+
+    (cusolverSpXcsrperm_bufferSizeHost(
+        cusolverHandle, rowsA, colsA, nnzA,
+        descrA, h_csrRowPtrB, h_csrColIndB,
+        h_Q, h_Q,
+        &size_perm));
+
+    if (buffer_cpu)
+    {
+        free(buffer_cpu);
+    }
+    buffer_cpu = (void*)malloc(sizeof(char) * size_perm);
+    assert(NULL != buffer_cpu);
+
+    // h_mapBfromA = Identity
+    for (int j = 0; j < nnzA; j++)
+    {
+        h_mapBfromA[j] = j;
+    }
+    (cusolverSpXcsrpermHost(
+        cusolverHandle, rowsA, colsA, nnzA,
+        descrA, h_csrRowPtrB, h_csrColIndB,
+        h_Q, h_Q,
+        h_mapBfromA,
+        buffer_cpu));
+
+    // B = A( mapBfromA )
+    for (int j = 0; j < nnzA; j++)
+    {
+        h_csrValB[j] = h_csrValA[h_mapBfromA[j]];
+    }
+
+    // A := B
+    memcpy(h_csrRowPtrA, h_csrRowPtrB, sizeof(int) * (rowsA + 1));
+    memcpy(h_csrColIndA, h_csrColIndB, sizeof(int) * nnzA);
+    memcpy(h_csrValA, h_csrValB, sizeof(double) * nnzA);
+    
+    if (buffer_cpu)
+    {
+        free(buffer_cpu);
+    }
 }

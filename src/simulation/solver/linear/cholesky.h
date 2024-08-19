@@ -18,6 +18,7 @@ public:
     virtual ~CholeskySplinearSolver() override;
     virtual void Solve(float* d_b, int bSize, float* d_x) override;
 private:
+    void ApproximateMinimumDegree(int ASize, int* ARow, int* ACol, float* AVal);
     cusolverSpHandle_t cusolverHandle;
     cusparseMatDescr_t descrA;
     csrcholInfo_t d_info;

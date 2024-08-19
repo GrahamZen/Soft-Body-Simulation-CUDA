@@ -73,7 +73,7 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
     A.setFromTriplets(A_triplets.begin(), A_triplets.end());
     cholesky_decomposition_.compute(A);
 
-    ls = new CholeskyDnlinearSolver(threadsPerBlock, AIdx, tmpVal, ASize, len);
+    ls = new CholeskySplinearSolver(threadsPerBlock, AIdx, tmpVal, ASize, len);
 
     cudaFree(AIdx);
     cudaFree(tmpVal);
