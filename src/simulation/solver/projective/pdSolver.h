@@ -1,14 +1,14 @@
 #pragma once
 
+#include <Eigen/SparseCholesky>
+#include <Eigen/SparseCore>
 #include <simulation/solver/femSolver.h>
 #include <context.h>
 #include <Eigen/Dense>
-#include <Eigen/SparseCholesky>
-#include <Eigen/SparseCore>
-#include <cusolverDn.h>
-#include <cusolverSp_LOWLEVEL_PREVIEW.h>
 
 class SimulationCUDAContext;
+class LinearSolver;
+
 class PdSolver : public FEMSolver {
 public:
     PdSolver(int threadsPerBlock, const SolverData&);
@@ -19,16 +19,10 @@ protected:
     virtual void SolverPrepare(SolverData& solverData, SolverParams& solverParams) override;
     virtual void SolverStep(SolverData& solverData, SolverParams& solverParams) override;
 private:
+    LinearSolver* ls = nullptr;
     bool useEigen = false;
-    int nnzNumber;
     float* Mass;
 
-    cusolverDnParams_t params;
-    int* d_info = nullptr;    /* error info */
-    cusolverDnHandle_t cusolverHandle;
-    void* d_work = nullptr;              /* device workspace */
-
-    float* d_A;
     float* masses;
     float* sn;
     float* b;
