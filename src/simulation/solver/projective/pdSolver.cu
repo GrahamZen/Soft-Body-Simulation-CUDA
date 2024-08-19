@@ -2,6 +2,7 @@
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/solver/projective/pdUtil.cuh>
 #include <fixedBodyData.h>
+#include <collision/bvh.h>
 
 #include <thrust/execution_policy.h>
 #include <thrust/fill.h>

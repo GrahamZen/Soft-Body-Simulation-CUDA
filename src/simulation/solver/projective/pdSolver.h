@@ -3,10 +3,8 @@
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
 #include <simulation/solver/femSolver.h>
-#include <context.h>
 #include <Eigen/Dense>
 
-class SimulationCUDAContext;
 class LinearSolver;
 
 class PdSolver : public FEMSolver {

@@ -2,8 +2,6 @@
 
 #include <simulation/solver/solver.h>
 
-class SolverData;
-
 class FEMSolver : public Solver {
 public:
     FEMSolver(int threadsPerBlock);

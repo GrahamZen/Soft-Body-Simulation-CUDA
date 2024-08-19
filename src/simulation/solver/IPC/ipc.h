@@ -1,16 +1,14 @@
 #pragma once
+
 #include <simulation/solver/femSolver.h>
-class ExplicitSolver : public FEMSolver {
+
+class IPCSolver : public FEMSolver {
 public:
-    ExplicitSolver(int threadsPerBlock, const SolverData& solverData);
-    ~ExplicitSolver();
+    IPCSolver(int threadsPerBlock, const SolverData&);
+    ~IPCSolver();
     virtual void Update(SolverData& solverData, SolverParams& solverParams) override;
 protected:
     virtual void SolverPrepare(SolverData& solverData, SolverParams& solverParams) override;
     virtual void SolverStep(SolverData& solverData, SolverParams& solverParams) override;
 private:
-    void Laplacian_Smoothing(SolverData& solverData, float blendAlpha = 0.5f);
-    // For Laplacian smoothing.
-    glm::vec3* V_sum;
-    int* V_num;
 };
