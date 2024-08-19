@@ -10,11 +10,18 @@
 
 class SimulationCUDAContext;
 
-class CholeskySpData {
+class LinearSolver {
 public:
-    CholeskySpData(int threadsPerBlock, int* AIdx, float* val, int ASize, int nnz);
-    ~CholeskySpData();
-    void Solve(float* d_b, int bSize, float* d_x);
+    LinearSolver() = default;
+    virtual ~LinearSolver() = default;
+    virtual void Solve(float* d_b, int bSize, float* d_x) = 0;
+};
+
+class CholeskySplinearSolver : public LinearSolver {
+public:
+    CholeskySplinearSolver(int threadsPerBlock, int* AIdx, float* val, int ASize, int nnz);
+    virtual ~CholeskySplinearSolver() override;
+    virtual void Solve(float* d_b, int bSize, float* d_x) override;
 private:
     cusolverSpHandle_t cusolverHandle;
     cusparseMatDescr_t descrA;
@@ -30,11 +37,11 @@ private:
     int nnz;
 };
 
-class CholeskyDnData {
+class CholeskyDnlinearSolver : public LinearSolver {
 public:
-    CholeskyDnData(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len);
-    ~CholeskyDnData();
-    void Solve(float* d_b, int bSize, float* d_x);
+    CholeskyDnlinearSolver(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len);
+    virtual ~CholeskyDnlinearSolver() override;
+    virtual void Solve(float* d_b, int bSize, float* d_x) override;
 private:
     cusolverDnParams_t params;
     int* d_info = nullptr;    /* error info */
@@ -53,8 +60,7 @@ protected:
     virtual void SolverPrepare(SolverData& solverData, SolverParams& solverParams) override;
     virtual void SolverStep(SolverData& solverData, SolverParams& solverParams) override;
 private:
-    CholeskySpData* cholSpData = nullptr;
-    CholeskyDnData* cholDnData = nullptr;
+    LinearSolver* ls = nullptr;
     bool useEigen = false;
     float* Mass;
 

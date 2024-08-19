@@ -24,11 +24,8 @@ PdSolver::PdSolver(int threadsPerBlock, const SolverData& solverData) : FEMSolve
 }
 
 PdSolver::~PdSolver() {
-    if (cholSpData) {
-        free(cholSpData);
-    }
-    if (cholDnData) {
-        free(cholDnData);
+    if (ls) {
+        free(ls);
     }
     cudaFree(sn);
     cudaFree(b);
@@ -44,14 +41,14 @@ __global__ void FillMatrixA(int* AIdx, float* tmpVal, float* d_A, int n, int ASi
     atomicAdd(&d_A[row * ASize + col], tmpVal[idx]);
 }
 
-CholeskyDnData::~CholeskyDnData()
+CholeskyDnlinearSolver::~CholeskyDnlinearSolver()
 {
     cudaFree(d_info);
     cudaFree(d_A);
     cudaFree(d_work);
 }
 
-CholeskyDnData::CholeskyDnData(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len) {
+CholeskyDnlinearSolver::CholeskyDnlinearSolver(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len) {
     cudaMalloc(&d_A, sizeof(float) * ASize * ASize);
     FillMatrixA << < (len + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (AIdx, tmpVal, d_A, len, ASize);
     cusolverDnCreate(&cusolverHandle);
@@ -96,7 +93,7 @@ CholeskyDnData::CholeskyDnData(int threadsPerBlock, int* AIdx, float* tmpVal, in
     free(h_work);
 }
 
-CholeskySpData::~CholeskySpData()
+CholeskySplinearSolver::~CholeskySplinearSolver()
 {
     cusolverSpDestroyCsrcholInfo(d_info);
     cusparseDestroyMatDescr(descrA);
@@ -104,7 +101,7 @@ CholeskySpData::~CholeskySpData()
     cudaFree(buffer_gpu);
 }
 
-CholeskySpData::CholeskySpData(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len) {
+CholeskySplinearSolver::CholeskySplinearSolver(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len) {
     int* newIdx;
     float* newVal;
 
@@ -167,11 +164,16 @@ CholeskySpData::CholeskySpData(int threadsPerBlock, int* AIdx, float* tmpVal, in
     cudaFree(AVal);
 }
 
-void CholeskyDnData::Solve(float* d_b, int bSize, float* d_x) {
+void CholeskyDnlinearSolver::Solve(float* d_b, int bSize, float* d_x) {
     cusolverDnXpotrs(cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, bSize, 1, /* nrhs */
         cudaDataType::CUDA_R_32F, d_A, bSize,
         cudaDataType::CUDA_R_32F, d_b, bSize, d_info);
     cudaMemcpy(d_x, d_b, sizeof(float) * (bSize), cudaMemcpyDeviceToDevice);
+}
+
+void CholeskySplinearSolver::Solve(float* d_b, int bSize, float* d_x)
+{
+    cusolverSpScsrcholSolve(cusolverHandle, bSize, d_b, d_x, d_info, buffer_gpu);
 }
 
 void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
@@ -216,8 +218,7 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
     A.setFromTriplets(A_triplets.begin(), A_triplets.end());
     cholesky_decomposition_.compute(A);
 
-    cholDnData = new CholeskyDnData(threadsPerBlock, AIdx, tmpVal, ASize, len);
-    //cholSpData = new CholeskySpData(threadsPerBlock, AIdx, tmpVal, ASize, len);
+    ls = new CholeskyDnlinearSolver(threadsPerBlock, AIdx, tmpVal, ASize, len);
 
     cudaFree(AIdx);
     cudaFree(tmpVal);
@@ -255,7 +256,7 @@ void PdSolver::SolverStep(SolverData& solverData, SolverParams& solverParams)
         }
         else
         {
-            cholDnData->Solve(b, solverData.numVerts * 3, sn);
+            ls->Solve(b, solverData.numVerts * 3, sn);
         }
     }
 
@@ -272,9 +273,4 @@ void PdSolver::Update(SolverData& solverData, SolverParams& solverParams)
         solverReady = true;
     }
     SolverStep(solverData, solverParams);
-}
-
-void CholeskySpData::Solve(float* d_b, int bSize, float* d_x)
-{
-    cusolverSpScsrcholSolve(cusolverHandle, bSize, d_b, d_x, d_info, buffer_gpu);
 }
