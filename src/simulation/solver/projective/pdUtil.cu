@@ -52,16 +52,6 @@ namespace PdUtil {
         }
     }
 
-    __global__ void initAMatrix(int* idx, int* row, int* col, int rowLen, int totalNumber)
-    {
-        int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < totalNumber)
-        {
-            row[index] = idx[index] / rowLen;
-            col[index] = idx[index] % rowLen;
-        }
-    }
-
     // dt2_m_1 is dt^2 / mass
     // s(n) = q(n) + dt*v(n) + dt^2 * M^(-1) * fext(n)
     __global__ void computeSn(float* sn, float dt, float dt2_m_1, glm::vec3* pos, glm::vec3* vel, const glm::vec3* force, float* b, float massDt_2, int numVerts)
