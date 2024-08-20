@@ -1,24 +1,18 @@
 #pragma once
 
+#include <linear/linear.h>
 #include <cusolverDn.h>
 #include <cusolverSp_LOWLEVEL_PREVIEW.h>
 #include <cusolverSp.h>
 #include <cusparse.h>
 
-class LinearSolver {
-public:
-    LinearSolver() = default;
-    virtual ~LinearSolver() = default;
-    virtual void Solve(float* d_b, int bSize, float* d_x) = 0;
-};
 
-class CholeskySplinearSolver : public LinearSolver {
+class CholeskySpLinearSolver : public LinearSolver {
 public:
-    CholeskySplinearSolver(int threadsPerBlock, int* AIdx, float* val, int ASize, int nnz);
-    virtual ~CholeskySplinearSolver() override;
-    virtual void Solve(float* d_b, int bSize, float* d_x) override;
+    CholeskySpLinearSolver(int threadsPerBlock, int* AIdx, float* val, int ASize, int len);
+    virtual ~CholeskySpLinearSolver() override;
+    virtual void Solve(int N, float *d_b, float *d_x, float *d_A = nullptr, int nz = 0, int *d_rowIdx = nullptr, int *d_colIdx = nullptr, float *d_guess = nullptr) override;
 private:
-    void ApproximateMinimumDegree(int ASize, int* ARow, int* ACol, float* AVal);
     cusolverSpHandle_t cusolverHandle;
     cusparseMatDescr_t descrA;
     csrcholInfo_t d_info;
@@ -33,15 +27,15 @@ private:
     int nnz;
 };
 
-class CholeskyDnlinearSolver : public LinearSolver {
+class CholeskyDnLinearSolver : public LinearSolver {
 public:
-    CholeskyDnlinearSolver(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len);
-    virtual ~CholeskyDnlinearSolver() override;
-    virtual void Solve(float* d_b, int bSize, float* d_x) override;
+    CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len);
+    virtual ~CholeskyDnLinearSolver() override;
+    virtual void Solve(int N, float *d_b, float *d_x, float *d_A = nullptr, int nz = 0, int *d_rowIdx = nullptr, int *d_colIdx = nullptr, float *d_guess = nullptr) override;
 private:
     cusolverDnParams_t params;
     int* d_info = nullptr;    /* error info */
     cusolverDnHandle_t cusolverHandle;
     void* d_work = nullptr;              /* device workspace */
-    float* d_A;
+    float* d_predecomposedA;
 };
