@@ -51,6 +51,11 @@ CGSolver::CGSolver(int N) :N(N)
     CHECK_CUSPARSE(cusparseSetMatFillMode(descrL, CUSPARSE_FILL_MODE_LOWER));
     CHECK_CUSPARSE(cusparseSetMatIndexBase(descrL, CUSPARSE_INDEX_BASE_ZERO));
     CHECK_CUSPARSE(cusparseSetMatDiagType(descrL, CUSPARSE_DIAG_TYPE_NON_UNIT));
+
+    CHECK_CUSPARSE(cusparseCreateCsric02Info(&ic02info));
+    CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrL));
+    CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrU));
+
     CHECK_CUDA(cudaMalloc((void**)&d_y, N * sizeof(float)));
     CHECK_CUDA(cudaMalloc((void**)&d_z, N * sizeof(float)));
     CHECK_CUDA(cudaMalloc((void**)&d_r, N * sizeof(float)));
@@ -77,6 +82,17 @@ CGSolver::~CGSolver()
     CHECK_CUDA(cudaFree(d_xt));
     CHECK_CUDA(cudaFree(d_q));
     CHECK_CUDA(cudaFree(d_p));
+    CHECK_CUDA(cudaFree(d_rowPtrA));
+    CHECK_CUDA(cudaFree(d_ic));
+
+    CHECK_CUBLAS(cublasDestroy(cubHandle));
+    CHECK_CUSPARSE(cusparseDestroy(cusHandle));
+
+    CHECK_CUSPARSE(cusparseDestroyMatDescr(descrA));
+    CHECK_CUSPARSE(cusparseDestroyMatDescr(descrL));
+    CHECK_CUSPARSE(cusparseDestroyCsric02Info(ic02info));
+    CHECK_CUSPARSE(cusparseSpSV_destroyDescr(spsvDescrL));
+    CHECK_CUSPARSE(cusparseSpSV_destroyDescr(spsvDescrU));
 }
 
 void sort_coo(int N, int nz, float* d_A, int* d_rowIdx, int* d_colIdx) {
@@ -113,8 +129,6 @@ void CGSolver::Solve(int N, float* d_b, float* d_x, float* d_A, int nz, int* d_r
     CHECK_CUDA(cudaMalloc((void**)&d_ic, nz * sizeof(float)));
     CHECK_CUDA(cudaMemcpy(d_ic, d_A, nz * sizeof(float), cudaMemcpyDeviceToDevice));
 
-    CHECK_CUSPARSE(cusparseCreateCsric02Info(&ic02info));
-
     int ic02BufferSizeInBytes = 0;
     CHECK_CUSPARSE(cusparseScsric02_bufferSize(cusHandle, N, nz, descrA, d_ic, d_rowPtrA, d_colIdx, ic02info, &ic02BufferSizeInBytes));
 
@@ -126,8 +140,7 @@ void CGSolver::Solve(int N, float* d_b, float* d_x, float* d_A, int nz, int* d_r
     CHECK_CUSPARSE(cusparseCreateCsr(&spMatDescrL, N, N, nz, d_rowPtrA, d_colIdx, d_ic, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_32F));
 
     // Prepare 
-    CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrL));
-    CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrU));
+
 
     size_t tmpBufferSize = 0;
     size_t bufferSize = 0;
@@ -222,12 +235,11 @@ void CGSolver::Solve(int N, float* d_b, float* d_x, float* d_A, int nz, int* d_r
 
     CHECK_CUSPARSE(cusparseDestroySpMat(spMatDescrA));
     CHECK_CUSPARSE(cusparseDestroySpMat(spMatDescrL));
+    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_r));
+    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_b));
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_p));
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_q));
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_x));
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_y));
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_z));
-    CHECK_CUSPARSE(cusparseDestroyCsric02Info(ic02info));
-    CHECK_CUSPARSE(cusparseSpSV_destroyDescr(spsvDescrL));
-    CHECK_CUSPARSE(cusparseSpSV_destroyDescr(spsvDescrU));
 }
