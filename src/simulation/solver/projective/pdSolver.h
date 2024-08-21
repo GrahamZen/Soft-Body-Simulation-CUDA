@@ -5,6 +5,7 @@
 #include <simulation/solver/femSolver.h>
 #include <Eigen/Dense>
 
+template<typename T>
 class LinearSolver;
 
 class PdSolver : public FEMSolver {
@@ -17,7 +18,7 @@ protected:
     virtual void SolverPrepare(SolverData& solverData, SolverParams& solverParams) override;
     virtual void SolverStep(SolverData& solverData, SolverParams& solverParams) override;
 private:
-    LinearSolver* ls = nullptr;
+    LinearSolver<float>* ls = nullptr;
     bool useEigen = false;
     float* Mass;
 

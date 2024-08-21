@@ -48,7 +48,7 @@ struct SolverParams {
     float muT = 0.5f;
     float dt = 0.001f;
     float gravity = 9.8f;
-    int numIterations = 10;
+    int numIterations = 1;
     bool handleCollision = true;
     CollisionDetection* pCollisionDetection = nullptr;
 };

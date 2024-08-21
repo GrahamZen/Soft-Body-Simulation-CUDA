@@ -4,11 +4,11 @@
 #include <cusparse.h>
 #include <cublas_v2.h>
 
-class CGSolver : public LinearSolver {
+class CGSolver : public LinearSolver<double> {
 public:
-    CGSolver(int N, int max_iter = 1e2, float tolerance = 1e-6);
+    CGSolver(int N, int max_iter = 1e2, double tolerance = 1e-6);
     virtual ~CGSolver() override;
-    virtual void Solve(int N, float* d_b, float* d_x, float* d_A, int nz, int* d_rowIdx, int* d_colIdx, float* d_guess = nullptr) override;
+    virtual void Solve(int N, double* d_b, double* d_x, double* d_A, int nz, int* d_rowIdx, int* d_colIdx, double* d_guess = nullptr) override;
 private:
     cublasHandle_t cubHandle = nullptr;
     cusparseHandle_t cusHandle = nullptr;
@@ -25,24 +25,24 @@ private:
     int N = 0;
     int max_iter;
     int k = 0;  // k iteration
-    float tolerance;
-    float alpha = 0;
-    float beta = 0;
-    float rTr = 0;
-    float pTq = 0;
-    float rho = 0;    //rho{k}
-    float rho_t = 0;  //rho{k-1}
-    const float one = 1.0;  // constant
-    const float zero = 0.0;   // constant
+    double tolerance;
+    double alpha = 0;
+    double beta = 0;
+    double rTr = 0;
+    double pTq = 0;
+    double rho = 0;    //rho{k}
+    double rho_t = 0;  //rho{k-1}
+    const double one = 1.0;  // constant
+    const double zero = 0.0;   // constant
 
-    float* d_ic = nullptr;  // Factorized L
-    float* d_y = nullptr;
-    float* d_z = nullptr;
-    float* d_r = nullptr;
-    float* d_rt = nullptr;
-    float* d_xt = nullptr;
-    float* d_q = nullptr;
-    float* d_p = nullptr;
+    double* d_ic = nullptr;  // Factorized L
+    double* d_y = nullptr;
+    double* d_z = nullptr;
+    double* d_r = nullptr;
+    double* d_rt = nullptr;
+    double* d_xt = nullptr;
+    double* d_q = nullptr;
+    double* d_p = nullptr;
     void* d_bufL = nullptr;
     void* d_bufU = nullptr;
 };

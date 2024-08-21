@@ -7,7 +7,7 @@
 #include <cusparse.h>
 
 
-class CholeskySpLinearSolver : public LinearSolver {
+class CholeskySpLinearSolver : public LinearSolver<float> {
 public:
     CholeskySpLinearSolver(int threadsPerBlock, int* AIdx, float* val, int ASize, int len);
     virtual ~CholeskySpLinearSolver() override;
@@ -20,7 +20,7 @@ private:
     int n;
 };
 
-class CholeskyDnLinearSolver : public LinearSolver {
+class CholeskyDnLinearSolver : public LinearSolver<float> {
 public:
     CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len);
     virtual ~CholeskyDnLinearSolver() override;
