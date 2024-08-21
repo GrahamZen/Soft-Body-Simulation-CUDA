@@ -82,7 +82,6 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
 
 void PdSolver::SolverStep(SolverData& solverData, SolverParams& solverParams)
 {
-
     float dt = solverParams.dt;
     float const dtInv = 1.0f / dt;
     float const dt2 = dt * dt;

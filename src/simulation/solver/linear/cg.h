@@ -8,15 +8,15 @@ class CGSolver : public LinearSolver {
 public:
     CGSolver(int N);
     virtual ~CGSolver() override;
-    virtual void Solve(int N, float* d_b, float* d_x, float* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, float* d_guess = nullptr) override;
+    virtual void Solve(int N, float* d_b, float* d_x, float* d_A, int nz, int* d_rowIdx, int* d_colIdx, float* d_guess = nullptr) override;
 private:
-    cublasHandle_t cubHandle=nullptr;
-    cusparseHandle_t cusHandle=nullptr;
+    cublasHandle_t cubHandle = nullptr;
+    cusparseHandle_t cusHandle = nullptr;
     csric02Info_t ic02info = nullptr;
 
     cusparseMatDescr_t descrA = nullptr;
     cusparseMatDescr_t descrL = nullptr;
-    cusparseDnVecDescr_t dvec_x = nullptr, dvec_b = nullptr, dvec_r = nullptr, dvec_y = nullptr, dvec_z= nullptr;
+    cusparseDnVecDescr_t dvec_x = nullptr, dvec_b = nullptr, dvec_r = nullptr, dvec_y = nullptr, dvec_z = nullptr;
     cusparseSpMatDescr_t spMatDescrA = nullptr, spMatDescrL = nullptr;
     cusparseSpSVDescr_t spsvDescrL = nullptr;
     cusparseSpSVDescr_t spsvDescrU = nullptr;
@@ -36,7 +36,6 @@ private:
     const float zero = 0.0;   // constant
 
     float* d_ic = nullptr;  // Factorized L
-    float* d_x = nullptr;
     float* d_y = nullptr;
     float* d_z = nullptr;
     float* d_r = nullptr;
@@ -44,6 +43,6 @@ private:
     float* d_xt = nullptr;
     float* d_q = nullptr;
     float* d_p = nullptr;
-    void* d_buf = nullptr;
-    void* d_buf1 = nullptr;
+    void* d_bufL = nullptr;
+    void* d_bufU = nullptr;
 };
