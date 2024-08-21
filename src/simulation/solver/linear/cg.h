@@ -6,7 +6,7 @@
 
 class CGSolver : public LinearSolver {
 public:
-    CGSolver(int N);
+    CGSolver(int N, int max_iter = 1e2, float tolerance = 1e-6);
     virtual ~CGSolver() override;
     virtual void Solve(int N, float* d_b, float* d_x, float* d_A, int nz, int* d_rowIdx, int* d_colIdx, float* d_guess = nullptr) override;
 private:
@@ -16,16 +16,16 @@ private:
 
     cusparseMatDescr_t descrA = nullptr;
     cusparseMatDescr_t descrL = nullptr;
-    cusparseDnVecDescr_t dvec_x = nullptr, dvec_b = nullptr, dvec_r = nullptr, dvec_y = nullptr, dvec_z = nullptr;
-    cusparseSpMatDescr_t spMatDescrA = nullptr, spMatDescrL = nullptr;
+    cusparseDnVecDescr_t dvec_x = nullptr, dvec_b = nullptr, dvec_r = nullptr, dvec_y = nullptr, dvec_z = nullptr, dvec_p = nullptr, dvec_q = nullptr;
+    cusparseSpMatDescr_t d_matA = nullptr, d_matL = nullptr;
     cusparseSpSVDescr_t spsvDescrL = nullptr;
     cusparseSpSVDescr_t spsvDescrU = nullptr;
     int* d_rowPtrA; // CSR 
 
     int N = 0;
-    int max_iter = 1e4;
+    int max_iter;
     int k = 0;  // k iteration
-    float tolerance = 1e-5;
+    float tolerance;
     float alpha = 0;
     float beta = 0;
     float rTr = 0;
