@@ -17,14 +17,7 @@ private:
     cusparseMatDescr_t descrA;
     csrcholInfo_t d_info;
     void* buffer_gpu = nullptr;
-    int* d_rowPtr;
-    int* d_colIdx;
-    float* d_val;
-    int* d_P;
-    float* d_tmp;
-    int* d_mapBfromC;
     int n;
-    int nnz;
 };
 
 class CholeskyDnLinearSolver : public LinearSolver {

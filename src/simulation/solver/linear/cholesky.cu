@@ -81,18 +81,38 @@ CholeskySpLinearSolver::~CholeskySpLinearSolver()
     cudaFree(buffer_gpu);
 }
 
-CholeskySpLinearSolver::CholeskySpLinearSolver(int threadsPerBlock, int* AIdx, float* AVal, int ASize, int len) {
-    int* ACol;
+CholeskySpLinearSolver::CholeskySpLinearSolver(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len) {
+    int* newIdx;
+    float* newVal;
+
+    cudaMalloc((void**)&newIdx, sizeof(int) * len);
+    cudaMalloc((void**)&newVal, sizeof(float) * len);
+
+    thrust::sort_by_key(thrust::device, AIdx, AIdx + len, tmpVal);
+    thrust::pair<int*, float*> newEnd = thrust::reduce_by_key(thrust::device, AIdx, AIdx + len, tmpVal, newIdx, newVal);
+
+    int* ARow, * ACol;
+    float* AVal;
+
+    int nnz = newEnd.first - newIdx;
+
+    cudaMalloc((void**)&ARow, sizeof(int) * nnz);
+    cudaMemset(ARow, 0, sizeof(int) * nnz);
+
     cudaMalloc((void**)&ACol, sizeof(int) * nnz);
+    cudaMemset(ACol, 0, sizeof(int) * nnz);
+
+    cudaMalloc((void**)&AVal, sizeof(float) * nnz);
+    cudaMemcpy(AVal, newVal, sizeof(float) * nnz, cudaMemcpyDeviceToDevice);
 
     int blocks = (nnz + threadsPerBlock - 1) / threadsPerBlock;
-    // After initAMatrix, AIdx stores the row index of the non-zero elements
-    initAMatrix << < blocks, threadsPerBlock >> > (AIdx, AIdx, ACol, ASize, len);
+
+    initAMatrix << < blocks, threadsPerBlock >> > (newIdx, ARow, ACol, ASize, nnz);
 
     // transform ARow into csr format
     cusparseHandle_t handle;
     cusparseCreate(&handle);
-    cusparseXcoo2csr(handle, AIdx, nnz, ASize, AIdx, CUSPARSE_INDEX_BASE_ZERO);
+    cusparseXcoo2csr(handle, ARow, nnz, ASize, ARow, CUSPARSE_INDEX_BASE_ZERO);
 
     cusolverSpCreate(&cusolverHandle);
     cusparseCreateMatDescr(&descrA);
@@ -102,21 +122,25 @@ CholeskySpLinearSolver::CholeskySpLinearSolver(int threadsPerBlock, int* AIdx, f
     size_t cholSize = 0;
     size_t internalSize = 0;
     cusolverSpCreateCsrcholInfo(&d_info);
-    cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnz, descrA, AIdx, ACol, d_info);
-    cusolverSpScsrcholBufferInfo(cusolverHandle, ASize, nnz, descrA, AVal, AIdx, ACol, d_info, &internalSize, &cholSize);
+    cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnz, descrA, ARow, ACol, d_info);
+    cusolverSpScsrcholBufferInfo(cusolverHandle, ASize, nnz, descrA, AVal, ARow, ACol, d_info, &internalSize, &cholSize);
     cudaMalloc(&buffer_gpu, sizeof(char) * cholSize);
-    cusolverSpScsrcholFactor(cusolverHandle, ASize, nnz, descrA, AVal, AIdx, ACol, d_info, buffer_gpu);
-    cudaFree(ACol);
-}
+    cusolverSpScsrcholFactor(cusolverHandle, ASize, nnz, descrA, AVal, ARow, ACol, d_info, buffer_gpu);
 
-void CholeskyDnLinearSolver::Solve(int N, float *d_b, float *d_x, float *d_A, int nz, int *d_rowIdx, int *d_colIdx, float *d_guess) {
+    cudaFree(newIdx);
+    cudaFree(newVal);
+    cudaFree(ARow);
+    cudaFree(ACol);
+    cudaFree(AVal);
+}
+void CholeskyDnLinearSolver::Solve(int N, float* d_b, float* d_x, float* d_A, int nz, int* d_rowIdx, int* d_colIdx, float* d_guess) {
     cusolverDnXpotrs(cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, N, 1, /* nrhs */
         cudaDataType::CUDA_R_32F, d_predecomposedA, N,
         cudaDataType::CUDA_R_32F, d_b, N, d_info);
     cudaMemcpy(d_x, d_b, sizeof(float) * (N), cudaMemcpyDeviceToDevice);
 }
 
-void CholeskySpLinearSolver::Solve(int N, float *d_b, float *d_x, float *d_A, int nz, int *d_rowIdx, int *d_colIdx, float *d_guess)
+void CholeskySpLinearSolver::Solve(int N, float* d_b, float* d_x, float* d_A, int nz, int* d_rowIdx, int* d_colIdx, float* d_guess)
 {
     cusolverSpScsrcholSolve(cusolverHandle, N, d_b, d_x, d_info, buffer_gpu);
 }
