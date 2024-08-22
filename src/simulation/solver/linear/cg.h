@@ -43,4 +43,12 @@ private:
     double* d_p = nullptr;
     void* d_bufL = nullptr;
     void* d_bufU = nullptr;
+    void* ic02Buffer = nullptr;
+
+    // old memory size
+    size_t old_nnz = 0;
+    size_t old_ic02BufferSizeInBytes = 0;
+    size_t old_bufferSizeL = 0;
+    size_t old_bufferSizeU = 0;
+    
 };

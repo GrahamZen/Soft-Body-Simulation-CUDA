@@ -84,10 +84,12 @@ CGSolver::~CGSolver()
     CHECK_CUDA(cudaFree(d_p));
     CHECK_CUDA(cudaFree(d_rowPtrA));
     CHECK_CUDA(cudaFree(d_ic));
+    CHECK_CUDA(cudaFree(d_bufL));
+    CHECK_CUDA(cudaFree(d_bufU));
 
     CHECK_CUBLAS(cublasDestroy(cubHandle));
     CHECK_CUSPARSE(cusparseDestroy(cusHandle));
-    
+
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_r));
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_p));
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_q));
@@ -137,15 +139,28 @@ void CGSolver::Solve(int N, double* d_b, double* d_x, double* d_A, int nz, int* 
 
     //==============================================================================
     // L = ichol(A), L is a lower triangular matrix
-    CHECK_CUDA(cudaMalloc((void**)&d_ic, nz * sizeof(double)));
+    if (nz > old_nnz) {
+        if (d_ic != nullptr)
+            CHECK_CUDA(cudaFree(d_ic));
+        CHECK_CUDA(cudaMalloc((void**)&d_ic, nz * sizeof(double)));
+        std::cout << "d_ic malloc." << std::endl;
+        old_nnz = nz;
+    }
+
     CHECK_CUDA(cudaMemcpy(d_ic, d_A, nz * sizeof(double), cudaMemcpyDeviceToDevice));
 
     int ic02BufferSizeInBytes = 0;
     CHECK_CUSPARSE(cusparseDcsric02_bufferSize(cusHandle, N, nz, descrA, d_ic,
         d_rowPtrA, d_colIdx, ic02info, &ic02BufferSizeInBytes));
 
-    void* ic02Buffer = nullptr;
-    CHECK_CUDA(cudaMalloc((void**)&ic02Buffer, ic02BufferSizeInBytes));
+    if (ic02BufferSizeInBytes > old_ic02BufferSizeInBytes)
+    {
+        if (ic02Buffer != nullptr)
+            CHECK_CUDA(cudaFree(ic02Buffer));
+        CHECK_CUDA(cudaMalloc((void**)&ic02Buffer, ic02BufferSizeInBytes));
+        std::cout << "ic02Buffer malloc." << std::endl;
+        old_ic02BufferSizeInBytes = ic02BufferSizeInBytes;
+    }
     CHECK_CUSPARSE(cusparseDcsric02_analysis(cusHandle, N, nz, descrA, d_ic,
         d_rowPtrA, d_colIdx, ic02info, CUSPARSE_SOLVE_POLICY_USE_LEVEL, ic02Buffer));
 
@@ -170,8 +185,23 @@ void CGSolver::Solve(int N, double* d_b, double* d_x, double* d_A, int nz, int* 
     if (tmpBufferSize > bufferSizeL)
         bufferSizeL = tmpBufferSize;
 
-    CHECK_CUDA(cudaMalloc((void**)&d_bufL, bufferSizeL));
-    CHECK_CUDA(cudaMalloc((void**)&d_bufU, bufferSizeU));
+    if (bufferSizeL > old_bufferSizeL)
+    {
+        if (d_bufL != nullptr)
+            CHECK_CUDA(cudaFree(d_bufL));
+        CHECK_CUDA(cudaMalloc((void**)&d_bufL, bufferSizeL));
+        std::cout << "d_bufL malloc." << std::endl;
+        old_bufferSizeL = bufferSizeL;
+    }
+
+    if (bufferSizeU > old_bufferSizeU)
+    {
+        if (d_bufU != nullptr)
+            CHECK_CUDA(cudaFree(d_bufU));
+        CHECK_CUDA(cudaMalloc((void**)&d_bufU, bufferSizeU));
+        std::cout << "d_bufU malloc." << std::endl;
+        old_bufferSizeU = bufferSizeU;
+    }
 
     CHECK_CUSPARSE(cusparseSpSV_analysis(cusHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, &one, d_matL,
         dvec_x, dvec_b, CUDA_R_64F, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL, d_bufL));
