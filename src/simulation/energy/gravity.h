@@ -6,15 +6,14 @@
 template <typename T>
 class GravityEnergy {
 public:
-    __global__ void GradientKernel(T* grad, T* pos, T* mass, int numVerts, T g){
+    __global__ void GradientKernel(T* grad, const T* dev_x, const T* mass, int numVerts, T g){
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= numVerts) return;
         grad[idx] = -g * mass[idx];
     }
-    T Val(T* pos, T* mass, int numVerts){
-        thrust::device_ptr<T> dev_ptr(pos);
+    T Val(const T* dev_x, const T* mass, int numVerts) const {
+        thrust::device_ptr<T> dev_ptr(dev_x);
         thrust::device_ptr<T> dev_mass(mass);
-        // use zip_iterator to iterate over two arrays and calculate the sum
         T sum = thrust::transform_reduce(
             thrust::make_zip_iterator(thrust::make_tuple(dev_ptr, dev_mass)),
             thrust::make_zip_iterator(thrust::make_tuple(dev_ptr + numVerts, dev_mass + numVerts)),
@@ -26,10 +25,10 @@ public:
         );
         return -g * sum;
     }
-    void Gradient(T* grad, T* pos, T* mass, int numVerts){
+    void Gradient(T* grad, const T* dev_x, const T* mass, int numVerts){
         int blockSize = 256;
         int numBlocks = (numVerts + blockSize - 1) / blockSize;
-        GradientKernel<<<numBlocks, blockSize>>>(grad, pos, mass, numVerts, g);
+        GradientKernel<<<numBlocks, blockSize>>>(grad, dev_x, mass, numVerts, g);
     }
     const T g = 9.8;
 };

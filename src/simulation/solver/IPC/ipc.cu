@@ -8,6 +8,7 @@ IPCSolver::IPCSolver(int threadsPerBlock, const SolverData& solverData) :FEMSolv
 
 IPCSolver::~IPCSolver()
 {
+    cudaFree(gradient);
 }
 
 void IPCSolver::Update(SolverData& solverData, SolverParams& solverParams)
