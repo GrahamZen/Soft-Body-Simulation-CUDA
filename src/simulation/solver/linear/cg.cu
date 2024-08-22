@@ -59,18 +59,20 @@ CGSolver::CGSolver(int N, int max_iter, double tolerance) : N(N), max_iter(max_i
     CHECK_CUDA(cudaMalloc((void**)&d_y, N * sizeof(double)));
     CHECK_CUDA(cudaMalloc((void**)&d_z, N * sizeof(double)));
     CHECK_CUDA(cudaMalloc((void**)&d_r, N * sizeof(double)));
-    CHECK_CUDA(cudaMalloc((void**)&d_rt, N * sizeof(double)));
-    CHECK_CUDA(cudaMalloc((void**)&d_xt, N * sizeof(double)));
     CHECK_CUDA(cudaMalloc((void**)&d_q, N * sizeof(double)));
     CHECK_CUDA(cudaMalloc((void**)&d_p, N * sizeof(double)));
     CHECK_CUDA(cudaMalloc((void**)&d_rowPtrA, (N + 1) * sizeof(int)));
     CHECK_CUDA(cudaMemset(d_y, 0, N * sizeof(double)));
     CHECK_CUDA(cudaMemset(d_z, 0, N * sizeof(double)));
     CHECK_CUDA(cudaMemset(d_r, 0, N * sizeof(double)));
-    CHECK_CUDA(cudaMemset(d_rt, 0, N * sizeof(double)));
-    CHECK_CUDA(cudaMemset(d_xt, 0, N * sizeof(double)));
     CHECK_CUDA(cudaMemset(d_q, 0, N * sizeof(double)));
     CHECK_CUDA(cudaMemset(d_p, 0, N * sizeof(double)));
+
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_p, N, d_p, CUDA_R_64F));
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_q, N, d_q, CUDA_R_64F));
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_y, N, d_y, CUDA_R_64F));
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_z, N, d_z, CUDA_R_64F));
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_r, N, d_r, CUDA_R_64F));
 }
 
 CGSolver::~CGSolver()
@@ -78,8 +80,6 @@ CGSolver::~CGSolver()
     CHECK_CUDA(cudaFree(d_y));
     CHECK_CUDA(cudaFree(d_z));
     CHECK_CUDA(cudaFree(d_r));
-    CHECK_CUDA(cudaFree(d_rt));
-    CHECK_CUDA(cudaFree(d_xt));
     CHECK_CUDA(cudaFree(d_q));
     CHECK_CUDA(cudaFree(d_p));
     CHECK_CUDA(cudaFree(d_rowPtrA));
@@ -87,6 +87,12 @@ CGSolver::~CGSolver()
 
     CHECK_CUBLAS(cublasDestroy(cubHandle));
     CHECK_CUSPARSE(cusparseDestroy(cusHandle));
+    
+    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_r));
+    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_p));
+    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_q));
+    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_y));
+    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_z));
 
     CHECK_CUSPARSE(cusparseDestroyMatDescr(descrA));
     CHECK_CUSPARSE(cusparseDestroyMatDescr(descrL));
@@ -113,7 +119,7 @@ void CGSolver::Solve(int N, double* d_b, double* d_x, double* d_A, int nz, int* 
     assert(d_A != nullptr);
     assert(d_rowIdx != nullptr);
     assert(d_colIdx != nullptr);
-
+    CHECK_CUDA(cudaMemset(d_x, 0, N * sizeof(double)));
 
     //==============================================================================
     // Sort the COO matrix by row index and convert it to CSR format
@@ -124,15 +130,10 @@ void CGSolver::Solve(int N, double* d_b, double* d_x, double* d_A, int nz, int* 
 
     //==============================================================================
     // Create dense vectors for p, q, x, b, y, z, r
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_p, N, d_p, CUDA_R_64F));
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_q, N, d_q, CUDA_R_64F));
     CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_x, N, d_x, CUDA_R_64F));
     CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_b, N, d_b, CUDA_R_64F));
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_y, N, d_y, CUDA_R_64F));
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_z, N, d_z, CUDA_R_64F));
     // x = 0, r0 = b  (since x == 0, b - A*x = b)
     CHECK_CUDA(cudaMemcpy(d_r, d_b, N * sizeof(double), cudaMemcpyDeviceToDevice));
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_r, N, d_r, CUDA_R_64F));
 
     //==============================================================================
     // L = ichol(A), L is a lower triangular matrix
@@ -247,11 +248,6 @@ void CGSolver::Solve(int N, double* d_b, double* d_x, double* d_A, int nz, int* 
 
     CHECK_CUSPARSE(cusparseDestroySpMat(d_matA));
     CHECK_CUSPARSE(cusparseDestroySpMat(d_matL));
-    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_r));
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_b));
-    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_p));
-    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_q));
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_x));
-    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_y));
-    CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_z));
 }

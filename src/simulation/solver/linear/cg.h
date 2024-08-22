@@ -39,8 +39,6 @@ private:
     double* d_y = nullptr;
     double* d_z = nullptr;
     double* d_r = nullptr;
-    double* d_rt = nullptr;
-    double* d_xt = nullptr;
     double* d_q = nullptr;
     double* d_p = nullptr;
     void* d_bufL = nullptr;
