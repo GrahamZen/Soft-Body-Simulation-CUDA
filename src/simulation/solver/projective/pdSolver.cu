@@ -114,7 +114,7 @@ void PdSolver::SolverStep(SolverData& solverData, SolverParams& solverParams)
         }
     }
 
-    PdUtil::updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilt, solverData.V, solverData.numVerts);
+    PdUtil::updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilde, solverData.V, solverData.numVerts);
 }
 
 void PdSolver::Update(SolverData& solverData, SolverParams& solverParams)
@@ -129,8 +129,8 @@ void PdSolver::Update(SolverData& solverData, SolverParams& solverParams)
     if (solverParams.handleCollision) {
         solverParams.pCollisionDetection->DetectCollision(solverData.dev_tIs, solverData.dev_Normals);
         int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-        PdUtil::CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilt, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts);
+        PdUtil::CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts);
     }else
-        cudaMemcpy(solverData.X, solverData.XTilt, sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
-    solverData.pFixedBodies->HandleCollisions(solverData.XTilt, solverData.V, solverData.numVerts, solverParams.muT, solverParams.muN);
+        cudaMemcpy(solverData.X, solverData.XTilde, sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
+    solverData.pFixedBodies->HandleCollisions(solverData.XTilde, solverData.V, solverData.numVerts, solverParams.muT, solverParams.muN);
 }

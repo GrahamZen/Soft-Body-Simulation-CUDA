@@ -81,9 +81,9 @@ __host__ __device__ dataType signed_ee_distance(const glmVec3& x0, const glmVec3
 }
 
 
-__host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilt, const AABB& bbox) {
+__host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilde, const AABB& bbox) {
     const dataType eps = glm::epsilon<dataType>();
-    glmVec3 d = XTilt - X0;
+    glmVec3 d = XTilde - X0;
     glmVec3 ood = 1.0 / d;
     dataType tmin = 0.0;
     dataType tmax = 1.0;
@@ -106,9 +106,9 @@ __host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVe
     return true;
 }
 
-__host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilt, const AABB& bbox, dataType& tmin, dataType& tmax) {
+__host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilde, const AABB& bbox, dataType& tmin, dataType& tmax) {
     const dataType eps = glm::epsilon<dataType>();
-    glmVec3 d = XTilt - X0;
+    glmVec3 d = XTilde - X0;
     glmVec3 ood = 1.0 / d;
     tmin = 0.0;
     tmax = 1.0;
@@ -230,7 +230,7 @@ __host__ __device__ dataType stp(const glmVec3& u, const glmVec3& v, const glmVe
 
 __host__ __device__ dataType ccdTriangleIntersectionTest(const glmVec3& x0, const glmVec3& v0,
     const glmVec3& x1, const glmVec3& x2, const glmVec3& x3, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
-    const glmVec3& xTilt0, const glmVec3& xTilt1, const glmVec3& xTilt2, const glmVec3& xTilt3, glmVec3& n) {
+    const glmVec3& xTilde0, const glmVec3& xTilde1, const glmVec3& xTilde2, const glmVec3& xTilde3, glmVec3& n) {
     glmVec3 x01 = x1 - x0;
     glmVec3 x02 = x2 - x0;
     glmVec3 x03 = x3 - x0;
@@ -264,15 +264,15 @@ __host__ __device__ dataType ccdTriangleIntersectionTest(const glmVec3& x0, cons
     return 1.0;
 }
 
-__host__ __device__ dataType ccdCollisionTest(const Query& query, const glm::vec3* Xs, const glm::vec3* XTilts, glmVec3& n) {
+__host__ __device__ dataType ccdCollisionTest(const Query& query, const glm::vec3* Xs, const glm::vec3* XTildes, glmVec3& n) {
     const glmVec3 x0 = Xs[query.v0];
     const glmVec3 x1 = Xs[query.v1];
     const glmVec3 x2 = Xs[query.v2];
     const glmVec3 x3 = Xs[query.v3];
-    const glmVec3 v0 = glmVec3{ XTilts[query.v0] } - x0;
-    const glmVec3 v1 = glmVec3{ XTilts[query.v1] } - x1;
-    const glmVec3 v2 = glmVec3{ XTilts[query.v2] } - x2;
-    const glmVec3 v3 = glmVec3{ XTilts[query.v3] } - x3;
+    const glmVec3 v0 = glmVec3{ XTildes[query.v0] } - x0;
+    const glmVec3 v1 = glmVec3{ XTildes[query.v1] } - x1;
+    const glmVec3 v2 = glmVec3{ XTildes[query.v2] } - x2;
+    const glmVec3 v3 = glmVec3{ XTildes[query.v3] } - x3;
     const glmVec3 x01 = x1 - x0;
     const glmVec3 x02 = x2 - x0;
     const glmVec3 x03 = x3 - x0;

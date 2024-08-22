@@ -20,7 +20,7 @@ public:
     void Init(int numTets, int numVerts, int maxThreads);
     void PrepareRenderData();
     const BVHNode* GetBVHNodes() const;
-    void BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const indexType* tets);
+    void BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilde, const indexType* tets);
 private:
     void BuildBBoxes(BuildType buildType);
     BVHNode* dev_BVHNodes = nullptr;

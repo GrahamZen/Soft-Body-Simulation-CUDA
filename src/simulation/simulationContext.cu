@@ -29,7 +29,7 @@ SimulationCUDAContext::~SimulationCUDAContext()
     cudaFree(mSolverData.V);
     cudaFree(mSolverData.Force);
     cudaFree(mSolverData.X0);
-    cudaFree(mSolverData.XTilt);
+    cudaFree(mSolverData.XTilde);
     for (auto softbody : softBodies) {
         delete softbody;
     }
@@ -136,14 +136,14 @@ void DataLoader::CollectData(const char* mshFileName, const glm::vec3& pos, cons
     m_softBodyData.push_back({ solverData,softBodyData, attrib });
 }
 
-void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilt,
+void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilde,
     glm::vec3*& gV, glm::vec3*& gF, indexType*& gEdges, indexType*& gTet, indexType*& gTetFather, int& numVerts, int& numTets)
 {
     numVerts = totalNumVerts;
     numTets = totalNumTets;
     cudaMalloc((void**)&gX, sizeof(glm::vec3) * totalNumVerts);
     cudaMalloc((void**)&gX0, sizeof(glm::vec3) * totalNumVerts);
-    cudaMalloc((void**)&gXTilt, sizeof(glm::vec3) * totalNumVerts);
+    cudaMalloc((void**)&gXTilde, sizeof(glm::vec3) * totalNumVerts);
     cudaMalloc((void**)&gV, sizeof(glm::vec3) * totalNumVerts);
     cudaMalloc((void**)&gF, sizeof(glm::vec3) * totalNumVerts);
     cudaMemset(gV, 0, sizeof(glm::vec3) * totalNumVerts);
@@ -185,7 +185,7 @@ void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::
         edgeOffset += m_edges[i].size();
     }
     cudaMemcpy(gX0, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
-    cudaMemcpy(gXTilt, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(gXTilde, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
 
 void SimulationCUDAContext::PrepareRenderData() {

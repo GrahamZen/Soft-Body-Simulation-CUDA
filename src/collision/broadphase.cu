@@ -284,14 +284,14 @@ void removeDuplicates(Query* dev_queries, size_t& dev_numQueries) {
 AABB CollisionDetection::GetAABB() const
 {
     thrust::device_ptr<glm::vec3> dev_ptr(mPSimContext->mSolverData.X);
-    thrust::device_ptr<glm::vec3> dev_ptrTilts(mPSimContext->mSolverData.XTilt);
-    return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTilts, dev_ptrTilts + numVerts));
+    thrust::device_ptr<glm::vec3> dev_ptrTildes(mPSimContext->mSolverData.XTilde);
+    return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTildes, dev_ptrTildes + numVerts));
 }
 
 bool CollisionDetection::BroadPhase()
 {
     const std::string buildTypeStr = buildType == BVH::BuildType::Cooperative ? "Cooperative" : buildType == BVH::BuildType::Atomic ? "Atomic" : "Serial";
-    m_bvh.BuildBVHTree(buildType, GetAABB(), mPSimContext->mSolverData.numTets, mPSimContext->mSolverData.X, mPSimContext->mSolverData.XTilt, mPSimContext->mSolverData.Tet);
+    m_bvh.BuildBVHTree(buildType, GetAABB(), mPSimContext->mSolverData.numTets, mPSimContext->mSolverData.X, mPSimContext->mSolverData.XTilde, mPSimContext->mSolverData.Tet);
 
     if (!DetectCollisionCandidates(m_bvh.GetBVHNodes())) {
         count = 0;

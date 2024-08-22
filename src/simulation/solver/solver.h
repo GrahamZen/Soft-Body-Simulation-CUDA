@@ -20,7 +20,7 @@ struct SolverData {
     glm::vec3* V = nullptr;
     glm::vec3* X = nullptr;
     glm::vec3* X0 = nullptr;
-    glm::vec3* XTilt = nullptr;
+    glm::vec3* XTilde = nullptr;
     glm::vec3* dev_ExtForce = nullptr;
     glm::mat3* inv_Dm = nullptr;
     dataType* dev_tIs = nullptr;

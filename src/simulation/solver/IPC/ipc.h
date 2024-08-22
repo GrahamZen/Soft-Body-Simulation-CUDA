@@ -11,4 +11,11 @@ protected:
     virtual void SolverPrepare(SolverData& solverData, SolverParams& solverParams) override;
     virtual void SolverStep(SolverData& solverData, SolverParams& solverParams) override;
 private:
+    int numVerts = 0;
+    double totalEnergy = 0;
+    double* gradient = nullptr;
+    // Hessian(sparse)
+    double* hessianVal = nullptr;
+    int* hessianRowIdx = nullptr;
+    int* hessianColIdx = nullptr;
 };

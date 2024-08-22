@@ -81,7 +81,7 @@ __device__ void buildBBox(BVHNode& curr, const BVHNode& left, const BVHNode& rig
 
 // build the bounding box and morton code for each SoftBody
 __global__ void buildLeafMorton(int startIndex, int numTri, dataType minX, dataType minY, dataType minZ,
-    dataType maxX, dataType maxY, dataType maxZ, const indexType* tet, const glm::vec3* X, const glm::vec3* XTilt, BVHNode* leafNodes,
+    dataType maxX, dataType maxY, dataType maxZ, const indexType* tet, const glm::vec3* X, const glm::vec3* XTilde, BVHNode* leafNodes,
     unsigned int* mortonCodes)
 {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
@@ -89,7 +89,7 @@ __global__ void buildLeafMorton(int startIndex, int numTri, dataType minX, dataT
     {
         int leafPos = ind + numTri - 1;
         leafNodes[leafPos].bbox = computeTetTrajBBox(X[tet[ind * 4]], X[tet[ind * 4 + 1]], X[tet[ind * 4 + 2]], X[tet[ind * 4 + 3]],
-            XTilt[tet[ind * 4]], XTilt[tet[ind * 4 + 1]], XTilt[tet[ind * 4 + 2]], XTilt[tet[ind * 4 + 3]]);
+            XTilde[tet[ind * 4]], XTilde[tet[ind * 4 + 1]], XTilde[tet[ind * 4 + 2]], XTilde[tet[ind * 4 + 3]]);
         leafNodes[leafPos].isLeaf = 1;
         leafNodes[leafPos].leftIndex = -1;
         leafNodes[leafPos].rightIndex = -1;
@@ -280,12 +280,12 @@ void BVH::BuildBBoxes(BuildType buildType) {
     }
 }
 
-void BVH::BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const indexType* tets)
+void BVH::BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilde, const indexType* tets)
 {
     cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
 
     buildLeafMorton << <numblocksTets, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
-        tets, X, XTilt, dev_BVHNodes, dev_mortonCodes);
+        tets, X, XTilde, dev_BVHNodes, dev_mortonCodes);
 
     thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTets, dev_BVHNodes + numTets - 1);
 

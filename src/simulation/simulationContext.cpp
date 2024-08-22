@@ -156,7 +156,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
             }
 
         }
-        dataLoader.AllocData(startIndices, mSolverData.X, mSolverData.X0, mSolverData.XTilt, mSolverData.V, mSolverData.Force, dev_Edges, mSolverData.Tet, dev_TetFathers, mSolverData.numVerts, mSolverData.numTets);
+        dataLoader.AllocData(startIndices, mSolverData.X, mSolverData.X0, mSolverData.XTilde, mSolverData.V, mSolverData.Force, dev_Edges, mSolverData.Tet, dev_TetFathers, mSolverData.numVerts, mSolverData.numTets);
         for (auto softBodyData : dataLoader.m_softBodyData) {
             softBodies.push_back(new SoftBody(this, std::get<2>(softBodyData), &std::get<1>(softBodyData)));
         }
@@ -201,7 +201,7 @@ void SimulationCUDAContext::SetGlobalSolver(bool useEigen)
 void SimulationCUDAContext::Reset()
 {
     cudaMemcpy(mSolverData.X, mSolverData.X0, sizeof(glm::vec3) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
-    cudaMemcpy(mSolverData.XTilt, mSolverData.X0, sizeof(glm::vec3) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(mSolverData.XTilde, mSolverData.X0, sizeof(glm::vec3) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
     cudaMemset(mSolverData.V, 0, sizeof(glm::vec3) * mSolverData.numVerts);
     cudaMemset(mSolverData.Force, 0, sizeof(glm::vec3) * mSolverData.numVerts);
 }
