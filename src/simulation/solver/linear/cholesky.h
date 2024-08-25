@@ -11,20 +11,24 @@ class CholeskySpLinearSolver : public LinearSolver<float> {
 public:
     CholeskySpLinearSolver(int threadsPerBlock, int* AIdx, float* val, int ASize, int len);
     virtual ~CholeskySpLinearSolver() override;
-    virtual void Solve(int N, float *d_b, float *d_x, float *d_A = nullptr, int nz = 0, int *d_rowIdx = nullptr, int *d_colIdx = nullptr, float *d_guess = nullptr) override;
+    virtual void Solve(int N, float* d_b, float* d_x, float* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, float* d_guess = nullptr) override;
 private:
+    void ComputeAMD(cusolverSpHandle_t handle, int rowsA, int nnzA, int* dev_csrRowPtrA, int* dev_csrColIndA, float* dev_csrValA);
     cusolverSpHandle_t cusolverHandle;
     cusparseMatDescr_t descrA;
     csrcholInfo_t d_info;
     void* buffer_gpu = nullptr;
+    int* d_p = nullptr;
+    float* dev_b_permuted = nullptr, * dev_x_permuted = nullptr;
     int n;
+
 };
 
 class CholeskyDnLinearSolver : public LinearSolver<float> {
 public:
     CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len);
     virtual ~CholeskyDnLinearSolver() override;
-    virtual void Solve(int N, float *d_b, float *d_x, float *d_A = nullptr, int nz = 0, int *d_rowIdx = nullptr, int *d_colIdx = nullptr, float *d_guess = nullptr) override;
+    virtual void Solve(int N, float* d_b, float* d_x, float* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, float* d_guess = nullptr) override;
 private:
     cusolverDnParams_t params;
     int* d_info = nullptr;    /* error info */
