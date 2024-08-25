@@ -387,6 +387,11 @@ void Context::SetBVHBuildType(BVH::BuildType buildType)
     mcrpSimContext->SetBVHBuildType(buildType);
 }
 
+int& Context::GetBVHBuildType()
+{
+    return bvhBuildType;
+}
+
 void Context::Update() {
     PollEvents();
     if (panelModified) {

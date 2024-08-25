@@ -1,10 +1,6 @@
 #include <simulation/solver/linear/cholesky.h>
-#include <thrust/sort.h>
-#include <thrust/reduce.h>
-#include <thrust/device_vector.h>
 #include <thrust/execution_policy.h>
-#include <thrust/gather.h>
-#include <thrust/scatter.h>
+#include <linear/linearUtils.cuh>
 
 __global__ void FillMatrixA(int* AIdx, float* tmpVal, float* d_A, int n, int ASize) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -146,34 +142,9 @@ void CholeskySpLinearSolver::ComputeAMD(cusolverSpHandle_t handle, int rowsA, in
     free(buffer_cpu);
 }
 
-CholeskySpLinearSolver::CholeskySpLinearSolver(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len) {
-    int* newIdx;
-    float* newVal;
-
-    cudaMalloc((void**)&newIdx, sizeof(int) * len);
-    cudaMalloc((void**)&newVal, sizeof(float) * len);
-
-    thrust::sort_by_key(thrust::device, AIdx, AIdx + len, tmpVal);
-    thrust::pair<int*, float*> newEnd = thrust::reduce_by_key(thrust::device, AIdx, AIdx + len, tmpVal, newIdx, newVal);
-
-    int* ARow, * ACol;
-    float* AVal;
-
-    int nnz = newEnd.first - newIdx;
-
-    cudaMalloc((void**)&ARow, sizeof(int) * nnz);
-    cudaMemset(ARow, 0, sizeof(int) * nnz);
-
-    cudaMalloc((void**)&ACol, sizeof(int) * nnz);
-    cudaMemset(ACol, 0, sizeof(int) * nnz);
-
-    cudaMalloc((void**)&AVal, sizeof(float) * nnz);
-    cudaMemcpy(AVal, newVal, sizeof(float) * nnz, cudaMemcpyDeviceToDevice);
-
-    int blocks = (nnz + threadsPerBlock - 1) / threadsPerBlock;
-
-    initAMatrix << < blocks, threadsPerBlock >> > (newIdx, ARow, ACol, ASize, nnz);
-
+CholeskySpLinearSolver::CholeskySpLinearSolver(int threadsPerBlock,int* ARow, int* ACol, float* AVal, int ASize, int len) {
+    sort_coo(ASize, len, AVal, ARow, ACol);
+    int nnz = len;
     // transform ARow into csr format
     cusparseHandle_t handle;
     cusparseCreate(&handle);
@@ -194,12 +165,6 @@ CholeskySpLinearSolver::CholeskySpLinearSolver(int threadsPerBlock, int* AIdx, f
     cudaMalloc((void**)&dev_b_permuted, sizeof(float) * ASize);
     cudaMalloc((void**)&dev_x_permuted, sizeof(float) * ASize);
     cusolverSpScsrcholFactor(cusolverHandle, ASize, nnz, descrA, AVal, ARow, ACol, d_info, buffer_gpu);
-
-    cudaFree(newIdx);
-    cudaFree(newVal);
-    cudaFree(ARow);
-    cudaFree(ACol);
-    cudaFree(AVal);
 }
 
 void CholeskyDnLinearSolver::Solve(int N, float* d_b, float* d_x, float* d_A, int nz, int* d_rowIdx, int* d_colIdx, float* d_guess) {

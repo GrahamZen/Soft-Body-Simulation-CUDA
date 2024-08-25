@@ -29,7 +29,7 @@ namespace PdUtil {
     // Ai here is I
     // size of row, col, val are 48 * numTets + numVerts
     // row, col, val are used to initialize sparse matrix SiTSi
-    __global__ void computeSiTSi(int* outIdx, float* val, const float* V0, const glm::mat3* DmInvs, const indexType* Tets, float weight, int numTets, int numVerts)
+    __global__ void computeSiTSi(int* rowIdx, int* colIdx, float* val, const float* V0, const glm::mat3* DmInvs, const indexType* Tets, float weight, int numTets, int numVerts)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numTets)
@@ -55,23 +55,22 @@ namespace PdUtil {
                     int vc = Tets[index * 4 + j] * 3;
                     for (int k = 0; k < 3; k++)
                     {
-                        wrapRowColVal(start + (i * 12 + j * 3 + k), outIdx, val, vc + k, vr + k, SiTAiAiSi[j][i] * weight * V0[index], rowLen);
+                        wrapRowColVal(start + (i * 12 + j * 3 + k), rowIdx, colIdx, val, vc + k, vr + k, SiTAiAiSi[j][i] * weight * V0[index]);
                     }
                 }
             }
         }
     }
 
-    __global__ void setMDt_2(int* outIdx, float* val, int startIndex, float massDt_2, int numVerts)
+    __global__ void setMDt_2(int* rowIdx, int* colIdx, float* val, int startIndex, float massDt_2, int numVerts)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
             int offset = index * 3;
-            int rowLen = numVerts * 3;
-            wrapRowColVal(startIndex + offset + 0, outIdx, val, offset, offset, massDt_2, rowLen);
-            wrapRowColVal(startIndex + offset + 1, outIdx, val, offset + 1, offset + 1, massDt_2, rowLen);
-            wrapRowColVal(startIndex + offset + 2, outIdx, val, offset + 2, offset + 2, massDt_2, rowLen);
+            wrapRowColVal(startIndex + offset + 0, rowIdx, colIdx, val, offset, offset, massDt_2);
+            wrapRowColVal(startIndex + offset + 1, rowIdx, colIdx, val, offset + 1, offset + 1, massDt_2);
+            wrapRowColVal(startIndex + offset + 2, rowIdx, colIdx, val, offset + 2, offset + 2, massDt_2);
         }
     }
 

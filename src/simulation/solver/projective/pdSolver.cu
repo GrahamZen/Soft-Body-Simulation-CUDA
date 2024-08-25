@@ -44,38 +44,82 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
     cudaMalloc((void**)&b, sizeof(float) * ASize);
     cudaMalloc((void**)&masses, sizeof(float) * ASize);
 
-    int* AIdx;
-    cudaMalloc((void**)&AIdx, sizeof(int) * len);
-    cudaMemset(AIdx, 0, sizeof(int) * len);
+    int* AColIdx;
+    cudaMalloc((void**)&AColIdx, sizeof(int) * len);
+    cudaMemset(AColIdx, 0, sizeof(int) * len);
+
+    int* ARowIdx;
+    cudaMalloc((void**)&ARowIdx, sizeof(int) * len);
+    cudaMemset(ARowIdx, 0, sizeof(int) * len);
 
     float* tmpVal;
     cudaMalloc((void**)&tmpVal, sizeof(int) * len);
     cudaMemset(tmpVal, 0, sizeof(int) * len);
 
-    PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (AIdx, tmpVal, solverData.V0, solverData.inv_Dm, solverData.Tet, solverParams.solverAttr.stiffness_0, solverData.numTets, solverData.numVerts);
-    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (AIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
+    PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, tmpVal, solverData.V0, solverData.inv_Dm, solverData.Tet, solverParams.solverAttr.stiffness_0, solverData.numTets, solverData.numVerts);
+    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
-    int* AIdxHost = (int*)malloc(sizeof(int) * len);
-    float* tmpValHost = (float*)malloc(sizeof(float) * len);
+    // int* AIdxHost = (int*)malloc(sizeof(int) * len);
+    std::vector<int>ARowIdxHost(len);
+    std::vector<int>AColIdxHost(len);
+    std::vector<float>tmpValHost(len);
 
-    cudaMemcpy(AIdxHost, AIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
-    cudaMemcpy(tmpValHost, tmpVal, sizeof(float) * len, cudaMemcpyDeviceToHost);
+    // cudaMemcpy(AIdxHost, AIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
+    cudaMemcpy(ARowIdxHost.data(), ARowIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
+    cudaMemcpy(AColIdxHost.data(), AColIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
+    cudaMemcpy(tmpValHost.data(), tmpVal, sizeof(float) * len, cudaMemcpyDeviceToHost);
 
-    std::vector<Eigen::Triplet<float>> A_triplets;
-
-    for (auto i = 0; i < len; ++i)
+    try
     {
-        A_triplets.push_back({ AIdxHost[i] / ASize, AIdxHost[i] % ASize, tmpValHost[i] });
+        std::vector<Eigen::Triplet<float>> A_triplets;
+        for (auto i = 0; i < len; ++i)
+        {
+            A_triplets.push_back({ ARowIdxHost[i], AColIdxHost[i], tmpValHost[i] });
+            const auto& triplet = A_triplets.back();
+            if (triplet.row() < 0 || triplet.row() >= ASize ||
+                triplet.col() < 0 || triplet.col() >= ASize) {
+                throw std::invalid_argument("Triplet contains invalid row or column index.");
+            }
+        }
+        Eigen::SparseMatrix<float> A(ASize, ASize);
+
+        A.setFromTriplets(A_triplets.begin(), A_triplets.end());
+        cholesky_decomposition_.compute(A);
+        A.makeCompressed();
+        // transfer A to coo format ARowIdx, AColIdx, tmpVal
+        int nnz = A.nonZeros();
+        if (nnz != len) {
+            ARowIdxHost.resize(nnz);
+            AColIdxHost.resize(nnz);
+            tmpValHost.resize(nnz);
+        }
+
+        int idx = 0;
+        for (int k = 0; k < A.outerSize(); ++k)
+        {
+            for (Eigen::SparseMatrix<float>::InnerIterator it(A, k); it; ++it)
+            {
+                ARowIdxHost[idx] = it.row();
+                AColIdxHost[idx] = it.col();
+                tmpValHost[idx] = it.value();
+                idx++;
+            }
+        }
+        cudaMemcpy(ARowIdx, ARowIdxHost.data(), sizeof(int) * nnz, cudaMemcpyHostToDevice);
+        cudaMemcpy(AColIdx, AColIdxHost.data(), sizeof(int) * nnz, cudaMemcpyHostToDevice);
+        cudaMemcpy(tmpVal, tmpValHost.data(), sizeof(float) * nnz, cudaMemcpyHostToDevice);
+
+        ls = new CholeskySpLinearSolver(threadsPerBlock, ARowIdx, AColIdx, tmpVal, ASize, nnz);
     }
-    Eigen::SparseMatrix<float> A(ASize, ASize);
+    catch (const std::exception& e)
+    {
+        std::cerr << e.what() << ", " << "Cholesky decomposition(Eigen) failed" << std::endl;
+    }
 
-    A.setFromTriplets(A_triplets.begin(), A_triplets.end());
-    cholesky_decomposition_.compute(A);
 
-    ls = new CholeskySpLinearSolver(threadsPerBlock, AIdx, tmpVal, ASize, len);
-
-    cudaFree(AIdx);
+    cudaFree(ARowIdx);
+    cudaFree(AColIdx);
     cudaFree(tmpVal);
 }
 
@@ -130,7 +174,8 @@ void PdSolver::Update(SolverData& solverData, SolverParams& solverParams)
         solverParams.pCollisionDetection->DetectCollision(solverData.dev_tIs, solverData.dev_Normals);
         int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
         PdUtil::CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts);
-    }else
+    }
+    else
         cudaMemcpy(solverData.X, solverData.XTilde, sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
     solverData.pFixedBodies->HandleCollisions(solverData.XTilde, solverData.V, solverData.numVerts, solverParams.muT, solverParams.muN);
 }
