@@ -142,7 +142,7 @@ void CholeskySpLinearSolver::ComputeAMD(cusolverSpHandle_t handle, int rowsA, in
     free(buffer_cpu);
 }
 
-CholeskySpLinearSolver::CholeskySpLinearSolver(int threadsPerBlock,int* ARow, int* ACol, float* AVal, int ASize, int len) {
+CholeskySpLinearSolver::CholeskySpLinearSolver(int threadsPerBlock, int* ARow, int* ACol, float* AVal, int ASize, int len) {
     sort_coo(ASize, len, AVal, ARow, ACol);
     int nnz = len;
     // transform ARow into csr format
