@@ -11,6 +11,44 @@
 #include <collision/intersections.h>
 #include <cuda_runtime.h>
 
+// build the bounding box and morton code for each SoftBody
+template<typename HighP>
+__global__ void buildLeafMorton(int startIndex, int numTri, dataType minX, dataType minY, dataType minZ,
+    dataType maxX, dataType maxY, dataType maxZ, const indexType* tet, const glm::tvec3<HighP>* X, const glm::tvec3<HighP>* XTilde, BVHNode* leafNodes,
+    unsigned int* mortonCodes)
+{
+    int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ind < numTri)
+    {
+        int leafPos = ind + numTri - 1;
+        leafNodes[leafPos].bbox = computeTetTrajBBox(X[tet[ind * 4]], X[tet[ind * 4 + 1]], X[tet[ind * 4 + 2]], X[tet[ind * 4 + 3]],
+            XTilde[tet[ind * 4]], XTilde[tet[ind * 4 + 1]], XTilde[tet[ind * 4 + 2]], XTilde[tet[ind * 4 + 3]]);
+        leafNodes[leafPos].isLeaf = 1;
+        leafNodes[leafPos].leftIndex = -1;
+        leafNodes[leafPos].rightIndex = -1;
+        leafNodes[leafPos].TetrahedronIndex = ind;
+        mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glmVec3(minX, minY, minZ), glmVec3(maxX, maxY, maxZ));
+    }
+}
+
+template<typename HighP>
+void BVH::BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::tvec3<HighP>* X, glm::tvec3<HighP>* XTilde, const indexType* tets)
+{
+    cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
+
+    buildLeafMorton << <numblocksTets, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
+        tets, X, XTilde, dev_BVHNodes, dev_mortonCodes);
+
+    thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTets, dev_BVHNodes + numTets - 1);
+
+    buildSplitList << <numblocksTets, threadsPerBlock >> > (numTets, dev_mortonCodes, dev_BVHNodes);
+
+    BuildBBoxes(buildType);
+
+    cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
+    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(ReadyFlagType));
+    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
+}
 
 struct QueryComparator {
     __host__ __device__
@@ -281,10 +319,35 @@ void removeDuplicates(Query* dev_queries, size_t& dev_numQueries) {
     dev_numQueries = new_end_unique - dev_ptr;
 }
 
+template<typename HighP>
+struct MinOp {
+    __host__ __device__
+        glm::tvec3<HighP> operator()(const glm::tvec3<HighP>& a, const glm::tvec3<HighP>& b) const {
+        return glm::min(a, b);
+    }
+};
+
+template<typename HighP>
+struct MaxOp {
+    __host__ __device__
+        glm::tvec3<HighP> operator()(const glm::tvec3<HighP>& a, const glm::tvec3<HighP>& b) const {
+        return glm::max(a, b);
+    }
+};
+
+template<typename HighP>
+AABB computeBoundingBox(const thrust::device_ptr<glm::tvec3<HighP>>& begin, const thrust::device_ptr<glm::tvec3<HighP>>& end) {
+    glm::tvec3<HighP> min = thrust::reduce(begin, end, glm::tvec3<HighP>(FLT_MAX), MinOp<HighP>());
+    glm::tvec3<HighP> max = thrust::reduce(begin, end, glm::tvec3<HighP>(-FLT_MAX), MaxOp<HighP>());
+
+    return AABB{ min, max };
+}
+
 AABB CollisionDetection::GetAABB() const
 {
-    thrust::device_ptr<glm::vec3> dev_ptr(mPSimContext->mSolverData.X);
-    thrust::device_ptr<glm::vec3> dev_ptrTildes(mPSimContext->mSolverData.XTilde);
+    using XType = typename std::decay<decltype(*mPSimContext->mSolverData.X)>::type;
+    thrust::device_ptr<XType> dev_ptr(mPSimContext->mSolverData.X);
+    thrust::device_ptr<XType> dev_ptrTildes(mPSimContext->mSolverData.XTilde);
     return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTildes, dev_ptrTildes + numVerts));
 }
 

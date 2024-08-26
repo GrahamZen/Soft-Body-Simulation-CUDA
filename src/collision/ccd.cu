@@ -23,27 +23,6 @@ __device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const g
     return AABB{ min - AABBThreshold, max + AABBThreshold };
 }
 
-struct MinOp {
-    __host__ __device__
-        glm::vec3 operator()(const glm::vec3& a, const glm::vec3& b) const {
-        return glm::min(a, b);
-    }
-};
-
-struct MaxOp {
-    __host__ __device__
-        glm::vec3 operator()(const glm::vec3& a, const glm::vec3& b) const {
-        return glm::max(a, b);
-    }
-};
-
-AABB computeBoundingBox(const thrust::device_ptr<glm::vec3>& begin, const thrust::device_ptr<glm::vec3>& end) {
-    glm::vec3 min = thrust::reduce(begin, end, glm::vec3(FLT_MAX), MinOp());
-    glm::vec3 max = thrust::reduce(begin, end, glm::vec3(-FLT_MAX), MaxOp());
-
-    return AABB{ min, max };
-}
-
 AABB AABB::expand(const AABB& aabb)const {
     return AABB{
         glm::min(min, aabb.min),
@@ -110,7 +89,8 @@ void CollisionDetection::Draw(SurfaceShader* flatShaderProgram)
     }
 }
 
-SingleQueryDisplay& CollisionDetection::GetSQDisplay(int i, const glm::vec3* X, Query* guiQuery)
+template<typename HighP>
+SingleQueryDisplay& CollisionDetection::GetSQDisplay(int i, const glm::tvec3<HighP>* X, Query* guiQuery)
 {
     if (numQueries == 0) {
         mSqDisplay.SetCount(0);

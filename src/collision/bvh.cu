@@ -79,26 +79,6 @@ __device__ void buildBBox(BVHNode& curr, const BVHNode& left, const BVHNode& rig
     curr.isLeaf = 0;
 }
 
-// build the bounding box and morton code for each SoftBody
-__global__ void buildLeafMorton(int startIndex, int numTri, dataType minX, dataType minY, dataType minZ,
-    dataType maxX, dataType maxY, dataType maxZ, const indexType* tet, const glm::vec3* X, const glm::vec3* XTilde, BVHNode* leafNodes,
-    unsigned int* mortonCodes)
-{
-    int ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (ind < numTri)
-    {
-        int leafPos = ind + numTri - 1;
-        leafNodes[leafPos].bbox = computeTetTrajBBox(X[tet[ind * 4]], X[tet[ind * 4 + 1]], X[tet[ind * 4 + 2]], X[tet[ind * 4 + 3]],
-            XTilde[tet[ind * 4]], XTilde[tet[ind * 4 + 1]], XTilde[tet[ind * 4 + 2]], XTilde[tet[ind * 4 + 3]]);
-        leafNodes[leafPos].isLeaf = 1;
-        leafNodes[leafPos].leftIndex = -1;
-        leafNodes[leafPos].rightIndex = -1;
-        leafNodes[leafPos].TetrahedronIndex = ind;
-        mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glmVec3(minX, minY, minZ), glmVec3(maxX, maxY, maxZ));
-    }
-}
-
-
 //input the unique morton code
 //codeCount is the size of the unique morton code
 //splitList is 30 x N list
@@ -278,24 +258,6 @@ void BVH::BuildBBoxes(BuildType buildType) {
             cudaMemcpy(&treeBuild, dev_ready, sizeof(ReadyFlagType), cudaMemcpyDeviceToHost);
         }
     }
-}
-
-void BVH::BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilde, const indexType* tets)
-{
-    cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
-
-    buildLeafMorton << <numblocksTets, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
-        tets, X, XTilde, dev_BVHNodes, dev_mortonCodes);
-
-    thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTets, dev_BVHNodes + numTets - 1);
-
-    buildSplitList << <numblocksTets, threadsPerBlock >> > (numTets, dev_mortonCodes, dev_BVHNodes);
-
-    BuildBBoxes(buildType);
-
-    cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
-    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(ReadyFlagType));
-    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
 }
 
 BVH::BVH(const int _threadsPerBlock) :

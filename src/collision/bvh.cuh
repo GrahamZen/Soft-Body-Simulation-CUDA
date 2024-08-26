@@ -5,10 +5,10 @@
 #include <thrust/device_vector.h>
 #include <vector>
 
-AABB computeBoundingBox(const thrust::device_ptr<glm::vec3>& begin, const thrust::device_ptr<glm::vec3>& end);
-
 __device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
     const glmVec3& v4, const glmVec3& v5, const glmVec3& v6, const glmVec3& v7);
+
+__device__ unsigned int genMortonCode(AABB bbox, glmVec3 geoMin, glmVec3 geoMax);
 
 __inline__ __device__ unsigned int expandBits(unsigned int v)
 {
@@ -28,3 +28,5 @@ __inline__ __device__ int getSign(int tmp)
         return -1;
     //return (tmp > 0) - (tmp < 0);
 }
+
+__global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNode* nodes);

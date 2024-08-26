@@ -20,7 +20,8 @@ public:
     void Init(int numTets, int numVerts, int maxThreads);
     void PrepareRenderData();
     const BVHNode* GetBVHNodes() const;
-    void BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilde, const indexType* tets);
+    template<typename HighP>
+    void BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::tvec3<HighP>* X, glm::tvec3<HighP>* XTilde, const indexType* tets);
 private:
     void BuildBBoxes(BuildType buildType);
     BVHNode* dev_BVHNodes = nullptr;
@@ -52,7 +53,8 @@ public:
     void SetBuildType(BVH::BuildType);
     BVH::BuildType GetBuildType();
 private:
-    SingleQueryDisplay& GetSQDisplay(int i, const glm::vec3* Xs, Query* guiQuery);
+    template<typename HighP>
+    SingleQueryDisplay& GetSQDisplay(int i, const glm::tvec3<HighP>* Xs, Query* guiQuery);
     AABB GetAABB() const;
     bool BroadPhase();
     void NarrowPhase(dataType*& tI, glm::vec3*& nors);

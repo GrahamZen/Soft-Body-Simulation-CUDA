@@ -1,158 +1,14 @@
 #include <utilities.cuh>
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/softBody.h>
+#include <simulation/dataLoader.h>
 #include <simulation/MshLoader.h>
 #include <simulation/simulationContext.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <thrust/device_ptr.h>
 #include <thrust/transform.h>
 #include <thrust/fill.h>
-#include <fstream>
-#include <sstream>
-#include <filesystem>
-#include <set>
 
-namespace fs = std::filesystem;
-
-template<typename HighP>
-DataLoader<HighP>::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
-{
-}
-
-template<typename HighP>
-std::vector<indexType> DataLoader<HighP>::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
-{
-    std::string line;
-    std::ifstream file(EleFilename);
-
-    if (!file.is_open()) {
-        fs::path absolutePath = fs::absolute(EleFilename);
-        std::cerr << "Unable to open file: " << absolutePath << std::endl;
-    }
-
-    std::getline(file, line);
-    std::istringstream iss(line);
-    iss >> numTets;
-
-    std::vector<indexType> Tet(numTets * 4);
-
-    int a, b, c, d, e;
-    for (int tet = 0; tet < numTets && std::getline(file, line); ++tet) {
-        std::istringstream iss(line);
-        iss >> a >> b >> c >> d >> e;
-
-        Tet[tet * 4 + 0] = b - startIndex;
-        Tet[tet * 4 + 1] = c - startIndex;
-        Tet[tet * 4 + 2] = d - startIndex;
-        Tet[tet * 4 + 3] = e - startIndex;
-    }
-
-    file.close();
-    return Tet;
-}
-
-template<typename HighP>
-std::vector<indexType> DataLoader<HighP>::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
-{
-    std::string line;
-    std::ifstream file(faceFilename);
-
-    if (!file.is_open()) {
-        // std::cerr << "Unable to open face file" << std::endl;
-        return std::vector<indexType>();
-    }
-
-    std::getline(file, line);
-    std::istringstream iss(line);
-    iss >> numTris;
-
-    std::vector<indexType> Triangle(numTris * 3);
-
-    int a, b, c, d, e;
-    for (int tet = 0; tet < numTris && std::getline(file, line); ++tet) {
-        std::istringstream iss(line);
-        iss >> a >> b >> c >> d >> e;
-
-        Triangle[tet * 3 + 0] = b - startIndex;
-        Triangle[tet * 3 + 1] = c - startIndex;
-        Triangle[tet * 3 + 2] = d - startIndex;
-    }
-
-    file.close();
-    return Triangle;
-}
-
-template<typename HighP>
-std::vector<glm::vec3> DataLoader<HighP>::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
-{
-    std::ifstream file(nodeFilename);
-    if (!file.is_open()) {
-        fs::path absolutePath = fs::absolute(nodeFilename);
-        std::cerr << "Unable to open file: " << absolutePath << std::endl;
-        return {};
-    }
-
-    std::string line;
-    std::getline(file, line);
-    std::istringstream iss(line);
-    iss >> numVerts;
-    std::vector<glm::vec3> X(numVerts);
-    glm::vec3 center(0.0f);
-
-    for (int i = 0; i < numVerts && std::getline(file, line); ++i) {
-        std::istringstream lineStream(line);
-        int index;
-        float x, y, z;
-        lineStream >> index >> x >> y >> z;
-
-        X[i].x = x;
-        X[i].y = y;
-        X[i].z = z;
-
-        center += X[i];
-    }
-
-    // Centralize the model
-    if (centralize) {
-        center /= static_cast<float>(numVerts);
-        for (int i = 0; i < numVerts; ++i) {
-            X[i] -= center;
-            float temp = X[i].y;
-            X[i].y = X[i].z;
-            X[i].z = temp;
-        }
-    }
-
-    return X;
-}
-
-template<typename HighP>
-void DataLoader<HighP>::CollectEdges(const std::vector<indexType>& triIdx) {
-    std::set<std::pair<indexType, indexType>> uniqueEdges;
-    std::vector<indexType> edges;
-
-    for (size_t i = 0; i < triIdx.size(); i += 3) {
-        indexType v0 = triIdx[i];
-        indexType v1 = triIdx[i + 1];
-        indexType v2 = triIdx[i + 2];
-
-        std::pair<indexType, indexType> edge1 = std::minmax(v0, v1);
-        std::pair<indexType, indexType> edge2 = std::minmax(v1, v2);
-        std::pair<indexType, indexType> edge3 = std::minmax(v2, v0);
-
-        uniqueEdges.insert(edge1);
-        uniqueEdges.insert(edge2);
-        uniqueEdges.insert(edge3);
-    }
-
-    for (const auto& edge : uniqueEdges) {
-        edges.push_back(edge.first);
-        edges.push_back(edge.second);
-    }
-
-    m_edges.push_back(edges);
-    totalNumEdges += edges.size() / 2;
-}
 #define ERRORCHECK 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
@@ -342,8 +198,8 @@ void DataLoader<HighP>::CollectData(const char* nodeFileName, const char* eleFil
     SolverData<HighP> solverData;
     SoftBodyData softBodyData;
     auto vertices = loadNodeFile(nodeFileName, centralize, solverData.numVerts);
-    cudaMalloc((void**)&solverData.X, sizeof(glm::vec3) * solverData.numVerts);
-    cudaMemcpy(solverData.X, vertices.data(), sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<HighP>) * solverData.numVerts);
+    cudaMemcpy(solverData.X, vertices.data(), sizeof(glm::tvec3<HighP>) * solverData.numVerts, cudaMemcpyHostToDevice);
 
     // transform
     glm::mat4 model = glm::mat4(1.0f);
@@ -387,8 +243,8 @@ void DataLoader<HighP>::CollectData(const char* mshFileName, const glm::vec3& po
     std::transform(nodes.begin(), nodes.end(), vertices.begin(), [](igl::MshLoader::Float f) {
         return static_cast<float>(f);
         });
-    cudaMalloc((void**)&solverData.X, sizeof(glm::vec3) * solverData.numVerts);
-    cudaMemcpy(solverData.X, vertices.data(), sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<HighP>) * solverData.numVerts);
+    cudaMemcpy(solverData.X, vertices.data(), sizeof(glm::tvec3<HighP>) * solverData.numVerts, cudaMemcpyHostToDevice);
 
     // transform
     glm::mat4 model = glm::mat4(1.0f);
@@ -425,18 +281,18 @@ void DataLoader<HighP>::CollectData(const char* mshFileName, const glm::vec3& po
 }
 
 template<typename HighP>
-void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilde,
-    glm::vec3*& gV, glm::vec3*& gF, indexType*& gEdges, indexType*& gTet, indexType*& gTetFather, int& numVerts, int& numTets)
+void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, glm::tvec3<HighP>*& gX, glm::tvec3<HighP>*& gX0, glm::tvec3<HighP>*& gXTilde,
+    glm::tvec3<HighP>*& gV, glm::tvec3<HighP>*& gF, indexType*& gEdges, indexType*& gTet, indexType*& gTetFather, int& numVerts, int& numTets)
 {
     numVerts = totalNumVerts;
     numTets = totalNumTets;
-    cudaMalloc((void**)&gX, sizeof(glm::vec3) * totalNumVerts);
-    cudaMalloc((void**)&gX0, sizeof(glm::vec3) * totalNumVerts);
-    cudaMalloc((void**)&gXTilde, sizeof(glm::vec3) * totalNumVerts);
-    cudaMalloc((void**)&gV, sizeof(glm::vec3) * totalNumVerts);
-    cudaMalloc((void**)&gF, sizeof(glm::vec3) * totalNumVerts);
-    cudaMemset(gV, 0, sizeof(glm::vec3) * totalNumVerts);
-    cudaMemset(gF, 0, sizeof(glm::vec3) * totalNumVerts);
+    cudaMalloc((void**)&gX, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMalloc((void**)&gX0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMalloc((void**)&gXTilde, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMalloc((void**)&gV, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMalloc((void**)&gF, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMemset(gV, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMemset(gF, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
     cudaMalloc((void**)&gEdges, sizeof(indexType) * totalNumEdges * 2);
     cudaMalloc((void**)&gTet, sizeof(indexType) * totalNumTets * 4);
     cudaMalloc((void**)&gTetFather, sizeof(indexType) * totalNumTets);
@@ -450,7 +306,7 @@ void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, glm::vec3*& gX
         startIndices.push_back(vertOffset);
         auto& solverData = std::get<0>(softBody);
         auto& softBodyData = std::get<1>(softBody);
-        cudaMemcpy(gX + vertOffset, solverData.X, sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
+        cudaMemcpy(gX + vertOffset, solverData.X, sizeof(glm::tvec3<HighP>) * solverData.numVerts, cudaMemcpyDeviceToDevice);
         thrust::transform(solverData.Tet, solverData.Tet + solverData.numTets * 4, dev_gTetPtr + tetOffset, [vertOffset] __device__(indexType x) {
             return x + vertOffset;
         });
@@ -473,8 +329,8 @@ void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, glm::vec3*& gX
         tetOffset += solverData.numTets * 4;
         edgeOffset += m_edges[i].size();
     }
-    cudaMemcpy(gX0, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
-    cudaMemcpy(gXTilde, gX, sizeof(glm::vec3) * totalNumVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(gX0, gX, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(gXTilde, gX, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
 
 void SimulationCUDAContext::PrepareRenderData() {

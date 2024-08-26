@@ -61,7 +61,8 @@ struct EqualQuery {
     }
 };
 
-__global__ void detectCollisionNarrow(int numQueries, Query* queries, const glm::vec3* Xs, const glm::vec3* XTildes)
+template<typename HighP>
+__global__ void detectCollisionNarrow(int numQueries, Query* queries, const glm::tvec3<HighP>* Xs, const glm::tvec3<HighP>* XTildes)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numQueries)

@@ -57,49 +57,6 @@ void inspectSphere(const Sphere* dev_spheres, int size)
     utilityCore::inspectHost(hstSphere.data(), size);
 }
 
-__global__ void TransformVertices(glm::vec3* X, glm::mat4 transform, int numVerts)
-{
-    int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-
-    if (index < numVerts)
-    {
-        X[index] = glm::vec3(transform * glm::vec4(X[index], 1.f));
-    }
-}
-
-__global__ void PopulatePos(glm::vec3* vertices, glm::vec3* X, indexType* Tet, int numTets)
-{
-    int tet = (blockIdx.x * blockDim.x) + threadIdx.x;
-
-    if (tet < numTets)
-    {
-        vertices[tet * 12 + 0] = X[Tet[tet * 4 + 0]];
-        vertices[tet * 12 + 1] = X[Tet[tet * 4 + 2]];
-        vertices[tet * 12 + 2] = X[Tet[tet * 4 + 1]];
-        vertices[tet * 12 + 3] = X[Tet[tet * 4 + 0]];
-        vertices[tet * 12 + 4] = X[Tet[tet * 4 + 3]];
-        vertices[tet * 12 + 5] = X[Tet[tet * 4 + 2]];
-        vertices[tet * 12 + 6] = X[Tet[tet * 4 + 0]];
-        vertices[tet * 12 + 7] = X[Tet[tet * 4 + 1]];
-        vertices[tet * 12 + 8] = X[Tet[tet * 4 + 3]];
-        vertices[tet * 12 + 9] = X[Tet[tet * 4 + 1]];
-        vertices[tet * 12 + 10] = X[Tet[tet * 4 + 2]];
-        vertices[tet * 12 + 11] = X[Tet[tet * 4 + 3]];
-    }
-}
-
-__global__ void PopulateTriPos(glm::vec3* vertices, glm::vec3* X, indexType* Tet, int numTris)
-{
-    int tri = (blockIdx.x * blockDim.x) + threadIdx.x;
-
-    if (tri < numTris)
-    {
-        vertices[tri * 3 + 0] = X[Tet[tri * 3 + 0]];
-        vertices[tri * 3 + 1] = X[Tet[tri * 3 + 2]];
-        vertices[tri * 3 + 2] = X[Tet[tri * 3 + 1]];
-    }
-}
-
 __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int numVerts)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
