@@ -1,7 +1,8 @@
 #include <IPC/ipc.h>
 #include <cuda_runtime.h>
 
-IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData) :FEMSolver(threadsPerBlock), numVerts(solverData.numVerts)
+IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData)
+    :FEMSolver(threadsPerBlock), numVerts(solverData.numVerts), inertia(numVerts, solverData.mass)
 {
     cudaMalloc(&gradient, sizeof(double) * numVerts * 3);
 }

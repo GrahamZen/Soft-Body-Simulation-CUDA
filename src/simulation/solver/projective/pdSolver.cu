@@ -1,13 +1,12 @@
 #include <simulation/solver/linear/cholesky.h>
 #include <simulation/solver/projective/pdSolver.h>
+#include <simulation/solver/solverUtil.cuh>
 #include <simulation/solver/projective/pdUtil.cuh>
 #include <fixedBodyData.h>
 #include <collision/bvh.h>
 
-#include <thrust/execution_policy.h>
+#include <thrust/device_ptr.h>
 #include <thrust/fill.h>
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
 
 PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver(threadsPerBlock)
 {
@@ -18,7 +17,7 @@ PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : F
     cudaMalloc((void**)&solverData.inv_Dm, sizeof(glm::mat4) * solverData.numTets);
 
     int blocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    PdUtil::computeInvDmV0 << < blocks, threadsPerBlock >> > (solverData.V0, solverData.inv_Dm, solverData.numTets, solverData.X, solverData.Tet);
+    computeInvDmV0 << < blocks, threadsPerBlock >> > (solverData.V0, solverData.inv_Dm, solverData.numTets, solverData.X, solverData.Tet);
 }
 
 PdSolver::~PdSolver() {
@@ -137,7 +136,7 @@ void PdSolver::SolverStep(SolverData<float>& solverData, SolverParams& solverPar
 
     glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.solverAttr.mass, 0.0f };
     thrust::device_ptr<glm::vec3> dev_ptr(solverData.dev_ExtForce);
-    thrust::fill(thrust::device, dev_ptr, dev_ptr + solverData.numVerts, gravity);
+    thrust::fill(dev_ptr, dev_ptr + solverData.numVerts, gravity);
     PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, solverData.dev_ExtForce, masses, m_1_dt2, solverData.numVerts);
     for (int i = 0; i < solverParams.numIterations; i++)
     {

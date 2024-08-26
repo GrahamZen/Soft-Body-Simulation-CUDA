@@ -55,7 +55,7 @@ namespace PdUtil {
                     int vc = Tets[index * 4 + j] * 3;
                     for (int k = 0; k < 3; k++)
                     {
-                        wrapRowColVal(start + (i * 12 + j * 3 + k), rowIdx, colIdx, val, vc + k, vr + k, SiTAiAiSi[j][i] * weight * V0[index]);
+                        setRowColVal(start + (i * 12 + j * 3 + k), rowIdx, colIdx, val, vc + k, vr + k, SiTAiAiSi[j][i] * weight * V0[index]);
                     }
                 }
             }
@@ -68,9 +68,9 @@ namespace PdUtil {
         if (index < numVerts)
         {
             int offset = index * 3;
-            wrapRowColVal(startIndex + offset + 0, rowIdx, colIdx, val, offset, offset, massDt_2);
-            wrapRowColVal(startIndex + offset + 1, rowIdx, colIdx, val, offset + 1, offset + 1, massDt_2);
-            wrapRowColVal(startIndex + offset + 2, rowIdx, colIdx, val, offset + 2, offset + 2, massDt_2);
+            setRowColVal(startIndex + offset + 0, rowIdx, colIdx, val, offset, offset, massDt_2);
+            setRowColVal(startIndex + offset + 1, rowIdx, colIdx, val, offset + 1, offset + 1, massDt_2);
+            setRowColVal(startIndex + offset + 2, rowIdx, colIdx, val, offset + 2, offset + 2, massDt_2);
         }
     }
 
@@ -182,26 +182,6 @@ namespace PdUtil {
             // sn is of size 3*numVerts
             vel[index] = (newPosition - pos[index]) * dt_1;
             pos[index] = newPosition;
-        }
-    }
-
-    __device__ glm::mat3 Build_Edge_Matrix(const glm::vec3* X, const indexType* Tet, int tet) {
-        glm::mat3 ret(0.0f);
-        ret[0] = X[Tet[tet * 4]] - X[Tet[tet * 4 + 3]];
-        ret[1] = X[Tet[tet * 4 + 1]] - X[Tet[tet * 4 + 3]];
-        ret[2] = X[Tet[tet * 4 + 2]] - X[Tet[tet * 4 + 3]];
-
-        return ret;
-    }
-
-    __global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const glm::vec3* X, const indexType* Tet)
-    {
-        int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < numTets)
-        {
-            glm::mat3 Dm = Build_Edge_Matrix(X, Tet, index);
-            inv_Dm[index] = glm::inverse(Dm);
-            V0[index] = glm::abs(glm::determinant(Dm)) / 6.0f;
         }
     }
 }

@@ -31,7 +31,7 @@ public:
 private:
     void PrepareRenderData();
     int threadsPerBlock = 64;
-    SolverData<float> mSolverData;
+    SolverData<double> mSolverData;
     indexType* dev_TetFathers;
     indexType* dev_Edges;
     std::vector<const char*> namesSoftBodies;
@@ -42,5 +42,5 @@ private:
     Context* context = nullptr;
     const std::string name;
     SolverParams mSolverParams;
-    Solver<float>* mSolver = nullptr;
+    Solver<double>* mSolver = nullptr;
 };

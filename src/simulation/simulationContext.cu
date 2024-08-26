@@ -1,5 +1,5 @@
 #include <utilities.cuh>
-#include <simulation/solver/projective/pdSolver.h>
+#include <simulation/solver/IPC/ipc.h>
 #include <simulation/softBody.h>
 #include <simulation/dataLoader.h>
 #include <simulation/MshLoader.h>
@@ -25,7 +25,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads, int _numIterations)
     :context(ctx), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
 {
-    DataLoader<float> dataLoader(threadsPerBlock);
+    DataLoader<double> dataLoader(threadsPerBlock);
     mSolverParams.pCollisionDetection = new CollisionDetection{ this, _threadsPerBlockBVH, 1 << 16 };
     if (json.contains("dt")) {
         mSolverParams.dt = json["dt"].get<float>();
@@ -149,7 +149,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
             }
 
         }
-        dataLoader.AllocData(startIndices, mSolverData.X, mSolverData.X0, mSolverData.XTilde, mSolverData.V, mSolverData.Force, dev_Edges, mSolverData.Tet, dev_TetFathers, mSolverData.numVerts, mSolverData.numTets);
+        dataLoader.AllocData(startIndices, mSolverData, dev_Edges, dev_TetFathers);
         for (auto softBodyData : dataLoader.m_softBodyData) {
             softBodies.push_back(new SoftBody(this, std::get<2>(softBodyData), &std::get<1>(softBodyData)));
         }
@@ -158,7 +158,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(dataType));
     }
     mSolverData.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
-    mSolver = new PdSolver{ threadsPerBlock, mSolverData };
+    mSolver = new IPCSolver{ threadsPerBlock, mSolverData };
 }
 
 SimulationCUDAContext::~SimulationCUDAContext()
@@ -281,33 +281,30 @@ void DataLoader<HighP>::CollectData(const char* mshFileName, const glm::vec3& po
 }
 
 template<typename HighP>
-void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, glm::tvec3<HighP>*& gX, glm::tvec3<HighP>*& gX0, glm::tvec3<HighP>*& gXTilde,
-    glm::tvec3<HighP>*& gV, glm::tvec3<HighP>*& gF, indexType*& gEdges, indexType*& gTet, indexType*& gTetFather, int& numVerts, int& numTets)
+void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, SolverData<HighP> &solverData, indexType*& gEdges, indexType*& gTetFather)
 {
-    numVerts = totalNumVerts;
-    numTets = totalNumTets;
-    cudaMalloc((void**)&gX, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&gX0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&gXTilde, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&gV, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&gF, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMemset(gV, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMemset(gF, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    solverData.numVerts = totalNumVerts;
+    solverData.numTets = totalNumTets;
+    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.X0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.XTilde, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.V, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMemset(solverData.V, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMemset(solverData.dev_ExtForce, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.Tet, sizeof(indexType) * totalNumTets * 4);
+    cudaMalloc((void**)&solverData.mass, sizeof(HighP) * totalNumVerts);
     cudaMalloc((void**)&gEdges, sizeof(indexType) * totalNumEdges * 2);
-    cudaMalloc((void**)&gTet, sizeof(indexType) * totalNumTets * 4);
     cudaMalloc((void**)&gTetFather, sizeof(indexType) * totalNumTets);
     int vertOffset = 0, tetOffset = 0, edgeOffset = 0;
-    thrust::device_ptr<indexType> dev_gTetPtr(gTet);
-    thrust::device_ptr<indexType> dev_gEdgesPtr(gEdges);
-    thrust::device_ptr<indexType> dev_gTetFatherPtr(gTetFather);
     for (int i = 0; i < m_softBodyData.size(); i++)
     {
         auto& softBody = m_softBodyData[i];
         startIndices.push_back(vertOffset);
-        auto& solverData = std::get<0>(softBody);
+        auto& softBodySolverData = std::get<0>(softBody);
         auto& softBodyData = std::get<1>(softBody);
-        cudaMemcpy(gX + vertOffset, solverData.X, sizeof(glm::tvec3<HighP>) * solverData.numVerts, cudaMemcpyDeviceToDevice);
-        thrust::transform(solverData.Tet, solverData.Tet + solverData.numTets * 4, dev_gTetPtr + tetOffset, [vertOffset] __device__(indexType x) {
+        cudaMemcpy(solverData.X + vertOffset, softBodySolverData.X, sizeof(glm::tvec3<HighP>) * softBodySolverData.numVerts, cudaMemcpyDeviceToDevice);
+        thrust::transform(softBodySolverData.Tet, softBodySolverData.Tet + softBodySolverData.numTets * 4, thrust::device_pointer_cast(solverData.Tet) + tetOffset, [vertOffset] __device__(indexType x) {
             return x + vertOffset;
         });
         if (softBodyData.Tri) {
@@ -315,22 +312,23 @@ void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, glm::tvec3<Hig
                 x += vertOffset;
             });
         }
-        thrust::fill(dev_gTetFatherPtr + tetOffset / 4, dev_gTetFatherPtr + tetOffset / 4 + solverData.numTets, i);
+        thrust::fill(thrust::device_pointer_cast(gTetFather) + tetOffset / 4, thrust::device_pointer_cast(gTetFather) + tetOffset / 4 + softBodySolverData.numTets, i);
+        thrust::fill(thrust::device_pointer_cast(solverData.mass) + vertOffset, thrust::device_pointer_cast(solverData.mass) + vertOffset + softBodySolverData.numVerts, std::get<2>(softBody).mass);
         cudaMemcpy(gEdges + edgeOffset, m_edges[i].data(), sizeof(indexType) * m_edges[i].size(), cudaMemcpyHostToDevice);
-        thrust::transform(dev_gEdgesPtr + edgeOffset, dev_gEdgesPtr + edgeOffset + m_edges[i].size(), dev_gEdgesPtr + edgeOffset,
+        thrust::transform(thrust::device_pointer_cast(gEdges) + edgeOffset, thrust::device_pointer_cast(gEdges) + edgeOffset + m_edges[i].size(), thrust::device_pointer_cast(gEdges) + edgeOffset,
             [vertOffset] __device__(indexType x) {
             return x + vertOffset;
         });
-        cudaFree(solverData.X);
-        cudaFree(solverData.Tet);
-        std::get<1>(softBody).numTets = solverData.numTets;
-        std::get<1>(softBody).Tet = gTet + tetOffset;
-        vertOffset += solverData.numVerts;
-        tetOffset += solverData.numTets * 4;
+        cudaFree(softBodySolverData.X);
+        cudaFree(softBodySolverData.Tet);
+        std::get<1>(softBody).numTets = softBodySolverData.numTets;
+        std::get<1>(softBody).Tet = solverData.Tet + tetOffset;
+        vertOffset += softBodySolverData.numVerts;
+        tetOffset += softBodySolverData.numTets * 4;
         edgeOffset += m_edges[i].size();
     }
-    cudaMemcpy(gX0, gX, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);
-    cudaMemcpy(gXTilde, gX, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(solverData.X0, solverData.X, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(solverData.XTilde, solverData.X, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
 
 void SimulationCUDAContext::PrepareRenderData() {

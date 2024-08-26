@@ -1,6 +1,9 @@
 #pragma once
 
 #include <simulation/solver/femSolver.h>
+#include <energy/elasticity.h>
+#include <energy/gravity.h>
+#include <energy/inertia.h>
 
 class IPCSolver : public FEMSolver<double> {
 public:
@@ -18,4 +21,6 @@ private:
     double* hessianVal = nullptr;
     int* hessianRowIdx = nullptr;
     int* hessianColIdx = nullptr;
+    InertiaEnergy<double> inertia;
+    GravityEnergy<double> gravity;
 };

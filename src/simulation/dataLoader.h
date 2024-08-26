@@ -18,7 +18,7 @@ public:
         const glm::vec3& rot, bool centralize, int startIndex, SolverAttribute attrib);
     void CollectData(const char* mshFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
         bool centralize, int startIndex, SolverAttribute attrib);
-    void AllocData(std::vector<int>& startIndices, glm::tvec3<HighP>*& gX, glm::tvec3<HighP>*& gX0, glm::tvec3<HighP>*& gXTilde, glm::tvec3<HighP>*& gV, glm::tvec3<HighP>*& gF, indexType*& gEdges, indexType*& gTet, indexType*& gTetFather, int& numVerts, int& numTets);
+    void AllocData(std::vector<int>& startIndices, SolverData<HighP> &solverData, indexType*& edges, indexType*& tetFather);
 private:
     static std::vector<indexType> loadEleFile(const std::string& EleFilename, int startIndex, int& numTets);
     static std::vector<glm::tvec3<HighP>> loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts);

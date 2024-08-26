@@ -20,7 +20,6 @@ protected:
 private:
     LinearSolver<float>* ls = nullptr;
     bool useEigen = false;
-    float* Mass;
 
     float* masses;
     float* sn;

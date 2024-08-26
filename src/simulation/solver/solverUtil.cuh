@@ -33,3 +33,25 @@ __inline__ __device__ void svdGLM(const glm::mat3& A, glm::mat3& U, glm::mat3& S
 }
 
 __global__ void AddExternal(glm::vec3* V, int numVerts, bool jump, float mass, glm::vec3 vel);
+
+template <typename HighP>
+__device__ glm::mat3 Build_Edge_Matrix(const glm::tvec3<HighP>* X, const indexType* Tet, int tet) {
+    glm::mat3 ret(0.0f);
+    ret[0] = X[Tet[tet * 4]] - X[Tet[tet * 4 + 3]];
+    ret[1] = X[Tet[tet * 4 + 1]] - X[Tet[tet * 4 + 3]];
+    ret[2] = X[Tet[tet * 4 + 2]] - X[Tet[tet * 4 + 3]];
+
+    return ret;
+}
+
+template <typename HighP>
+__global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const glm::tvec3<HighP>* X, const indexType* Tet)
+{
+    int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+    if (index < numTets)
+    {
+        glm::mat3 Dm = Build_Edge_Matrix(X, Tet, index);
+        inv_Dm[index] = glm::inverse(Dm);
+        V0[index] = glm::abs(glm::determinant(Dm)) / 6.0f;
+    }
+}
