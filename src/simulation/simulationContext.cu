@@ -1,5 +1,6 @@
 #include <utilities.cuh>
 #include <simulation/solver/IPC/ipc.h>
+#include <simulation/solver/projective/pdSolver.h>
 #include <simulation/softBody.h>
 #include <simulation/dataLoader.h>
 #include <simulation/MshLoader.h>
@@ -25,7 +26,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads, int _numIterations)
     :context(ctx), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
 {
-    DataLoader<double> dataLoader(threadsPerBlock);
+    DataLoader<solverPrecision> dataLoader(threadsPerBlock);
     mSolverParams.pCollisionDetection = new CollisionDetection{ this, _threadsPerBlockBVH, 1 << 16 };
     if (json.contains("dt")) {
         mSolverParams.dt = json["dt"].get<float>();
@@ -155,7 +156,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         }
         mSolverParams.pCollisionDetection->Init(mSolverData.numTets, mSolverData.numVerts, maxThreads);
         cudaMalloc((void**)&mSolverData.dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
-        cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(dataType));
+        cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(colliPrecision));
     }
     mSolverData.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
     mSolver = new IPCSolver{ threadsPerBlock, mSolverData };
@@ -281,7 +282,7 @@ void DataLoader<HighP>::CollectData(const char* mshFileName, const glm::vec3& po
 }
 
 template<typename HighP>
-void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, SolverData<HighP> &solverData, indexType*& gEdges, indexType*& gTetFather)
+void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, SolverData<HighP>& solverData, indexType*& gEdges, indexType*& gTetFather)
 {
     solverData.numVerts = totalNumVerts;
     solverData.numTets = totalNumTets;

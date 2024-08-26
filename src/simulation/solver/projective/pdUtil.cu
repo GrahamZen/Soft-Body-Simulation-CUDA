@@ -2,7 +2,7 @@
 #include <simulation/solver/projective/pdUtil.cuh>
 
 namespace PdUtil {
-    __global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilde, glm::vec3* V, dataType* tI, glm::vec3* normals, float muT, float muN, int numVerts) {
+    __global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilde, glm::vec3* V, colliPrecision* tI, glm::vec3* normals, float muT, float muN, int numVerts) {
         int idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx >= numVerts) return;
         float interval = glm::length(XTilde - X);

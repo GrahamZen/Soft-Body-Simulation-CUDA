@@ -74,7 +74,7 @@ __global__ void detectCollisionNarrow(int numQueries, Query* queries, const glm:
     }
 }
 
-__global__ void storeTi(int numQueries, Query* queries, dataType* tI, glm::vec3* nors)
+__global__ void storeTi(int numQueries, Query* queries, colliPrecision* tI, glm::vec3* nors)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numQueries)
@@ -170,7 +170,7 @@ __global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::ve
     }
 }
 
-void CollisionDetection::NarrowPhase(dataType*& tI, glm::vec3*& nors)
+void CollisionDetection::NarrowPhase(colliPrecision*& tI, glm::vec3*& nors)
 {
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
     detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, mPSimContext->mSolverData.X, mPSimContext->mSolverData.XTilde);

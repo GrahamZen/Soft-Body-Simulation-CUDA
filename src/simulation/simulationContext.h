@@ -8,6 +8,7 @@
 
 class SoftBody;
 class SurfaceShader;
+using solverPrecision = double;
 
 class SimulationCUDAContext {
     friend class CollisionDetection;
@@ -31,7 +32,7 @@ public:
 private:
     void PrepareRenderData();
     int threadsPerBlock = 64;
-    SolverData<double> mSolverData;
+    SolverData<solverPrecision> mSolverData;
     indexType* dev_TetFathers;
     indexType* dev_Edges;
     std::vector<const char*> namesSoftBodies;
@@ -42,5 +43,5 @@ private:
     Context* context = nullptr;
     const std::string name;
     SolverParams mSolverParams;
-    Solver<double>* mSolver = nullptr;
+    Solver<solverPrecision>* mSolver = nullptr;
 };

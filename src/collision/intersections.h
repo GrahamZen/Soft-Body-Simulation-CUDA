@@ -31,7 +31,7 @@ template<typename T>
 __host__ __device__ void sortFour(T& a, T& b, T& c, T& d);
 
 __host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilde, const AABB& bbox);
-__host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilde, const AABB& bbox, dataType& tmin, dataType& tmax);
+__host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilde, const AABB& bbox, colliPrecision& tmin, colliPrecision& tmax);
 __host__ __device__ bool bboxIntersectionTest(const AABB& box1, const AABB& box2);
 
 
@@ -108,18 +108,18 @@ __host__ __device__ int solveCubic(T a, T b, T c, T d, T* x) {
 
 template<typename T>
 __host__ __device__ T solveCubicRange01(T a, T b, T c, T d, T* x);
-__host__ __device__ dataType stp(const glmVec3& u, const glmVec3& v, const glmVec3& w);
+__host__ __device__ colliPrecision stp(const glmVec3& u, const glmVec3& v, const glmVec3& w);
 
-__host__ __device__ dataType signed_vf_distance(const glmVec3& x,
+__host__ __device__ colliPrecision signed_vf_distance(const glmVec3& x,
     const glmVec3& y0, const glmVec3& y1, const glmVec3& y2,
     glmVec3* n, glmVec4& w);
 
-__host__ __device__ dataType signed_ee_distance(const glmVec3& x0, const glmVec3& x1,
+__host__ __device__ colliPrecision signed_ee_distance(const glmVec3& x0, const glmVec3& x1,
     const glmVec3& y0, const glmVec3& y1,
     glmVec3* n, glmVec4& w);
 
 template<typename HighP>
-__host__ __device__ dataType ccdCollisionTest(const Query& query, const glm::tvec3<HighP>* Xs, const glm::tvec3<HighP>* XTildes, glmVec3& n) {
+__host__ __device__ colliPrecision ccdCollisionTest(const Query& query, const glm::tvec3<HighP>* Xs, const glm::tvec3<HighP>* XTildes, glmVec3& n) {
     const glmVec3 x0 = Xs[query.v0];
     const glmVec3 x1 = Xs[query.v1];
     const glmVec3 x2 = Xs[query.v2];
@@ -134,22 +134,22 @@ __host__ __device__ dataType ccdCollisionTest(const Query& query, const glm::tve
     const glmVec3 v01 = v1 - v0;
     const glmVec3 v02 = v2 - v0;
     const glmVec3 v03 = v3 - v0;
-    const dataType a0 = stp(x01, x02, x03);
-    const dataType a1 = stp(v01, x02, x03) + stp(x01, v02, x03) + stp(x01, x02, v03);
-    const dataType a2 = stp(x01, v02, v03) + stp(v01, x02, v03) + stp(v01, v02, x03);
-    const dataType a3 = stp(v01, v02, v03);
+    const colliPrecision a0 = stp(x01, x02, x03);
+    const colliPrecision a1 = stp(v01, x02, x03) + stp(x01, v02, x03) + stp(x01, x02, v03);
+    const colliPrecision a2 = stp(x01, v02, v03) + stp(v01, x02, v03) + stp(v01, v02, x03);
+    const colliPrecision a3 = stp(v01, v02, v03);
     if (abs(a0) < 1e-6 * length(x01) * length(x02) * length(x03))
         return 1.0; // initially coplanar
-    dataType t[3];
-    dataType minRoot = FLT_MAX;
-    int nsol = solveCubic<dataType>(a3, a2, a1, a0, t);
+    colliPrecision t[3];
+    colliPrecision minRoot = FLT_MAX;
+    int nsol = solveCubic<colliPrecision>(a3, a2, a1, a0, t);
     for (int i = 0; i < nsol; i++) {
         if (t[i] < -1e-3 || t[i] > 1)
             continue;
         glmVec3 xt0 = x0 + t[i] * v0, xt1 = x1 + t[i] * v1,
             xt2 = x2 + t[i] * v2, xt3 = x3 + t[i] * v3;
         glmVec4 w;
-        dataType d;
+        colliPrecision d;
         bool inside;
         if (query.type == QueryType::VF)
         {
@@ -169,6 +169,6 @@ __host__ __device__ dataType ccdCollisionTest(const Query& query, const glm::tve
     return 1.0;
 }
 
-__host__ __device__ dataType ccdTriangleIntersectionTest(const glmVec3& x0, const glmVec3& v0,
+__host__ __device__ colliPrecision ccdTriangleIntersectionTest(const glmVec3& x0, const glmVec3& v0,
     const glmVec3& x1, const glmVec3& x2, const glmVec3& x3, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
     const glmVec3& xTilde0, const glmVec3& xTilde1, const glmVec3& xTilde2, const glmVec3& xTilde3, glmVec3& n);

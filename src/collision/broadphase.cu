@@ -13,8 +13,8 @@
 
 // build the bounding box and morton code for each SoftBody
 template<typename HighP>
-__global__ void buildLeafMorton(int startIndex, int numTri, dataType minX, dataType minY, dataType minZ,
-    dataType maxX, dataType maxY, dataType maxZ, const indexType* tet, const glm::tvec3<HighP>* X, const glm::tvec3<HighP>* XTilde, BVHNode* leafNodes,
+__global__ void buildLeafMorton(int startIndex, int numTri, colliPrecision minX, colliPrecision minY, colliPrecision minZ,
+    colliPrecision maxX, colliPrecision maxY, colliPrecision maxZ, const indexType* tet, const glm::tvec3<HighP>* X, const glm::tvec3<HighP>* XTilde, BVHNode* leafNodes,
     unsigned int* mortonCodes)
 {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
@@ -176,7 +176,7 @@ __global__ void traverseTree(int numTets, const BVHNode* nodes, const indexType*
     int leafIdx = index + numTets - 1;
     const BVHNode myNode = nodes[leafIdx];
     // record the closest intersection
-    dataType closest = 1;
+    colliPrecision closest = 1;
     int bvhStart = 0;
     int stack[64];
     int stackPtr = 0;

@@ -7,7 +7,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
 
-__constant__ dataType AABBThreshold = 0.01;
+__constant__ colliPrecision AABBThreshold = 0.01;
 
 __device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
     const glmVec3& v4, const glmVec3& v5, const glmVec3& v6, const glmVec3& v7)

@@ -23,5 +23,5 @@ private:
     int* hessianColIdx = nullptr;
     InertiaEnergy<double> inertia;
     GravityEnergy<double> gravity;
-    ElasticEnergy<double> *elastic;
+    ElasticEnergy<double>* elastic;
 };

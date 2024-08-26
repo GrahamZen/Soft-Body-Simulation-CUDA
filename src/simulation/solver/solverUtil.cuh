@@ -24,7 +24,8 @@ __inline__ __device__ float det2(const glm::mat3& a)
     return (float)(a[0][0] * a[0][0] * a[1][1] * a[1][1] * a[2][2] * a[2][2]);
 }
 
-__inline__ __device__ void svdGLM(const glm::mat3& A, glm::mat3& U, glm::mat3& S, glm::mat3& V)
+template <typename HighP>
+__inline__ __device__ void svdGLM(const glm::tmat3x3<HighP>& A, glm::tmat3x3<HighP>& U, glm::tmat3x3<HighP>& S, glm::tmat3x3<HighP>& V)
 {
     svd(A[0][0], A[1][0], A[2][0], A[0][1], A[1][1], A[2][1], A[0][2], A[1][2], A[2][2],
         U[0][0], U[1][0], U[2][0], U[0][1], U[1][1], U[2][1], U[0][2], U[1][2], U[2][2],
@@ -35,8 +36,8 @@ __inline__ __device__ void svdGLM(const glm::mat3& A, glm::mat3& U, glm::mat3& S
 __global__ void AddExternal(glm::vec3* V, int numVerts, bool jump, float mass, glm::vec3 vel);
 
 template <typename HighP>
-__device__ glm::mat3 Build_Edge_Matrix(const glm::tvec3<HighP>* X, const indexType* Tet, int tet) {
-    glm::mat3 ret(0.0f);
+__device__ glm::tmat3x3<HighP> Build_Edge_Matrix(const glm::tvec3<HighP>* X, const indexType* Tet, int tet) {
+    glm::tmat3x3<HighP> ret((HighP)0);
     ret[0] = X[Tet[tet * 4]] - X[Tet[tet * 4 + 3]];
     ret[1] = X[Tet[tet * 4 + 1]] - X[Tet[tet * 4 + 3]];
     ret[2] = X[Tet[tet * 4 + 2]] - X[Tet[tet * 4 + 3]];

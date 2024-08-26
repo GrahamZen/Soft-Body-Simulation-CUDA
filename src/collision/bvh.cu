@@ -16,12 +16,12 @@
 //generate a 30-bit morton code
 __device__ unsigned int genMortonCode(AABB bbox, glmVec3 geoMin, glmVec3 geoMax)
 {
-    dataType x = (bbox.min.x + bbox.max.x) * 0.5f;
-    dataType y = (bbox.min.y + bbox.max.y) * 0.5f;
-    dataType z = (bbox.min.y + bbox.max.y) * 0.5f;
-    dataType normalizedX = (x - geoMin.x) / (geoMax.x - geoMin.x);
-    dataType normalizedY = (y - geoMin.y) / (geoMax.y - geoMin.y);
-    dataType normalizedZ = (z - geoMin.z) / (geoMax.z - geoMin.z);
+    colliPrecision x = (bbox.min.x + bbox.max.x) * 0.5f;
+    colliPrecision y = (bbox.min.y + bbox.max.y) * 0.5f;
+    colliPrecision z = (bbox.min.y + bbox.max.y) * 0.5f;
+    colliPrecision normalizedX = (x - geoMin.x) / (geoMax.x - geoMin.x);
+    colliPrecision normalizedY = (y - geoMin.y) / (geoMax.y - geoMin.y);
+    colliPrecision normalizedZ = (z - geoMin.z) / (geoMax.z - geoMin.z);
 
     normalizedX = glm::min(glm::max(normalizedX * 1024.0, 0.0), 1023.0);
     normalizedY = glm::min(glm::max(normalizedY * 1024.0, 0.0), 1023.0);
@@ -214,8 +214,8 @@ void BVH::Init(int _numTets, int _numVerts, int maxThreads)
     int numVerts = _numVerts;
     int numNodes = numTets * 2 - 1;
     cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode));
-    cudaMalloc((void**)&dev_tI, numVerts * sizeof(dataType));
-    cudaMemset(dev_tI, 0, numVerts * sizeof(dataType));
+    cudaMalloc((void**)&dev_tI, numVerts * sizeof(colliPrecision));
+    cudaMemset(dev_tI, 0, numVerts * sizeof(colliPrecision));
     cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
     cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
     cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
@@ -288,9 +288,9 @@ const BVHNode* BVH::GetBVHNodes() const
     return dev_BVHNodes;
 }
 
-void CollisionDetection::DetectCollision(dataType* tI, glm::vec3* nors)
+void CollisionDetection::DetectCollision(colliPrecision* tI, glm::vec3* nors)
 {
-    thrust::device_ptr<dataType> dev_ptr(tI);
+    thrust::device_ptr<colliPrecision> dev_ptr(tI);
     thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
     if (BroadPhase()) {
         PrepareRenderData();

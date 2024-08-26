@@ -162,7 +162,7 @@ template void utilityCore::inspectHost<glm::vec4>(const glm::vec4* dev_ptr, int 
 template void utilityCore::inspectHost<glm::mat3>(const glm::mat3* dev_ptr, int size);
 template void utilityCore::inspectHost<glm::mat4>(const glm::mat4* dev_ptr, int size);
 template void utilityCore::inspectHost<int>(const int*, int);
-template void utilityCore::inspectHost<dataType>(const dataType*, int);
+template void utilityCore::inspectHost<colliPrecision>(const colliPrecision*, int);
 
 void utilityCore::inspectHost(const BVHNode* hstBVHNodes, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
