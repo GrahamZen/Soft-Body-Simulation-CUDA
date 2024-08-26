@@ -2,13 +2,14 @@
 
 #include <simulation/solver/solver.h>
 
-class FEMSolver : public Solver {
+template<typename HighP>
+class FEMSolver : public Solver<HighP> {
 public:
     FEMSolver(int threadsPerBlock);
     virtual ~FEMSolver() = default;
 
-    virtual void Update(SolverData& solverData, SolverParams& solverParams) = 0;
+    virtual void Update(SolverData<HighP>& solverData, SolverParams& solverParams) = 0;
 protected:
-    virtual void SolverPrepare(SolverData& solverData, SolverParams& solverParams) = 0;
-    virtual void SolverStep(SolverData& solverData, SolverParams& solverParams) = 0;
+    virtual void SolverPrepare(SolverData<HighP>& solverData, SolverParams& solverParams) = 0;
+    virtual void SolverStep(SolverData<HighP>& solverData, SolverParams& solverParams) = 0;
 };

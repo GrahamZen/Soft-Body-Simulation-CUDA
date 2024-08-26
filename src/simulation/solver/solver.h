@@ -14,19 +14,20 @@ class SimulationCUDAContext;
 class CollisionDetection;
 class FixedBodyData;
 
+template<typename HighP>
 struct SolverData {
     indexType* Tet = nullptr;
-    glm::vec3* Force = nullptr;
-    glm::vec3* V = nullptr;
-    glm::vec3* X = nullptr;
-    glm::vec3* X0 = nullptr;
-    glm::vec3* XTilde = nullptr;
-    glm::vec3* dev_ExtForce = nullptr;
-    glm::mat3* inv_Dm = nullptr;
+    glm::tvec3<HighP>* Force = nullptr;
+    glm::tvec3<HighP>* V = nullptr;
+    glm::tvec3<HighP>* X = nullptr;
+    glm::tvec3<HighP>* X0 = nullptr;
+    glm::tvec3<HighP>* XTilde = nullptr;
+    glm::tvec3<HighP>* dev_ExtForce = nullptr;
+    glm::tmat3x3<HighP>* inv_Dm = nullptr;
     dataType* dev_tIs = nullptr;
     glm::vec3* dev_Normals = nullptr;
     FixedBodyData* pFixedBodies = nullptr;
-    float* V0 = nullptr;
+    HighP* V0 = nullptr;
     int numTets = 0;
     int numVerts = 0;
 };
@@ -54,15 +55,17 @@ struct SolverParams {
 };
 
 class CollisionDetection;
+
+template<typename HighP>
 class Solver {
 public:
     Solver(int threadsPerBlock);
     virtual ~Solver();
 
-    virtual void Update(SolverData& solverData, SolverParams& solverParams) = 0;
+    virtual void Update(SolverData<HighP>& solverData, SolverParams& solverParams) = 0;
 protected:
-    virtual void SolverPrepare(SolverData& solverData, SolverParams& solverParams) = 0;
-    virtual void SolverStep(SolverData& solverData, SolverParams& solverParams) = 0;
+    virtual void SolverPrepare(SolverData<HighP>& solverData, SolverParams& solverParams) = 0;
+    virtual void SolverStep(SolverData<HighP>& solverData, SolverParams& solverParams) = 0;
     int threadsPerBlock;
 
     bool solverReady = false;

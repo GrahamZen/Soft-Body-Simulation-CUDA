@@ -3,5 +3,6 @@
 #include <simulation/solver/femSolver.h>
 
 
-FEMSolver::FEMSolver(int threadsPerBlock) : Solver(threadsPerBlock) {
+template<typename HighP>
+FEMSolver<HighP>::FEMSolver(int threadsPerBlock) : Solver(threadsPerBlock) {
 }

@@ -6,11 +6,13 @@
 
 namespace fs = std::filesystem;
 
-DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
+template<typename HighP>
+DataLoader<HighP>::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
 {
 }
 
-std::vector<indexType> DataLoader::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
+template<typename HighP>
+std::vector<indexType> DataLoader<HighP>::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
 {
     std::string line;
     std::ifstream file(EleFilename);
@@ -41,7 +43,8 @@ std::vector<indexType> DataLoader::loadEleFile(const std::string& EleFilename, i
     return Tet;
 }
 
-std::vector<indexType> DataLoader::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
+template<typename HighP>
+std::vector<indexType> DataLoader<HighP>::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
 {
     std::string line;
     std::ifstream file(faceFilename);
@@ -71,7 +74,8 @@ std::vector<indexType> DataLoader::loadFaceFile(const std::string& faceFilename,
     return Triangle;
 }
 
-std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
+template<typename HighP>
+std::vector<glm::vec3> DataLoader<HighP>::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
 {
     std::ifstream file(nodeFilename);
     if (!file.is_open()) {
@@ -114,7 +118,8 @@ std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename,
     return X;
 }
 
-void DataLoader::CollectEdges(const std::vector<indexType>& triIdx) {
+template<typename HighP>
+void DataLoader<HighP>::CollectEdges(const std::vector<indexType>& triIdx) {
     std::set<std::pair<indexType, indexType>> uniqueEdges;
     std::vector<indexType> edges;
 

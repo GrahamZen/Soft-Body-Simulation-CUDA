@@ -32,7 +32,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads, int _numIterations)
     :context(ctx), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
 {
-    DataLoader dataLoader(threadsPerBlock);
+    DataLoader<float> dataLoader(threadsPerBlock);
     mSolverParams.pCollisionDetection = new CollisionDetection{ this, _threadsPerBlockBVH, 1 << 16 };
     if (json.contains("dt")) {
         mSolverParams.dt = json["dt"].get<float>();

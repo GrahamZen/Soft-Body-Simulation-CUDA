@@ -1,9 +1,11 @@
 #include <simulation/solver/femSolver.h>
 #include <simulation/simulationContext.h>
 
-Solver::Solver(int threadsPerBlock) : threadsPerBlock(threadsPerBlock)
+template<typename HighP>
+Solver<HighP>::Solver(int threadsPerBlock) : threadsPerBlock(threadsPerBlock)
 {
 }
 
-Solver::~Solver() {
+template<typename HighP>
+Solver<HighP>::~Solver() {
 }

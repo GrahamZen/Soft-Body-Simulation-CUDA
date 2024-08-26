@@ -8,6 +8,7 @@
 
 class SoftBody;
 class SurfaceShader;
+template<typename HighP>
 class DataLoader {
     friend class SimulationCUDAContext;
 public:
@@ -22,7 +23,7 @@ private:
     static std::vector<glm::vec3> loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts);
     static std::vector<indexType> loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris);
     void CollectEdges(const std::vector<indexType>& triIdx);
-    std::vector<std::tuple<SolverData, SoftBodyData, SolverAttribute>> m_softBodyData;
+    std::vector<std::tuple<SolverData<HighP>, SoftBodyData, SolverAttribute>> m_softBodyData;
     std::vector<std::vector<indexType>> m_edges;
     int totalNumVerts = 0;
     int totalNumTets = 0;
@@ -53,7 +54,7 @@ public:
 private:
     void PrepareRenderData();
     int threadsPerBlock = 64;
-    SolverData mSolverData;
+    SolverData<float> mSolverData;
     indexType* dev_TetFathers;
     indexType* dev_Edges;
     std::vector<const char*> namesSoftBodies;
@@ -64,5 +65,5 @@ private:
     Context* context = nullptr;
     const std::string name;
     SolverParams mSolverParams;
-    Solver* mSolver = nullptr;
+    Solver<float>* mSolver = nullptr;
 };

@@ -49,7 +49,8 @@ int SimulationCUDAContext::GetTetCnt() const {
     return mSolverData.numTets;
 }
 
-void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
+template<typename HighP>
+void DataLoader<HighP>::CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
     bool centralize, int startIndex, SolverAttribute attrib)
 {
     SolverData solverData;
@@ -87,7 +88,8 @@ void DataLoader::CollectData(const char* nodeFileName, const char* eleFileName, 
     m_softBodyData.push_back({ solverData,softBodyData, attrib });
 }
 
-void DataLoader::CollectData(const char* mshFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
+template<typename HighP>
+void DataLoader<HighP>::CollectData(const char* mshFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
     bool centralize, int startIndex, SolverAttribute attrib)
 {
     SolverData solverData;
@@ -136,7 +138,8 @@ void DataLoader::CollectData(const char* mshFileName, const glm::vec3& pos, cons
     m_softBodyData.push_back({ solverData,softBodyData, attrib });
 }
 
-void DataLoader::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilde,
+template<typename HighP>
+void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, glm::vec3*& gX, glm::vec3*& gX0, glm::vec3*& gXTilde,
     glm::vec3*& gV, glm::vec3*& gF, indexType*& gEdges, indexType*& gTet, indexType*& gTetFather, int& numVerts, int& numTets)
 {
     numVerts = totalNumVerts;

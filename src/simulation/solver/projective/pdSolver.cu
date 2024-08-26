@@ -9,7 +9,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 
-PdSolver::PdSolver(int threadsPerBlock, const SolverData& solverData) : FEMSolver(threadsPerBlock)
+PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver(threadsPerBlock)
 {
     cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(solverData.dev_ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
@@ -31,7 +31,7 @@ PdSolver::~PdSolver() {
     free(bHost);
 }
 
-void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
+void PdSolver::SolverPrepare(SolverData<float>& solverData, SolverParams& solverParams)
 {
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
@@ -124,7 +124,7 @@ void PdSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
 }
 
 
-void PdSolver::SolverStep(SolverData& solverData, SolverParams& solverParams)
+void PdSolver::SolverStep(SolverData<float>& solverData, SolverParams& solverParams)
 {
     float dt = solverParams.dt;
     float const dtInv = 1.0f / dt;
@@ -161,7 +161,7 @@ void PdSolver::SolverStep(SolverData& solverData, SolverParams& solverParams)
     PdUtil::updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilde, solverData.V, solverData.numVerts);
 }
 
-void PdSolver::Update(SolverData& solverData, SolverParams& solverParams)
+void PdSolver::Update(SolverData<float>& solverData, SolverParams& solverParams)
 {
     AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, solverParams.solverAttr.jump, solverParams.solverAttr.mass, solverParams.extForce.jump);
     if (!solverReady)
