@@ -70,3 +70,12 @@ protected:
 
     bool solverReady = false;
 };
+
+template<typename HighP>
+Solver<HighP>::Solver(int threadsPerBlock) : threadsPerBlock(threadsPerBlock)
+{
+}
+
+template<typename HighP>
+Solver<HighP>::~Solver() {
+}

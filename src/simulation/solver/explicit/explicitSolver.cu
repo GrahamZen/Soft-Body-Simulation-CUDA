@@ -6,7 +6,7 @@
 #include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
 
-ExplicitSolver::ExplicitSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver(threadsPerBlock)
+ExplicitSolver::ExplicitSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver<float>(threadsPerBlock)
 {
     if (!solverData.dev_ExtForce)
         cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::vec3) * solverData.numVerts);

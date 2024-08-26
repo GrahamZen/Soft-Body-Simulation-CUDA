@@ -1,5 +1,6 @@
 #pragma once
 #include <simulation/solver/femSolver.h>
+
 class ExplicitSolver : public FEMSolver<float> {
 public:
     ExplicitSolver(int threadsPerBlock, const SolverData<float>& solverData);

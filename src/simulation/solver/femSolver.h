@@ -13,3 +13,7 @@ protected:
     virtual void SolverPrepare(SolverData<HighP>& solverData, SolverParams& solverParams) = 0;
     virtual void SolverStep(SolverData<HighP>& solverData, SolverParams& solverParams) = 0;
 };
+
+template<typename HighP>
+FEMSolver<HighP>::FEMSolver(int threadsPerBlock) : Solver<HighP>(threadsPerBlock) {
+}
