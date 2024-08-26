@@ -55,3 +55,14 @@ __global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const 
         V0[index] = glm::abs(glm::determinant(Dm)) / 6.0f;
     }
 }
+
+template <typename HighP>
+__global__ void computeInvDm(glm::mat3* inv_Dm, int numTets, const glm::tvec3<HighP>* X, const indexType* Tet)
+{
+    int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+    if (index < numTets)
+    {
+        glm::mat3 Dm = Build_Edge_Matrix(X, Tet, index);
+        inv_Dm[index] = glm::inverse(Dm);
+    }
+}

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <solver/solver.h>
+#include <def.h>
 #include <vector>
 #include <string>
 #include <fstream>

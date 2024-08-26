@@ -10,28 +10,7 @@ struct SolverAttribute {
     bool jump = false;
 };
 
-class SimulationCUDAContext;
 class CollisionDetection;
-class FixedBodyData;
-
-template<typename HighP>
-struct SolverData {
-    indexType* Tet = nullptr;
-    glm::tvec3<HighP>* Force = nullptr;
-    glm::tvec3<HighP>* V = nullptr;
-    glm::tvec3<HighP>* X = nullptr;
-    glm::tvec3<HighP>* X0 = nullptr;
-    glm::tvec3<HighP>* XTilde = nullptr;
-    HighP* mass = nullptr;
-    glm::tvec3<HighP>* dev_ExtForce = nullptr;
-    glm::tmat3x3<HighP>* inv_Dm = nullptr;
-    dataType* dev_tIs = nullptr;
-    glm::vec3* dev_Normals = nullptr;
-    FixedBodyData* pFixedBodies = nullptr;
-    HighP* V0 = nullptr;
-    int numTets = 0;
-    int numVerts = 0;
-};
 
 struct SoftBodyData {
     indexType* Tet = nullptr;

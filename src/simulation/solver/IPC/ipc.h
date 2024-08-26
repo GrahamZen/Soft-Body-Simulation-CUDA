@@ -1,7 +1,7 @@
 #pragma once
 
 #include <simulation/solver/femSolver.h>
-#include <energy/elasticity.h>
+#include <energy/corotated.h>
 #include <energy/gravity.h>
 #include <energy/inertia.h>
 
@@ -23,4 +23,5 @@ private:
     int* hessianColIdx = nullptr;
     InertiaEnergy<double> inertia;
     GravityEnergy<double> gravity;
+    ElasticEnergy<double> *elastic;
 };

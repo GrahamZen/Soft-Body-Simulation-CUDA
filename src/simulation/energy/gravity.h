@@ -5,12 +5,15 @@
 #include <thrust/device_ptr.h>
 #include <thrust/transform_reduce.h>
 
-template <typename HighP>
-__global__ void GradientKernel(HighP* grad, const glm::tvec3<HighP>* dev_x, const HighP* mass, int numVerts, HighP g) {
-    int idx = blockIdx.x * blockDim.x + threadIdx.x;
-    if (idx >= numVerts) return;
-    grad[idx * 3 + 1] = -g * mass[idx];
+namespace Gravity {
+    template <typename HighP>
+    __global__ void GradientKernel(HighP* grad, const glm::tvec3<HighP>* dev_x, const HighP* mass, int numVerts, HighP g) {
+        int idx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (idx >= numVerts) return;
+        grad[idx * 3 + 1] = -g * mass[idx];
+    }
 }
+
 template <typename HighP>
 class GravityEnergy {
 public:
@@ -31,7 +34,7 @@ public:
     void Gradient(HighP* grad, const glm::tvec3<HighP>* dev_x, const HighP* mass, int numVerts) {
         int blockSize = 256;
         int numBlocks = (numVerts + blockSize - 1) / blockSize;
-        GradientKernel << <numBlocks, blockSize >> > (grad, dev_x, mass, numVerts, g);
+        Gravity::GradientKernel << <numBlocks, blockSize >> > (grad, dev_x, mass, numVerts, g);
     }
     const HighP g = 9.8;
 };

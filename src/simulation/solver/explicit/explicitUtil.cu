@@ -4,25 +4,6 @@
 
 namespace ExplicitUtil
 {
-    __device__ glm::mat3 Build_Edge_Matrix(const glm::vec3* X, const indexType* Tet, int tet) {
-        glm::mat3 ret(0.0f);
-        ret[0] = X[Tet[tet * 4 + 1]] - X[Tet[tet * 4]];
-        ret[1] = X[Tet[tet * 4 + 2]] - X[Tet[tet * 4]];
-        ret[2] = X[Tet[tet * 4 + 3]] - X[Tet[tet * 4]];
-
-        return ret;
-    }
-
-    __global__ void computeInvDm(glm::mat3* inv_Dm, int numTets, const glm::vec3* X, const indexType* Tet)
-    {
-        int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < numTets)
-        {
-            glm::mat3 Dm = Build_Edge_Matrix(X, Tet, index);
-            inv_Dm[index] = glm::inverse(Dm);
-        }
-    }
-
     __device__ glm::mat3 SaintVenantKirchhoff(const glm::mat3& F, float stiffness_0, float stiffness_1) {
         glm::mat3 U, D, V;
         svdGLM(F, U, D, V);

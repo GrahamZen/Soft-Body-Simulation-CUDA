@@ -18,7 +18,7 @@ ExplicitSolver::ExplicitSolver(int threadsPerBlock, const SolverData<float>& sol
     cudaMemset(V_sum, 0, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(V_num, 0, sizeof(int) * solverData.numVerts);
     int blocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    ExplicitUtil::computeInvDm << < blocks, threadsPerBlock >> > (solverData.inv_Dm, solverData.numTets, solverData.X, solverData.Tet);
+    computeInvDm << < blocks, threadsPerBlock >> > (solverData.inv_Dm, solverData.numTets, solverData.X, solverData.Tet);
 }
 
 ExplicitSolver::~ExplicitSolver()
