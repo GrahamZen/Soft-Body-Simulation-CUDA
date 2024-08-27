@@ -24,7 +24,7 @@ namespace PdUtil {
         }
         //XTilde[idx] = X[idx];
     }
-    
+
     // Should compute SiTAiTAiSi, which is a sparse matrix
     // Ai here is I
     // size of row, col, val are 48 * numTets + numVerts

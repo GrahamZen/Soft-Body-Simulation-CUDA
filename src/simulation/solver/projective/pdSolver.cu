@@ -8,16 +8,10 @@
 #include <thrust/device_ptr.h>
 #include <thrust/fill.h>
 
-PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver(threadsPerBlock)
+PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver(threadsPerBlock, solverData)
 {
-    cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::vec3) * solverData.numVerts);
-    cudaMemset(solverData.dev_ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
-    cudaMalloc((void**)&solverData.V0, sizeof(float) * solverData.numTets);
-    cudaMemset(solverData.V0, 0, sizeof(float) * solverData.numTets);
-    cudaMalloc((void**)&solverData.DmInv, sizeof(glm::mat4) * solverData.numTets);
-
-    int blocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    computeInvDmV0 << < blocks, threadsPerBlock >> > (solverData.V0, solverData.DmInv, solverData.numTets, solverData.X, solverData.Tet);
+    cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::vec3) * solverData.numVerts);
+    cudaMemset(solverData.ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
 }
 
 PdSolver::~PdSolver() {
@@ -135,9 +129,9 @@ void PdSolver::SolverStep(SolverData<float>& solverData, SolverParams& solverPar
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
 
     glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.solverAttr.mass, 0.0f };
-    thrust::device_ptr<glm::vec3> dev_ptr(solverData.dev_ExtForce);
+    thrust::device_ptr<glm::vec3> dev_ptr(solverData.ExtForce);
     thrust::fill(dev_ptr, dev_ptr + solverData.numVerts, gravity);
-    PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, solverData.dev_ExtForce, masses, m_1_dt2, solverData.numVerts);
+    PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, solverData.ExtForce, masses, m_1_dt2, solverData.numVerts);
     for (int i = 0; i < solverParams.numIterations; i++)
     {
         cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);

@@ -23,7 +23,7 @@ struct SolverData {
     HighP* mass = nullptr;
     HighP* mu = nullptr;
     HighP* lambda = nullptr;
-    glm::tvec3<HighP>* dev_ExtForce = nullptr;
+    glm::tvec3<HighP>* ExtForce = nullptr;
     glm::tmat3x3<HighP>* DmInv = nullptr;
     colliPrecision* dev_tIs = nullptr;
     glm::vec3* dev_Normals = nullptr;

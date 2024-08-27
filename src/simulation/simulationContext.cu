@@ -290,9 +290,9 @@ void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, SolverData<Hig
     cudaMalloc((void**)&solverData.X0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
     cudaMalloc((void**)&solverData.XTilde, sizeof(glm::tvec3<HighP>) * totalNumVerts);
     cudaMalloc((void**)&solverData.V, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::tvec3<HighP>) * totalNumVerts);
     cudaMemset(solverData.V, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMemset(solverData.dev_ExtForce, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMemset(solverData.ExtForce, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
     cudaMalloc((void**)&solverData.Tet, sizeof(indexType) * totalNumTets * 4);
     cudaMalloc((void**)&solverData.mass, sizeof(HighP) * totalNumVerts);
     cudaMalloc((void**)&solverData.mu, sizeof(HighP) * totalNumTets);

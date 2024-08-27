@@ -6,19 +6,15 @@
 #include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
 
-ExplicitSolver::ExplicitSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver<float>(threadsPerBlock)
+ExplicitSolver::ExplicitSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver<float>(threadsPerBlock, solverData)
 {
-    if (!solverData.dev_ExtForce)
-        cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::vec3) * solverData.numVerts);
-    cudaMemset(solverData.dev_ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
-    if (!solverData.DmInv)
-        cudaMalloc((void**)&solverData.DmInv, sizeof(glm::mat4) * solverData.numTets);
+    if (!solverData.ExtForce)
+        cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::vec3) * solverData.numVerts);
+    cudaMemset(solverData.ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
     cudaMalloc((void**)&V_sum, sizeof(glm::vec3) * solverData.numVerts);
     cudaMalloc((void**)&V_num, sizeof(int) * solverData.numVerts);
     cudaMemset(V_sum, 0, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(V_num, 0, sizeof(int) * solverData.numVerts);
-    int blocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    computeInvDm << < blocks, threadsPerBlock >> > (solverData.DmInv, solverData.numTets, solverData.X, solverData.Tet);
 }
 
 ExplicitSolver::~ExplicitSolver()
