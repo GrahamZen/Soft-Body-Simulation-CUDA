@@ -161,6 +161,10 @@ template void utilityCore::inspectHost<glm::vec3>(const glm::vec3* dev_ptr, int 
 template void utilityCore::inspectHost<glm::vec4>(const glm::vec4* dev_ptr, int size);
 template void utilityCore::inspectHost<glm::mat3>(const glm::mat3* dev_ptr, int size);
 template void utilityCore::inspectHost<glm::mat4>(const glm::mat4* dev_ptr, int size);
+template void utilityCore::inspectHost<glm::tvec3<double>>(const glm::tvec3<double>* dev_ptr, int size);
+template void utilityCore::inspectHost<glm::tvec4<double>>(const glm::tvec4<double>* dev_ptr, int size);
+template void utilityCore::inspectHost<glm::tmat3x3<double>>(const glm::tmat3x3<double>* dev_ptr, int size);
+template void utilityCore::inspectHost<glm::tmat4x4<double>>(const glm::tmat4x4<double>* dev_ptr, int size);
 template void utilityCore::inspectHost<int>(const int*, int);
 template void utilityCore::inspectHost<colliPrecision>(const colliPrecision*, int);
 

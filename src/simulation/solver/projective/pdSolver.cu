@@ -14,10 +14,10 @@ PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : F
     cudaMemset(solverData.dev_ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
     cudaMalloc((void**)&solverData.V0, sizeof(float) * solverData.numTets);
     cudaMemset(solverData.V0, 0, sizeof(float) * solverData.numTets);
-    cudaMalloc((void**)&solverData.inv_Dm, sizeof(glm::mat4) * solverData.numTets);
+    cudaMalloc((void**)&solverData.DmInv, sizeof(glm::mat4) * solverData.numTets);
 
     int blocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    computeInvDmV0 << < blocks, threadsPerBlock >> > (solverData.V0, solverData.inv_Dm, solverData.numTets, solverData.X, solverData.Tet);
+    computeInvDmV0 << < blocks, threadsPerBlock >> > (solverData.V0, solverData.DmInv, solverData.numTets, solverData.X, solverData.Tet);
 }
 
 PdSolver::~PdSolver() {
@@ -55,7 +55,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, SolverParams& solver
     cudaMalloc((void**)&tmpVal, sizeof(int) * len);
     cudaMemset(tmpVal, 0, sizeof(int) * len);
 
-    PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, tmpVal, solverData.V0, solverData.inv_Dm, solverData.Tet, solverParams.solverAttr.mu, solverData.numTets, solverData.numVerts);
+    PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, tmpVal, solverData.V0, solverData.DmInv, solverData.Tet, solverParams.solverAttr.mu, solverData.numTets, solverData.numVerts);
     PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
@@ -141,7 +141,7 @@ void PdSolver::SolverStep(SolverData<float>& solverData, SolverParams& solverPar
     for (int i = 0; i < solverParams.numIterations; i++)
     {
         cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
-        PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverParams.solverAttr.mu, b, solverData.inv_Dm, sn, solverData.Tet, solverData.numTets);
+        PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverParams.solverAttr.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
         PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
 
         if (useEigen)

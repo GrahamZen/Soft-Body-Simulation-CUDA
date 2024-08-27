@@ -91,4 +91,7 @@ void InertiaEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>& solver
 template <typename HighP>
 void InertiaEnergy<HighP>::Hessian(const SolverData<HighP>& solverData) const
 {
+    int threadsPerBlock = 256;
+    int numBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    Inertia::hessianKern << <numBlocks, threadsPerBlock >> > (solverData.mass, hessianVal, hessianRowIdx, hessianColIdx, numVerts);
 }

@@ -71,13 +71,13 @@ namespace ExplicitUtil
         return U * D * glm::transpose(V);
     }
 
-    __global__ void ComputeForcesSVD(glm::vec3* Force, const glm::vec3* X, const indexType* Tet, int tet_number, const glm::mat3* inv_Dm, float mu, float lambda) {
+    __global__ void ComputeForcesSVD(glm::vec3* Force, const glm::vec3* X, const indexType* Tet, int tet_number, const glm::mat3* DmInv, float mu, float lambda) {
         int tet = blockIdx.x * blockDim.x + threadIdx.x;
         if (tet >= tet_number) return;
 
-        glm::mat3 F = Build_Edge_Matrix(X, Tet, tet) * inv_Dm[tet];
+        glm::mat3 F = Build_Edge_Matrix(X, Tet, tet) * DmInv[tet];
 
-        glm::mat3 forces = NeoHookean_wiki(F, mu, lambda) * glm::transpose(inv_Dm[tet]) * (-1.0f / (6.0f * glm::determinant(inv_Dm[tet])));
+        glm::mat3 forces = NeoHookean_wiki(F, mu, lambda) * glm::transpose(DmInv[tet]) * (-1.0f / (6.0f * glm::determinant(DmInv[tet])));
 
         glm::vec3 force_0 = -glm::vec3(forces[0] + forces[1] + forces[2]);
         glm::vec3 force_1 = glm::vec3(forces[0]);

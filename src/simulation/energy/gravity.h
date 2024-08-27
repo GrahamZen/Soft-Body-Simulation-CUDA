@@ -17,7 +17,7 @@ public:
 
 namespace Gravity {
     template <typename HighP>
-    __global__ void GradientKernel(HighP* grad, const glm::tvec3<HighP>* dev_x, const HighP* mass, int numVerts, HighP g) {
+    __global__ void GradientKernel(HighP* grad, const HighP* mass, int numVerts, HighP g) {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= numVerts) return;
         grad[idx * 3 + 1] = -g * mass[idx];
@@ -50,5 +50,5 @@ inline void GravityEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>&
 {
     int blockSize = 256;
     int numBlocks = (solverData.numVerts + blockSize - 1) / blockSize;
-    Gravity::GradientKernel << <numBlocks, blockSize >> > (grad, solverData.X, solverData.mass, solverData.numVerts, g);
+    Gravity::GradientKernel << <numBlocks, blockSize >> > (grad, solverData.mass, solverData.numVerts, g);
 }

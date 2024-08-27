@@ -109,25 +109,25 @@ __device__ glm::tmat3x3<HighP> Build_Edge_Matrix(const glm::tvec3<HighP>* X, con
 }
 
 template <typename HighP>
-__global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const glm::tvec3<HighP>* X, const indexType* Tet)
+__global__ void computeInvDmV0(HighP* V0, glm::tmat3x3<HighP>* DmInv, int numTets, const glm::tvec3<HighP>* X, const indexType* Tet)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (index < numTets)
     {
-        glm::mat3 Dm = Build_Edge_Matrix(X, Tet, index);
-        inv_Dm[index] = glm::inverse(Dm);
+        glm::tmat3x3<HighP> Dm = Build_Edge_Matrix(X, Tet, index);
+        DmInv[index] = glm::inverse(Dm);
         V0[index] = glm::abs(glm::determinant(Dm)) / 6.0f;
     }
 }
 
 template <typename HighP>
-__global__ void computeInvDm(glm::mat3* inv_Dm, int numTets, const glm::tvec3<HighP>* X, const indexType* Tet)
+__global__ void computeInvDm(glm::mat3* DmInv, int numTets, const glm::tvec3<HighP>* X, const indexType* Tet)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (index < numTets)
     {
         glm::mat3 Dm = Build_Edge_Matrix(X, Tet, index);
-        inv_Dm[index] = glm::inverse(Dm);
+        DmInv[index] = glm::inverse(Dm);
     }
 }
 

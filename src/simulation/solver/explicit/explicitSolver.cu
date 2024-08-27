@@ -11,14 +11,14 @@ ExplicitSolver::ExplicitSolver(int threadsPerBlock, const SolverData<float>& sol
     if (!solverData.dev_ExtForce)
         cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(solverData.dev_ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
-    if (!solverData.inv_Dm)
-        cudaMalloc((void**)&solverData.inv_Dm, sizeof(glm::mat4) * solverData.numTets);
+    if (!solverData.DmInv)
+        cudaMalloc((void**)&solverData.DmInv, sizeof(glm::mat4) * solverData.numTets);
     cudaMalloc((void**)&V_sum, sizeof(glm::vec3) * solverData.numVerts);
     cudaMalloc((void**)&V_num, sizeof(int) * solverData.numVerts);
     cudaMemset(V_sum, 0, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(V_num, 0, sizeof(int) * solverData.numVerts);
     int blocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    computeInvDm << < blocks, threadsPerBlock >> > (solverData.inv_Dm, solverData.numTets, solverData.X, solverData.Tet);
+    computeInvDm << < blocks, threadsPerBlock >> > (solverData.DmInv, solverData.numTets, solverData.X, solverData.Tet);
 }
 
 ExplicitSolver::~ExplicitSolver()
@@ -37,7 +37,7 @@ void ExplicitSolver::SolverStep(SolverData<float>& solverData, SolverParams& sol
     thrust::device_ptr<glm::vec3> dev_ptr(solverData.Force);
     thrust::fill(thrust::device, dev_ptr, dev_ptr + solverData.numVerts, gravity);
     Laplacian_Smoothing(solverData, 0.5);
-    ExplicitUtil::ComputeForcesSVD << <(solverData.numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.Force, solverData.XTilde, solverData.Tet, solverData.numTets, solverData.inv_Dm, solverParams.solverAttr.mu, solverParams.solverAttr.lambda);
+    ExplicitUtil::ComputeForcesSVD << <(solverData.numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.Force, solverData.XTilde, solverData.Tet, solverData.numTets, solverData.DmInv, solverParams.solverAttr.mu, solverParams.solverAttr.lambda);
     ExplicitUtil::EulerMethod << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.XTilde, solverData.V, solverData.Force, solverData.numVerts, solverParams.solverAttr.mass, solverParams.dt);
 }
 
