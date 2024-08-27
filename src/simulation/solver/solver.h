@@ -4,8 +4,8 @@
 
 struct SolverAttribute {
     float mass = 1.0f;
-    float stiffness_0 = 20000.0f;
-    float stiffness_1 = 5000.0f;
+    float mu = 20000.0f;
+    float lambda = 5000.0f;
     int numConstraints = 0;
     bool jump = false;
 };

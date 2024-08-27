@@ -36,6 +36,13 @@ __inline__ __device__ void svdGLM(const glm::tmat3x3<HighP>& A, glm::tmat3x3<Hig
 __global__ void AddExternal(glm::vec3* V, int numVerts, bool jump, float mass, glm::vec3 vel);
 
 template <typename HighP>
+__inline__ __device__ HighP frobeniusNorm(const glm::tmat3x3<HighP>& m) {
+    return sqrt(m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2] +
+        m[1][0] * m[1][0] + m[1][1] * m[1][1] + m[1][2] * m[1][2] +
+        m[2][0] * m[2][0] + m[2][1] * m[2][1] + m[2][2] * m[2][2]);
+}
+
+template <typename HighP>
 __device__ glm::tmat3x3<HighP> Build_Edge_Matrix(const glm::tvec3<HighP>* X, const indexType* Tet, int tet) {
     glm::tmat3x3<HighP> ret((HighP)0);
     ret[0] = X[Tet[tet * 4]] - X[Tet[tet * 4 + 3]];

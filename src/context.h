@@ -37,8 +37,8 @@ public:
     struct SoftBodyAttr
     {
         int currSoftBodyId = -1;
-        std::pair<float, bool> stiffness_0;
-        std::pair<float, bool> stiffness_1;
+        std::pair<float, bool> mu;
+        std::pair<float, bool> lambda;
         std::pair<float, bool> damp;
         std::pair<float, bool> muN;
         std::pair<float, bool> muT;

@@ -4,15 +4,15 @@
 
 namespace ExplicitUtil
 {
-    __device__ glm::mat3 SaintVenantKirchhoff(const glm::mat3& F, float stiffness_0, float stiffness_1) {
+    __device__ glm::mat3 SaintVenantKirchhoff(const glm::mat3& F, float mu, float lambda) {
         glm::mat3 U, D, V;
         svdGLM(F, U, D, V);
         float I = D[0][0] * D[0][0] + D[1][1] * D[1][1] + D[2][2] * D[2][2];
         float J = D[0][0] * D[1][1] * D[2][2];
         float II = D[0][0] * D[0][0] * D[0][0] * D[0][0] + D[1][1] * D[1][1] * D[1][1] * D[1][1] + D[2][2] * D[2][2] * D[2][2] * D[2][2];
         float III = J * J;
-        float dEdI = stiffness_0 * (I - 3) * 0.25f - stiffness_1 * 0.5f;
-        float dEdII = stiffness_1 * 0.25f;
+        float dEdI = mu * (I - 3) * 0.25f - lambda * 0.5f;
+        float dEdII = lambda * 0.25f;
         float dEdIII = 0;
 
         glm::mat3 P(0.0f);
@@ -22,7 +22,7 @@ namespace ExplicitUtil
         return U * P * glm::transpose(V);
     }
 
-    __device__ glm::mat3 NeoHookean_wang(const glm::mat3& F, float stiffness_0, float stiffness_1) {
+    __device__ glm::mat3 NeoHookean_wang(const glm::mat3& F, float mu, float lambda) {
         glm::mat3 U, D, V;
         svdGLM(F, U, D, V);
         float l0 = D[0][0], l1 = D[1][1], l2 = D[2][2];
@@ -36,19 +36,19 @@ namespace ExplicitUtil
         float l2n23 = powf(l2, -2.0f / 3.0f);
         float lan23 = l0n23 * l1n23 * l2n23;
 
-        float s0_2_lan23 = 2.0f * stiffness_0 * lan23;
+        float s0_2_lan23 = 2.0f * mu * lan23;
 
         float a0 = l0 * s0_2_lan23;
-        float a1 = (2.0f * stiffness_0 * powf(l0, -5.0f / 3.0f) * l1n23 * l2n23 * Ic) / 3.0f;
-        float a2 = stiffness_1 / (l0q * l1 * l2);
+        float a1 = (2.0f * mu * powf(l0, -5.0f / 3.0f) * l1n23 * l2n23 * Ic) / 3.0f;
+        float a2 = lambda / (l0q * l1 * l2);
 
         float b0 = l1 * s0_2_lan23;
-        float b1 = (2.0f * stiffness_0 * powf(l1, -5.0f / 3.0f) * l0n23 * l2n23 * Ic) / 3.0f;
-        float b2 = stiffness_1 / (l1q * l0 * l2);
+        float b1 = (2.0f * mu * powf(l1, -5.0f / 3.0f) * l0n23 * l2n23 * Ic) / 3.0f;
+        float b2 = lambda / (l1q * l0 * l2);
 
         float c0 = l2 * s0_2_lan23;
-        float c1 = (2.0f * stiffness_0 * powf(l2, -5.0f / 3.0f) * l0n23 * l1n23 * Ic) / 3.0f;
-        float c2 = stiffness_1 / (l2q * l0 * l1);
+        float c1 = (2.0f * mu * powf(l2, -5.0f / 3.0f) * l0n23 * l1n23 * Ic) / 3.0f;
+        float c2 = lambda / (l2q * l0 * l1);
 
         float dw0 = a0 - a1 - a2;
         float dw1 = b0 - b1 - b2;
@@ -58,26 +58,26 @@ namespace ExplicitUtil
         return U * D * glm::transpose(V);
     }
 
-    __device__ glm::mat3 NeoHookean_wiki(const glm::mat3& F, float stiffness_0, float stiffness_1) {
+    __device__ glm::mat3 NeoHookean_wiki(const glm::mat3& F, float mu, float lambda) {
         glm::mat3 U, D, V;
         svdGLM(F, U, D, V);
         float l0 = D[0][0], l1 = D[1][1], l2 = D[2][2];
         float J = glm::determinant(F);
-        float C1 = 0.5f * stiffness_0;
-        float dw0 = C1 * (2.0f * l0 - 2.0f / J * l1 * l2) + stiffness_1 * (J - 1.0f) * l1 * l2;
-        float dw1 = C1 * (2.0f * l1 - 2.0f / J * l0 * l2) + stiffness_1 * (J - 1.0f) * l0 * l2;
-        float dw2 = C1 * (2.0f * l2 - 2.0f / J * l0 * l1) + stiffness_1 * (J - 1.0f) * l0 * l1;
+        float C1 = 0.5f * mu;
+        float dw0 = C1 * (2.0f * l0 - 2.0f / J * l1 * l2) + lambda * (J - 1.0f) * l1 * l2;
+        float dw1 = C1 * (2.0f * l1 - 2.0f / J * l0 * l2) + lambda * (J - 1.0f) * l0 * l2;
+        float dw2 = C1 * (2.0f * l2 - 2.0f / J * l0 * l1) + lambda * (J - 1.0f) * l0 * l1;
         D[0][0] = dw0; D[1][1] = dw1; D[2][2] = dw2;
         return U * D * glm::transpose(V);
     }
 
-    __global__ void ComputeForcesSVD(glm::vec3* Force, const glm::vec3* X, const indexType* Tet, int tet_number, const glm::mat3* inv_Dm, float stiffness_0, float stiffness_1) {
+    __global__ void ComputeForcesSVD(glm::vec3* Force, const glm::vec3* X, const indexType* Tet, int tet_number, const glm::mat3* inv_Dm, float mu, float lambda) {
         int tet = blockIdx.x * blockDim.x + threadIdx.x;
         if (tet >= tet_number) return;
 
         glm::mat3 F = Build_Edge_Matrix(X, Tet, tet) * inv_Dm[tet];
 
-        glm::mat3 forces = NeoHookean_wiki(F, stiffness_0, stiffness_1) * glm::transpose(inv_Dm[tet]) * (-1.0f / (6.0f * glm::determinant(inv_Dm[tet])));
+        glm::mat3 forces = NeoHookean_wiki(F, mu, lambda) * glm::transpose(inv_Dm[tet]) * (-1.0f / (6.0f * glm::determinant(inv_Dm[tet])));
 
         glm::vec3 force_0 = -glm::vec3(forces[0] + forces[1] + forces[2]);
         glm::vec3 force_1 = glm::vec3(forces[0]);

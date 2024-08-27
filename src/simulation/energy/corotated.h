@@ -17,10 +17,43 @@ public:
 
 namespace Corotated {
     template <typename HighP>
-    __device__ HighP frobeniusNorm(const glm::tmat3x3<HighP>& m) {
-        return sqrt(m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2] +
-            m[1][0] * m[1][0] + m[1][1] * m[1][1] + m[1][2] * m[1][2] +
-            m[2][0] * m[2][0] + m[2][1] * m[2][1] + m[2][2] * m[2][2]);
+    __global__ void GradientKern(HighP* grad, const glm::tvec3<HighP>* X, const indexType* Tet, const glm::tmat3x3<HighP>* inv_Dm, const indexType numTets) {
+        indexType tetIndex = blockIdx.x * blockDim.x + threadIdx.x;
+        if (tetIndex >= numTets) return;
+
+        glm::tmat3x3<HighP> Ds = Build_Edge_Matrix(X, Tet, tetIndex);
+        glm::tmat3x3<HighP> F = Ds * inv_Dm[tetIndex];
+        glm::tmat3x3<HighP> U, S, V;
+
+        svdGLM(F, U, S, V);
+        glm::tmat3x3<HighP> R = U * glm::transpose(V);
+        glm::tmat3x3<HighP> P = 2 * (F - R);
+        glm::tmat3x3<HighP> dPsidx = P * inv_Dm[tetIndex];
+        atomicAdd(&grad[Tet[tetIndex * 4 + 0] * 3 + 0], dPsidx[0][0]);
+        atomicAdd(&grad[Tet[tetIndex * 4 + 0] * 3 + 1], dPsidx[0][1]);
+        atomicAdd(&grad[Tet[tetIndex * 4 + 0] * 3 + 2], dPsidx[0][2]);
+        atomicAdd(&grad[Tet[tetIndex * 4 + 1] * 3 + 0], dPsidx[1][0]);
+        atomicAdd(&grad[Tet[tetIndex * 4 + 1] * 3 + 1], dPsidx[1][1]);
+        atomicAdd(&grad[Tet[tetIndex * 4 + 1] * 3 + 2], dPsidx[1][2]);
+        atomicAdd(&grad[Tet[tetIndex * 4 + 2] * 3 + 0], dPsidx[2][0]);
+        atomicAdd(&grad[Tet[tetIndex * 4 + 2] * 3 + 1], dPsidx[2][1]);
+        atomicAdd(&grad[Tet[tetIndex * 4 + 2] * 3 + 2], dPsidx[2][2]);
+        atomicAdd(&grad[Tet[tetIndex * 4 + 3] * 3 + 0], -dPsidx[0][0] - dPsidx[1][0] - dPsidx[2][0]);
+        atomicAdd(&grad[Tet[tetIndex * 4 + 3] * 3 + 1], -dPsidx[0][1] - dPsidx[1][1] - dPsidx[2][1]);
+        atomicAdd(&grad[Tet[tetIndex * 4 + 3] * 3 + 2], -dPsidx[0][2] - dPsidx[1][2] - dPsidx[2][2]);
+    }
+    template <typename HighP>
+    __global__ void HessianKern(HighP* hessianVal, int* hessianRowIdx, int* hessianColIdx, const glm::tvec3<HighP>* X, const indexType* Tet, const glm::tmat3x3<HighP>* inv_Dm, const indexType numTets) {
+        indexType tetIndex = blockIdx.x * blockDim.x + threadIdx.x;
+        if (tetIndex >= numTets) return;
+
+        glm::tmat3x3<HighP> Ds = Build_Edge_Matrix(X, Tet, tetIndex);
+        glm::tmat3x3<HighP> F = Ds * inv_Dm[tetIndex];
+        glm::tmat3x3<HighP> U, S, V;
+
+        svdGLM(F, U, S, V);
+        glm::tmat3x3<HighP> R = U * glm::transpose(V);
+        glm::tmat3x3<HighP> P = 2 * (F - R);
     }
 }
 
@@ -41,7 +74,7 @@ HighP CorotatedEnergy<HighP>::Val(const SolverData<HighP>& solverData) const {
         glm::tmat3x3<HighP> S;
 
         svdGLM(V, U, S, V);
-        return Corotated::frobeniusNorm(S - glm::tmat3x3<HighP>(1)) * 0.5;
+        return frobeniusNorm(S - glm::tmat3x3<HighP>(1)) * 0.5;
     },
         (HighP)0,
         thrust::plus<HighP>()
@@ -51,6 +84,9 @@ HighP CorotatedEnergy<HighP>::Val(const SolverData<HighP>& solverData) const {
 
 template <typename HighP>
 void CorotatedEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>& solverData) const {
+    int threadsPerBlock = 256;
+    int numBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
+    Corotated::GradientKern << <numBlocks, threadsPerBlock >> > (grad, solverData.dev_x, solverData.dev_tet, solverData.dev_inv_Dm, solverData.numTets);
 }
 
 template <typename HighP>
