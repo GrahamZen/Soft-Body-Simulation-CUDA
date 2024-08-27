@@ -14,14 +14,12 @@ protected:
     virtual void SolverPrepare(SolverData<double>& solverData, SolverParams& solverParams) override;
     virtual void SolverStep(SolverData<double>& solverData, SolverParams& solverParams) override;
 private:
-    int numVerts = 0;
+    int nnz = 0;
     double totalEnergy = 0;
     double* gradient = nullptr;
     // Hessian(sparse)
     double* hessianVal = nullptr;
     int* hessianRowIdx = nullptr;
     int* hessianColIdx = nullptr;
-    InertiaEnergy<double> inertia;
-    GravityEnergy<double> gravity;
-    ElasticEnergy<double>* elastic;
+    std::vector<Energy<double>*> energies;
 };

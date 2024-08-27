@@ -1,17 +1,18 @@
 #pragma once
-
-#include <def.h>
+#include <energy/energy.h>
 
 template <typename HighP>
-class ElasticEnergy {
+class ElasticEnergy : public Energy<HighP> {
 public:
-    ElasticEnergy() = default;
+    ElasticEnergy(int& hessianIdxOffset);
     virtual ~ElasticEnergy() = default;
     virtual HighP Val(const SolverData<HighP>& solverData) const = 0;
     virtual void Gradient(HighP* grad, const SolverData<HighP>& solverData) const = 0;
-    virtual void Hessian(HighP*& hessianVal, int*& hessianRowIdx, int*& hessianColIdx, const SolverData<HighP>& solverData) const = 0;
-private:
-    HighP* hessianVal = nullptr;
-    int* hessianRowIdx = nullptr;
-    int* hessianColIdx = nullptr;
+    virtual void Hessian(const SolverData<HighP>& solverData) const = 0;
 };
+
+template<typename HighP>
+inline ElasticEnergy<HighP>::ElasticEnergy(int& hessianIdxOffset) :
+    Energy<HighP>(hessianIdxOffset)
+{
+}
