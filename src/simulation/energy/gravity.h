@@ -9,7 +9,7 @@ class GravityEnergy : public Energy<HighP> {
 public:
     GravityEnergy() = default;
     virtual int NNZ(const SolverData<HighP>& solverData) const override;
-    HighP Val(const SolverData<HighP>& solverData, HighP coef) const;
+    HighP Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData, HighP coef) const;
     virtual void Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef) const override;
     virtual void Hessian(const SolverData<HighP>& solverData, HighP coef) const override {}
     const HighP g = 9.8;
@@ -31,13 +31,13 @@ inline int GravityEnergy<HighP>::NNZ(const SolverData<HighP>& solverData) const
 }
 
 template<typename HighP>
-inline HighP GravityEnergy<HighP>::Val(const SolverData<HighP>& solverData, HighP coef) const
+inline HighP GravityEnergy<HighP>::Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData, HighP coef) const
 {
     HighP sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(solverData.numVerts),
         [=] __host__ __device__(indexType vertIdx) {
-        return solverData.X[vertIdx].y * solverData.mass[vertIdx];
+        return Xs[vertIdx].y * solverData.mass[vertIdx];
     },
         0.0,
         thrust::plus<HighP>());

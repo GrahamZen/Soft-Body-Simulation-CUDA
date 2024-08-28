@@ -12,7 +12,7 @@ public:
     CorotatedEnergy(const SolverData<HighP>& solverData, int& hessianIdxOffset);
     virtual ~CorotatedEnergy() override = default;
     virtual int NNZ(const SolverData<HighP>& solverData) const override;
-    virtual HighP Val(const SolverData<HighP>& solverData, HighP coef) const override;
+    virtual HighP Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData, HighP coef) const override;
     virtual void Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef) const override;
     virtual void Hessian(const SolverData<HighP>& solverData, HighP coef) const override;
 };
@@ -116,12 +116,12 @@ inline int CorotatedEnergy<HighP>::NNZ(const SolverData<HighP>& solverData) cons
 }
 
 template <typename HighP>
-HighP CorotatedEnergy<HighP>::Val(const SolverData<HighP>& solverData, HighP coef) const {
+HighP CorotatedEnergy<HighP>::Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData, HighP coef) const {
     HighP sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(solverData.numTets),
         [=] __host__ __device__(indexType tetIndex) {
-        glm::tmat3x3<HighP> Ds = Build_Edge_Matrix(solverData.X, solverData.Tet, tetIndex);
+        glm::tmat3x3<HighP> Ds = Build_Edge_Matrix(Xs, solverData.Tet, tetIndex);
         glm::tmat3x3<HighP> V = Ds * solverData.DmInv[tetIndex];
         glm::tmat3x3<HighP> U;
         glm::tmat3x3<HighP> S;
