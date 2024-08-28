@@ -103,7 +103,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, SolverParams& solver
         cudaMemcpy(AColIdx, AColIdxHost.data(), sizeof(int) * nnz, cudaMemcpyHostToDevice);
         cudaMemcpy(tmpVal, tmpValHost.data(), sizeof(float) * nnz, cudaMemcpyHostToDevice);
 
-        ls = new CholeskySpLinearSolver(threadsPerBlock, ARowIdx, AColIdx, tmpVal, ASize, nnz);
+        ls = new CholeskySpLinearSolver<float>(threadsPerBlock, ARowIdx, AColIdx, tmpVal, ASize, nnz);
     }
     catch (const std::exception& e)
     {

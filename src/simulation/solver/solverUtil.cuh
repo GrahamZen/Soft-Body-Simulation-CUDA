@@ -5,6 +5,31 @@
 #include <glm/glm.hpp>
 #include <cuda_runtime.h>
 
+template<typename HighP, size_t Rows, size_t Cols>
+__inline__ __device__ void printMatrix(const Matrix<HighP, Rows, Cols>& m, const char* name) {
+    printf("Matrix %d x %d %s\n", Rows, Cols, name);
+    for (size_t i = 0; i < Rows; i++) {
+        for (size_t j = 0; j < Cols; j++) {
+            printf("%f ", m[i][j]);
+        }
+        printf("\n");
+    }
+    printf("--------------------------------\n");
+}
+
+
+template<typename HighP>
+__inline__ __device__ void printGLMMatrix(const glm::tmat3x3<HighP>& m, const char* name) {
+    printf("Matrix 3 x 3 %s\n", name);
+    for (size_t i = 0; i < 3; i++) {
+        for (size_t j = 0; j < 3; j++) {
+            printf("%f ", m[i][j]);
+        }
+        printf("\n");
+    }
+    printf("--------------------------------\n");
+}
+
 template <typename HighP>
 __inline__ __device__ HighP trace(const glm::tmat3x3<HighP>& a)
 {
@@ -135,13 +160,13 @@ template <typename HighP>
 __device__ Matrix9x12<HighP> ComputePFPx(const glm::tmat3x3<HighP>& DmInv)
 {
     const HighP m = DmInv[0][0];
-    const HighP n = DmInv[0][1];
-    const HighP o = DmInv[0][2];
-    const HighP p = DmInv[1][0];
+    const HighP n = DmInv[1][0];
+    const HighP o = DmInv[2][0];
+    const HighP p = DmInv[0][1];
     const HighP q = DmInv[1][1];
-    const HighP r = DmInv[1][2];
-    const HighP s = DmInv[2][0];
-    const HighP t = DmInv[2][1];
+    const HighP r = DmInv[2][1];
+    const HighP s = DmInv[0][2];
+    const HighP t = DmInv[1][2];
     const HighP u = DmInv[2][2];
     const HighP t1 = -m - p - s;
     const HighP t2 = -n - q - t;

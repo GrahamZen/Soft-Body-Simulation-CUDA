@@ -25,6 +25,17 @@ void inspectGLM(T* dev_ptr, int size) {
     utilityCore::inspectHost(host_ptr.data(), size);
 }
 
+template <typename T>
+void inspectSparseMatrix(T* dev_val, int* dev_rowIdx, int* dev_colIdx, int nnz, int size) {
+    std::vector<T> host_val(nnz);
+    std::vector<int> host_rowIdx(nnz);
+    std::vector<int> host_colIdx(nnz);
+    cudaMemcpy(host_val.data(), dev_val, sizeof(T) * nnz, cudaMemcpyDeviceToHost);
+    cudaMemcpy(host_rowIdx.data(), dev_rowIdx, sizeof(int) * nnz, cudaMemcpyDeviceToHost);
+    cudaMemcpy(host_colIdx.data(), dev_colIdx, sizeof(int) * nnz, cudaMemcpyDeviceToHost);
+    utilityCore::inspectHost(host_val, host_rowIdx, host_colIdx, size);
+}
+
 void inspectMortonCodes(const int* dev_mortonCodes, int numTets);
 void inspectBVHNode(const BVHNode* dev_BVHNodes, int numTets);
 void inspectBVH(const AABB* dev_aabbs, int size);

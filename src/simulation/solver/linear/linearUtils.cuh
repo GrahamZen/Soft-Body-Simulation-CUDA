@@ -1,3 +1,4 @@
+#pragma once
 #include <thrust/sort.h>
 #include <thrust/device_ptr.h>
 

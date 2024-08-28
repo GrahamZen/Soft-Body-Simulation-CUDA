@@ -33,6 +33,8 @@ namespace utilityCore
     void inspectHost(const AABB*, int);
     void inspectHost(const Query* query, int size);
     void inspectHost(const Sphere* spheres, int size);
+    template <typename T>
+    void inspectHost(const std::vector<T>& val, const std::vector<int>& rowIdx, const std::vector<int>& colIdx, int size);
 
     template <typename T>
     bool compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int size);

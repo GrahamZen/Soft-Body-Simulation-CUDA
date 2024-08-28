@@ -9,6 +9,8 @@
 #include <sphere.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtx/string_cast.hpp>
+#include <Eigen/Dense>
+#include <Eigen/Sparse>
 #include <sstream>
 #include <fstream>
 #include <filesystem>
@@ -166,6 +168,8 @@ template void utilityCore::inspectHost<glm::tvec4<double>>(const glm::tvec4<doub
 template void utilityCore::inspectHost<glm::tmat3x3<double>>(const glm::tmat3x3<double>* dev_ptr, int size);
 template void utilityCore::inspectHost<glm::tmat4x4<double>>(const glm::tmat4x4<double>* dev_ptr, int size);
 template void utilityCore::inspectHost<int>(const int*, int);
+template void utilityCore::inspectHost<float>(const float*, int);
+template void utilityCore::inspectHost<double>(const double*, int);
 template void utilityCore::inspectHost<colliPrecision>(const colliPrecision*, int);
 
 void utilityCore::inspectHost(const BVHNode* hstBVHNodes, int size) {
@@ -211,6 +215,27 @@ void utilityCore::inspectHost(const Sphere* spheres, int size) {
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
+
+template<typename T>
+void utilityCore::inspectHost(const std::vector<T>& val, const std::vector<int>& rowIdx, const std::vector<int>& colIdx, int size)
+{
+    Eigen::SparseMatrix<T> mat(size, size);
+    // coo format
+    std::vector<Eigen::Triplet<T>> triplets;
+    for (int i = 0; i < rowIdx.size(); i++)
+    {
+        triplets.push_back(Eigen::Triplet<T>(rowIdx[i], colIdx[i], val[i]));
+    }
+    mat.setFromTriplets(triplets.begin(), triplets.end());
+    // convert to dense format
+    Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> denseMat = mat;
+    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+    std::cout << denseMat << std::endl;
+    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
+}
+
+template void utilityCore::inspectHost<float>(const std::vector<float>& val, const std::vector<int>& rowIdx, const std::vector<int>& colIdx, int size);
+template void utilityCore::inspectHost<double>(const std::vector<double>& val, const std::vector<int>& rowIdx, const std::vector<int>& colIdx, int size);
 
 template <typename T>
 bool utilityCore::compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int size) {

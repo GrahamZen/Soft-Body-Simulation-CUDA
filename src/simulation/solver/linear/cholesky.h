@@ -7,32 +7,34 @@
 #include <cusparse.h>
 
 
-class CholeskySpLinearSolver : public LinearSolver<float> {
+template<typename T>
+class CholeskySpLinearSolver : public LinearSolver<T> {
 public:
-    CholeskySpLinearSolver(int threadsPerBlock, int* rowIdx, int* colIdx, float* val, int ASize, int len);
+    CholeskySpLinearSolver(int threadsPerBlock, int* rowIdx, int* colIdx, T* val, int ASize, int len);
     virtual ~CholeskySpLinearSolver() override;
-    virtual void Solve(int N, float* d_b, float* d_x, float* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, float* d_guess = nullptr) override;
+    virtual void Solve(int N, T* d_b, T* d_x, T* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, T* d_guess = nullptr) override;
 private:
-    void ComputeAMD(cusolverSpHandle_t handle, int rowsA, int nnzA, int* dev_csrRowPtrA, int* dev_csrColIndA, float* dev_csrValA);
+    void ComputeAMD(cusolverSpHandle_t handle, int rowsA, int nnzA, int* dev_csrRowPtrA, int* dev_csrColIndA, T* dev_csrValA);
     cusolverSpHandle_t cusolverHandle;
     cusparseMatDescr_t descrA;
     csrcholInfo_t d_info;
     void* buffer_gpu = nullptr;
     int* d_p = nullptr;
-    float* dev_b_permuted = nullptr, * dev_x_permuted = nullptr;
+    T* dev_b_permuted = nullptr, * dev_x_permuted = nullptr;
     int n;
-
 };
 
-class CholeskyDnLinearSolver : public LinearSolver<float> {
+template<typename T>
+class CholeskyDnLinearSolver : public LinearSolver<T> {
 public:
-    CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len);
+    CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx, T* tmpVal, int ASize, int len);
     virtual ~CholeskyDnLinearSolver() override;
-    virtual void Solve(int N, float* d_b, float* d_x, float* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, float* d_guess = nullptr) override;
+    virtual void Solve(int N, T* d_b, T* d_x, T* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, T* d_guess = nullptr) override;
 private:
+    cudaDataType_t dataType = std::is_same<T, double>::value ? CUDA_R_64F : CUDA_R_32F;
     cusolverDnParams_t params;
     int* d_info = nullptr;    /* error info */
     cusolverDnHandle_t cusolverHandle;
     void* d_work = nullptr;              /* device workspace */
-    float* d_predecomposedA;
+    T* d_predecomposedA;
 };

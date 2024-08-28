@@ -51,9 +51,7 @@ namespace IPC {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
-            int offset = 3 * index;
             v[index] = (x[index] - x_n[index]) * dtInv;
-
         }
     }
 }
@@ -141,4 +139,5 @@ void IPEnergy::Hessian(const SolverData<double>& solverData, double h2) const
     inertia.Hessian(solverData, 1);
     gravity.Hessian(solverData, h2);
     elastic->Hessian(solverData, h2);
+    inspectSparseMatrix(hessianVal, hessianRowIdx, hessianColIdx, nnz, solverData.numVerts * 3);
 }
