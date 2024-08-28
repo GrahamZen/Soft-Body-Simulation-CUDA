@@ -8,9 +8,9 @@ public:
     Energy() = default;
     virtual ~Energy() = default;
     virtual int NNZ(const SolverData<HighP>& solverData) const = 0;
-    virtual HighP Val(const SolverData<HighP>& solverData) const = 0;
-    virtual void Gradient(HighP* grad, const SolverData<HighP>& solverData) const = 0;
-    virtual void Hessian(const SolverData<HighP>& solverData) const = 0;
+    virtual HighP Val(const SolverData<HighP>& solverData, HighP coef = 1) const = 0;
+    virtual void Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef = 1) const = 0;
+    virtual void Hessian(const SolverData<HighP>& solverData, HighP coef = 1) const = 0;
     void SetHessianPtr(HighP* hessianVal, int* hessianRowIdx, int* hessianColIdx);
 protected:
     HighP* hessianVal = nullptr;

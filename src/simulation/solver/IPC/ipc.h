@@ -21,5 +21,7 @@ private:
     double* hessianVal = nullptr;
     int* hessianRowIdx = nullptr;
     int* hessianColIdx = nullptr;
-    std::vector<Energy<double>*> energies;
+    InertiaEnergy<double> inertia;
+    GravityEnergy<double> gravity;
+    ElasticEnergy<double>* elastic = nullptr;
 };

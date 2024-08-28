@@ -12,9 +12,9 @@ public:
     InertiaEnergy(const SolverData<HighP>& solverData, int& hessianIdxOffset, int numVerts, const HighP* dev_mass);
     virtual ~InertiaEnergy() = default;
     virtual int NNZ(const SolverData<HighP>& solverData) const override;
-    HighP Val(const SolverData<HighP>& solverData) const;
-    virtual void Gradient(HighP* grad, const SolverData<HighP>& solverData) const override;
-    virtual void Hessian(const SolverData<HighP>& solverData) const override;
+    HighP Val(const SolverData<HighP>& solverData, HighP coef) const;
+    virtual void Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef) const override;
+    virtual void Hessian(const SolverData<HighP>& solverData, HighP coef) const override;
 private:
     int numVerts = 0;
 };
@@ -63,7 +63,7 @@ InertiaEnergy<HighP>::InertiaEnergy(const SolverData<HighP>& solverData, int& he
 }
 
 template <typename HighP>
-HighP InertiaEnergy<HighP>::Val(const SolverData<HighP>& solverData) const {
+HighP InertiaEnergy<HighP>::Val(const SolverData<HighP>& solverData, HighP coef) const {
     // ||m(x - x_tilde)||^2 * 0.5.
     HighP sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
@@ -80,7 +80,7 @@ HighP InertiaEnergy<HighP>::Val(const SolverData<HighP>& solverData) const {
 }
 
 template<typename HighP>
-void InertiaEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>& solverData) const
+void InertiaEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef) const
 {
     // m(x - x_tilde).
     int threadsPerBlock = 256;
@@ -89,7 +89,7 @@ void InertiaEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>& solver
 }
 
 template <typename HighP>
-void InertiaEnergy<HighP>::Hessian(const SolverData<HighP>& solverData) const
+void InertiaEnergy<HighP>::Hessian(const SolverData<HighP>& solverData, HighP coef) const
 {
     int threadsPerBlock = 256;
     int numBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;

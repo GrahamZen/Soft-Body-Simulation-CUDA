@@ -12,15 +12,15 @@ public:
     CorotatedEnergy(const SolverData<HighP>& solverData, int& hessianIdxOffset);
     virtual ~CorotatedEnergy() override = default;
     virtual int NNZ(const SolverData<HighP>& solverData) const override;
-    virtual HighP Val(const SolverData<HighP>& solverData) const override;
-    virtual void Gradient(HighP* grad, const SolverData<HighP>& solverData) const override;
-    virtual void Hessian(const SolverData<HighP>& solverData) const override;
+    virtual HighP Val(const SolverData<HighP>& solverData, HighP coef) const override;
+    virtual void Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef) const override;
+    virtual void Hessian(const SolverData<HighP>& solverData, HighP coef) const override;
 };
 
 namespace Corotated {
     template <typename HighP>
     __global__ void GradientKern(HighP* grad, const glm::tvec3<HighP>* X, const indexType* Tet, const glm::tmat3x3<HighP>* DmInvs,
-        HighP* mu, HighP* lambda, const int numTets) {
+        HighP* mu, HighP* lambda, const int numTets, HighP coef) {
         int index = blockIdx.x * blockDim.x + threadIdx.x;
         if (index >= numTets) return;
         const int v0Ind = Tet[index * 4 + 0] * 3;
@@ -35,7 +35,7 @@ namespace Corotated {
         svdGLM(F, U, S, V);
         glm::tmat3x3<HighP> R = U * glm::transpose(V);
         glm::tmat3x3<HighP> P = 2 * mu[index] * (F - R) + lambda[index] * trace(glm::transpose(R) * F - glm::tmat3x3<HighP>(1)) * R;
-        glm::tmat3x3<HighP> dPsidx = F;
+        glm::tmat3x3<HighP> dPsidx = coef * P * DmInv;
         atomicAdd(&grad[v0Ind * 3 + 0], dPsidx[0][0]);
         atomicAdd(&grad[v0Ind * 3 + 1], dPsidx[0][1]);
         atomicAdd(&grad[v0Ind * 3 + 2], dPsidx[0][2]);
@@ -51,7 +51,7 @@ namespace Corotated {
     }
     template <typename HighP>
     __global__ void HessianKern(HighP* hessianVal, int* hessianRowIdx, int* hessianColIdx, const glm::tvec3<HighP>* X, const indexType* Tet,
-        const glm::tmat3x3<HighP>* DmInvs, HighP* mus, HighP* lambdas, const indexType numTets) {
+        const glm::tmat3x3<HighP>* DmInvs, HighP* mus, HighP* lambdas, const indexType numTets, HighP coef) {
         indexType tetIndex = blockIdx.x * blockDim.x + threadIdx.x;
         if (tetIndex >= numTets) return;
         HighP mu = mus[tetIndex];
@@ -83,7 +83,7 @@ namespace Corotated {
         d2PsidF2 += (lambdaI1Minus2muMinus3lambda / (s1 + s2)) * (Matrix9<HighP>(t1, t1));
         d2PsidF2 += (lambdaI1Minus2muMinus3lambda / (s0 + s2)) * (Matrix9<HighP>(t2, t2));
         Matrix9x12<HighP> PFPx = ComputePFPx(DmInv);
-        Matrix12<HighP> Hessian = PFPx.transpose() * d2PsidF2 * PFPx;
+        Matrix12<HighP> Hessian = coef * PFPx.transpose() * d2PsidF2 * PFPx;
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
                 for (int k = 0; k < 3; k++) {
@@ -116,7 +116,7 @@ inline int CorotatedEnergy<HighP>::NNZ(const SolverData<HighP>& solverData) cons
 }
 
 template <typename HighP>
-HighP CorotatedEnergy<HighP>::Val(const SolverData<HighP>& solverData) const {
+HighP CorotatedEnergy<HighP>::Val(const SolverData<HighP>& solverData, HighP coef) const {
     HighP sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(solverData.numTets),
@@ -134,21 +134,21 @@ HighP CorotatedEnergy<HighP>::Val(const SolverData<HighP>& solverData) const {
         (HighP)0,
         thrust::plus<HighP>()
     );
-    return sum;
+    return coef * sum;
 }
 
 template <typename HighP>
-void CorotatedEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>& solverData) const {
+void CorotatedEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef) const {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     Corotated::GradientKern << <numBlocks, threadsPerBlock >> > (grad, solverData.X, solverData.Tet, solverData.DmInv,
-        solverData.mu, solverData.lambda, solverData.numTets);
+        solverData.mu, solverData.lambda, solverData.numTets, coef);
 }
 
 template <typename HighP>
-void CorotatedEnergy<HighP>::Hessian(const SolverData<HighP>& solverData) const {
+void CorotatedEnergy<HighP>::Hessian(const SolverData<HighP>& solverData, HighP coef) const {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     Corotated::HessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx,
-        solverData.X, solverData.Tet, solverData.DmInv, solverData.mu, solverData.lambda, solverData.numTets);
+        solverData.X, solverData.Tet, solverData.DmInv, solverData.mu, solverData.lambda, solverData.numTets, coef);
 }
