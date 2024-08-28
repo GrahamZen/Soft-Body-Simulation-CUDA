@@ -69,7 +69,6 @@ template<typename HighP>
 __global__ void handleFloorCollision(glm::tvec3<HighP>* X, glm::tvec3<HighP>* V, int numVerts, Plane* planes, int numPlanes, HighP muT, HighP muN) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numVerts) return;
-    V[i] *= 0.99f;
     for (int j = 0; j < numPlanes; j++)
     {
         glm::tvec3<HighP> floorPos = glm::tvec3<HighP>(planes[j].m_model[3]);
