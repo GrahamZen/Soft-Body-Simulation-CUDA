@@ -46,9 +46,9 @@ namespace Inertia {
         glm::tvec3<HighP> x = dev_x[idx];
         glm::tvec3<HighP> xTilde = dev_xTilde[idx];
         HighP mass = dev_mass[idx];
-        gradient[idx * 3] = mass * (x.x - xTilde.x);
-        gradient[idx * 3 + 1] = mass * (x.y - xTilde.y);
-        gradient[idx * 3 + 2] = mass * (x.z - xTilde.z);
+        gradient[idx * 3] += mass * (x.x - xTilde.x);
+        gradient[idx * 3 + 1] += mass * (x.y - xTilde.y);
+        gradient[idx * 3 + 2] += mass * (x.z - xTilde.z);
     }
 }
 
@@ -69,10 +69,9 @@ HighP InertiaEnergy<HighP>::Val(const glm::tvec3<HighP>* Xs, const SolverData<Hi
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(solverData.numVerts),
         [=]__host__ __device__(indexType vertIdx) {
-        glm::tvec3<HighP> x = Xs[vertIdx];
-        glm::tvec3<HighP> xTilde = solverData.XTilde[vertIdx];
-        HighP mass = solverData.mass[vertIdx];;
-        return mass * glm::l2Norm(x, xTilde);
+        glm::tvec3<HighP> diff = Xs[vertIdx] - solverData.XTilde[vertIdx];
+        HighP mass = solverData.mass[vertIdx];
+        return mass * glm::dot(diff, diff);
     },
         0.0,
         thrust::plus<HighP>());

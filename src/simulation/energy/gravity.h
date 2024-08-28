@@ -20,7 +20,7 @@ namespace Gravity {
     __global__ void GradientKernel(HighP* grad, const HighP* mass, int numVerts, HighP g, HighP coef) {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= numVerts) return;
-        grad[idx * 3 + 1] = -coef * g * mass[idx];
+        grad[idx * 3 + 1] += coef * g * mass[idx];
     }
 }
 
@@ -41,7 +41,7 @@ inline HighP GravityEnergy<HighP>::Val(const glm::tvec3<HighP>* Xs, const Solver
     },
         0.0,
         thrust::plus<HighP>());
-    return -coef * g * sum;
+    return coef * g * sum;
 }
 
 template<typename HighP>

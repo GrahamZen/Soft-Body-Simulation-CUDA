@@ -36,7 +36,7 @@ protected:
     void SearchDirection(SolverData<double>& solverData, double h2);
 private:
     int numVerts = 0;
-    double tolerance = 1e-6;
+    double tolerance = 1e-2;
     // Hessian(sparse)
     double* p = nullptr; // search direction
     glm::dvec3* xTmp = nullptr;

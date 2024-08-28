@@ -19,10 +19,10 @@ class Plane;
 class Cylinder;
 
 template <typename T>
-void inspectGLM(T* dev_ptr, int size) {
+void inspectGLM(T* dev_ptr, int size, const char* str = nullptr) {
     std::vector<T> host_ptr(size);
     cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost);
-    utilityCore::inspectHost(host_ptr.data(), size);
+    utilityCore::inspectHost(host_ptr.data(), size, str);
 }
 
 template <typename T>
@@ -105,9 +105,4 @@ __global__ void PopulateTriPos(glm::vec3* vertices, glm::tvec3<HighP>* X, indexT
 }
 
 __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* X, int numVerts);
-
-__global__ void handleSphereCollision(glm::vec3* X, glm::vec3* V, int numVerts, Sphere* spheres, int numSpheres, float muT, float muN);
-__global__ void handleFloorCollision(glm::vec3* X, glm::vec3* V, int numVerts, Plane* planes, int numPlanes, float muT, float muN);
-__global__ void handleCylinderCollision(glm::vec3* X, glm::vec3* V, int numVerts, Cylinder* cylinders, int numCylinders, float muT, float muN);
-
 __global__ void populateBVHNodeAABBPos(BVHNode* nodes, glm::vec3* pos, int numNodes);

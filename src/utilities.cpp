@@ -144,8 +144,10 @@ glm::mat4 utilityCore::modelMatrix(const glm::vec3& pos, const glm::vec3& rot, c
 }
 
 template <typename T>
-void utilityCore::inspectHost(const T* host_ptr, int size) {
-    std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
+void utilityCore::inspectHost(const T* host_ptr, int size, const char* str) {
+    std::string s;
+    if (str) s = str;
+    std::cout << "---------------------------inspect:" + s + std::string("-", 33 - s.length()) << std::endl;
     if constexpr (is_glm_type<T>::value) {
         for (int i = 0; i < size; i++) {
             std::cout << "glm::" << glm::to_string(host_ptr[i]) << "," << std::endl;
@@ -159,18 +161,18 @@ void utilityCore::inspectHost(const T* host_ptr, int size) {
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
-template void utilityCore::inspectHost<glm::vec3>(const glm::vec3* dev_ptr, int size);
-template void utilityCore::inspectHost<glm::vec4>(const glm::vec4* dev_ptr, int size);
-template void utilityCore::inspectHost<glm::mat3>(const glm::mat3* dev_ptr, int size);
-template void utilityCore::inspectHost<glm::mat4>(const glm::mat4* dev_ptr, int size);
-template void utilityCore::inspectHost<glm::dvec3>(const glm::dvec3* dev_ptr, int size);
-template void utilityCore::inspectHost<glm::tvec4<double>>(const glm::tvec4<double>* dev_ptr, int size);
-template void utilityCore::inspectHost<glm::tmat3x3<double>>(const glm::tmat3x3<double>* dev_ptr, int size);
-template void utilityCore::inspectHost<glm::tmat4x4<double>>(const glm::tmat4x4<double>* dev_ptr, int size);
-template void utilityCore::inspectHost<int>(const int*, int);
-template void utilityCore::inspectHost<float>(const float*, int);
-template void utilityCore::inspectHost<double>(const double*, int);
-template void utilityCore::inspectHost<colliPrecision>(const colliPrecision*, int);
+template void utilityCore::inspectHost<glm::vec3>(const glm::vec3* dev_ptr, int size, const char* str);
+template void utilityCore::inspectHost<glm::vec4>(const glm::vec4* dev_ptr, int size, const char* str);
+template void utilityCore::inspectHost<glm::mat3>(const glm::mat3* dev_ptr, int size, const char* str);
+template void utilityCore::inspectHost<glm::mat4>(const glm::mat4* dev_ptr, int size, const char* str);
+template void utilityCore::inspectHost<glm::dvec3>(const glm::dvec3* dev_ptr, int size, const char* str);
+template void utilityCore::inspectHost<glm::tvec4<double>>(const glm::tvec4<double>* dev_ptr, int size, const char* str);
+template void utilityCore::inspectHost<glm::tmat3x3<double>>(const glm::tmat3x3<double>* dev_ptr, int size, const char* str);
+template void utilityCore::inspectHost<glm::tmat4x4<double>>(const glm::tmat4x4<double>* dev_ptr, int size, const char* str);
+template void utilityCore::inspectHost<int>(const int*, int, const char* str);
+template void utilityCore::inspectHost<float>(const float*, int, const char* str);
+template void utilityCore::inspectHost<double>(const double*, int, const char* str);
+template void utilityCore::inspectHost<colliPrecision>(const colliPrecision*, int, const char* str);
 
 void utilityCore::inspectHost(const BVHNode* hstBVHNodes, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;

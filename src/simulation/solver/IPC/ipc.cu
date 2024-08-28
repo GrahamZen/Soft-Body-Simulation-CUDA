@@ -1,11 +1,13 @@
 #include <IPC/ipc.h>
-#include <linear/cg.h>
-#include <thrust/transform_reduce.h>
+#include <linear/choleskyImmed.h>
+#include <fixedBodyData.h>
+#include <utilities.cuh>
 #include <cuda_runtime.h>
+#include <thrust/transform_reduce.h>
 
 IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData)
     : numVerts(solverData.numVerts), FEMSolver(threadsPerBlock, solverData), energy(solverData),
-    linearSolver(new CGSolver(solverData.numVerts * 3, 1e-6, 1000))
+    linearSolver(new CholeskySpImmedSolver<double>())
 {
     cudaMalloc(&p, sizeof(double) * solverData.numVerts * 3);
     cudaMalloc(&xTmp, sizeof(glm::dvec3) * solverData.numVerts);
@@ -22,6 +24,7 @@ IPCSolver::~IPCSolver()
 void IPCSolver::Update(SolverData<double>& solverData, SolverParams& solverParams)
 {
     SolverStep(solverData, solverParams);
+    solverData.pFixedBodies->HandleCollisions(solverData.XTilde, solverData.V, solverData.numVerts, (double)solverParams.muT, (double)solverParams.muN);
 }
 
 void IPCSolver::SolverPrepare(SolverData<double>& solverData, SolverParams& solverParams)
@@ -36,14 +39,14 @@ namespace IPC {
 
         xTilde[idx] = x[idx] + dt * v[idx];
     }
-    __global__ void computeXPlusAP(glm::dvec3* xPlusAP, const glm::dvec3* x, double* p, double alpha, int numVerts)
+    __global__ void computeXMinusAP(glm::dvec3* xPlusAP, const glm::dvec3* x, double* p, double alpha, int numVerts)
     {
         int idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx >= numVerts) return;
 
-        xPlusAP[idx].x = x[idx].x + alpha * p[idx * 3];
-        xPlusAP[idx].y = x[idx].y + alpha * p[idx * 3 + 1];
-        xPlusAP[idx].z = x[idx].z + alpha * p[idx * 3 + 2];
+        xPlusAP[idx].x = x[idx].x - alpha * p[idx * 3];
+        xPlusAP[idx].y = x[idx].y - alpha * p[idx * 3 + 1];
+        xPlusAP[idx].z = x[idx].z - alpha * p[idx * 3 + 2];
     }
 
     __global__ void updateVel(const glm::dvec3* x, const glm::dvec3* x_n, glm::dvec3* v, double dtInv, int numVerts)
@@ -71,7 +74,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams& solverP
     while (!EndCondition(h)) {
         double alpha = 1;
         while (true) {
-            IPC::computeXPlusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, alpha, solverData.numVerts);
+            IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, alpha, solverData.numVerts);
             double E = energy.Val(xTmp, solverData, h2);
             if (E > E_last) {
                 alpha /= 2;
@@ -98,9 +101,9 @@ bool IPCSolver::EndCondition(double h)
 {
     thrust::device_ptr<double> dev_ptr(p);
     double l1_norm = thrust::transform_reduce(dev_ptr, dev_ptr + numVerts * 3,
-        [] __host__ __device__(double x) { return abs(x); }, 0.0, thrust::plus<double>());
+        [] __host__ __device__(double x) { return abs(x); }, 0.0, thrust::plus<double>()) / h;
 
-    return l1_norm / h < tolerance;
+    return l1_norm < tolerance;
 }
 
 IPEnergy::IPEnergy(const SolverData<double>& solverData) : inertia(solverData, nnz, solverData.numVerts, solverData.mass),
@@ -129,6 +132,7 @@ double IPEnergy::Val(const glm::dvec3* Xs, const SolverData<double>& solverData,
 
 void IPEnergy::Gradient(const SolverData<double>& solverData, double h2) const
 {
+    cudaMemset(gradient, 0, sizeof(double) * solverData.numVerts * 3);
     inertia.Gradient(gradient, solverData, 1);
     gravity.Gradient(gradient, solverData, h2);
     elastic->Gradient(gradient, solverData, h2);
@@ -139,5 +143,4 @@ void IPEnergy::Hessian(const SolverData<double>& solverData, double h2) const
     inertia.Hessian(solverData, 1);
     gravity.Hessian(solverData, h2);
     elastic->Hessian(solverData, h2);
-    inspectSparseMatrix(hessianVal, hessianRowIdx, hessianColIdx, nnz, solverData.numVerts * 3);
 }
