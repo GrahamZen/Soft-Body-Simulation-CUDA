@@ -1,15 +1,32 @@
 #pragma once
 #include <thrust/sort.h>
 #include <thrust/device_ptr.h>
+#include <thrust/device_vector.h>
 
 template<typename T>
-void sort_coo(int N, int nz, T* d_A, int* d_rowIdx, int* d_colIdx) {
-    thrust::device_ptr<int> d_rowIdx_ptr(d_rowIdx);
-    thrust::device_ptr<int> d_colIdx_ptr(d_colIdx);
-    thrust::device_ptr<T> d_A_ptr(d_A);
+void sort_coo(int N, int &nz, T* d_A, int* d_rowIdx, int* d_colIdx, T*& new_A, int*& new_rowIdx, int*& new_colIdx) {
+    cudaMalloc(&new_rowIdx, nz * sizeof(int));
+    cudaMalloc(&new_colIdx, nz * sizeof(int));
+    cudaMalloc(&new_A, nz * sizeof(T));
+    
+    thrust::device_ptr<int> d_row(d_rowIdx);
+    thrust::device_ptr<int> d_col(d_colIdx);
+    thrust::device_ptr<T> d_val(d_A);
 
-    auto begin = thrust::make_zip_iterator(thrust::make_tuple(d_rowIdx_ptr, d_colIdx_ptr, d_A_ptr));
-    auto end = thrust::make_zip_iterator(thrust::make_tuple(d_rowIdx_ptr + nz, d_colIdx_ptr + nz, d_A_ptr + nz));
+    thrust::sort(thrust::make_zip_iterator(thrust::make_tuple(d_row, d_col, d_val)),
+                 thrust::make_zip_iterator(thrust::make_tuple(d_row + nz, d_col + nz, d_val + nz)));
+    thrust::device_ptr<int> d_new_row(new_rowIdx);
+    thrust::device_ptr<int> d_new_col(new_colIdx);
+    thrust::device_ptr<T> d_new_val(new_A);
 
-    thrust::sort(begin, end, thrust::less<thrust::tuple<int, int, T>>());
+    int new_nz = thrust::reduce_by_key(
+        thrust::make_zip_iterator(thrust::make_tuple(d_row, d_col)),
+        thrust::make_zip_iterator(thrust::make_tuple(d_row, d_col)) + nz,
+        d_val,
+        thrust::make_zip_iterator(thrust::make_tuple(d_new_row, d_new_col)),
+        d_new_val,
+        thrust::equal_to< thrust::tuple<int, int> >(),
+        thrust::plus<T>()
+    ).first - thrust::make_zip_iterator(thrust::make_tuple(d_new_row, d_new_col));
+    nz = new_nz;
 }

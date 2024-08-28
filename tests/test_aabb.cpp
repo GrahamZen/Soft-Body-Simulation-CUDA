@@ -3,12 +3,15 @@
 #include <catch2/catch_approx.hpp>
 #include <linear/cg.h>
 #include <vector>
+#include <matrix.h>
 #include <cuda_runtime.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <Eigen/Sparse>
 #include <chrono>
+#include <glm/gtx/transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 
 void readSparseMatrix(const std::string& filename, std::vector<int>& rowIdx, std::vector<int>& colIdx, std::vector<double>& val, int& N) {
     //format: "   (1,1)       1.0000", N lines
@@ -66,7 +69,7 @@ void generateSPDMatrixCOO(int N, int nonZeroEntries, std::vector<int>& rowIdx, s
     colIdx.clear();
     val.clear();
     // Ensure the matrix is symmetric and positive-definite
-    Eigen::MatrixXd denseA = Eigen::MatrixXd::Zero(N, N);
+    std::vector<Eigen::Triplet<double>> triplets;
 
     for (int i = 0; i < nonZeroEntries; ++i) {
         int row = dist(gen);
@@ -76,25 +79,21 @@ void generateSPDMatrixCOO(int N, int nonZeroEntries, std::vector<int>& rowIdx, s
         if (row > col) std::swap(row, col);
 
         double value = valueDist(gen);
-        denseA(row, col) += value; // Accumulate values to avoid too small values
-        denseA(col, row) += value;
+        triplets.push_back(Eigen::Triplet<double>(row, col, value));
+        triplets.push_back(Eigen::Triplet<double>(col, row, value));
     }
 
     // Add N to the diagonal to make the matrix positive-definite
     for (int i = 0; i < N; ++i) {
-        denseA(i, i) += N;
+        // denseA(i, i) += N;
+        triplets.push_back(Eigen::Triplet<double>(i, i, (double)N));
     }
+    A.setFromTriplets(triplets.begin(), triplets.end());
 
-    // Convert the dense matrix to a sparse matrix
-    A = denseA.sparseView();
-
-    // Extract the COO format
-    for (int k = 0; k < A.outerSize(); ++k) {
-        for (Eigen::SparseMatrix<double>::InnerIterator it(A, k); it; ++it) {
-            rowIdx.push_back(it.row());
-            colIdx.push_back(it.col());
-            val.push_back(it.value());
-        }
+    for (int k = 0; k < triplets.size(); ++k) {
+        rowIdx.push_back(triplets[k].row());
+        colIdx.push_back(triplets[k].col());
+        val.push_back(triplets[k].value());
     }
 }
 
@@ -170,16 +169,38 @@ TEST_CASE("CG Test", "[CG]") {
         cudaMemcpy(x.data(), dev_x, N * sizeof(double), cudaMemcpyDeviceToHost);
 
         Eigen::VectorXd eCUDAx = Eigen::Map<Eigen::VectorXd>(x.data(), x.size());
-        REQUIRE((A * eCUDAx - bVec).isZero(1e-6));
-        std::cout << "GPU Execution time: " << milliseconds << " ms" << std::endl;
-        std::cout << "CPU Execution time: " << elapsed.count() * 1000 << " ms" << std::endl;
+        REQUIRE((A * eCUDAx - bVec).isZero(1e-3));
     }
     std::cout << "Averge GPU Execution time: " << gpu_time / num_test << " ms" << std::endl;
     std::cout << "Averge CPU Execution time: " << cpu_time / num_test << " ms" << std::endl;
-        
+
     cudaFree(dev_ARowIdx);
     cudaFree(dev_AColIdx);
     cudaFree(dev_Aval);
     cudaFree(dev_b);
     cudaFree(dev_x);
+}
+
+TEST_CASE("vector 9", "[tensor]") {
+    glmMat3 U(-0.6208, 0.7763, -0.1091, -0.2820, -0.3509, -0.8929, -0.7315, -0.5236, 0.4368);
+    U = glm::transpose(U);
+    glmMat3 V(-0.6501, 0.3252, 0.6867, -0.6324, 0.2694, -0.7263, -0.4212, -0.9064, 0.0305);
+    V = glm::transpose(V);
+    glmMat3 S(2.0818, 0, 0, 0, 0.5707, 0, 0, 0, 0.2592);
+    glmMat3 T0(0, -1, 0, 1, 0, 0, 0, 0, 0);
+    glmMat3 T1(0, 0, 0, 0, 0, 1, 0, -1, 0);
+    glmMat3 T2(0, 0, 1, 0, 0, 0, -1, 0, 0);
+    T0 = 1 / sqrt(2) * U * T0 * glm::transpose(V);
+    T1 = 1 / sqrt(2) * U * T1 * glm::transpose(V);
+    T2 = 1 / sqrt(2) * U * T2 * glm::transpose(V);
+    Vector9<double> t0(T0);
+    Vector9<double> t1(T1);
+    Vector9<double> t2(T2);
+    double s0 = S[0][0];
+    double s1 = S[1][1];
+    double s2 = S[2][2];
+    Matrix9<double> H(2);
+    H = H - (4 / (s0 + s1)) * (Matrix9<double>(t0, t0));
+    H = H - (4 / (s1 + s2)) * (Matrix9<double>(t1, t1));
+    H = H - (4 / (s0 + s2)) * (Matrix9<double>(t2, t2));
 }

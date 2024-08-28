@@ -45,4 +45,7 @@ Eigen3::Eigen
 CUDA::cudart
 Catch2::Catch2
 CUDA::cusolver)
+target_compile_options(tests PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda -lineinfo>
+)
 ########################################

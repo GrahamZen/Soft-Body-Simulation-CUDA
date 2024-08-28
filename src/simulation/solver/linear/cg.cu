@@ -102,18 +102,18 @@ CGSolver::~CGSolver()
     CHECK_CUSPARSE(cusparseSpSV_destroyDescr(spsvDescrU));
 }
 
-void CGSolver::Solve(int N, double* d_b, double* d_x, double* d_A, int nz, int* d_rowIdx, int* d_colIdx, double* d_guess)
+void CGSolver::Solve(int N, double* d_b, double* d_x, double* A, int nz, int* rowIdx, int* colIdx, double* d_guess)
 {
     assert(d_b != nullptr);
     assert(d_x != nullptr);
-    assert(d_A != nullptr);
-    assert(d_rowIdx != nullptr);
-    assert(d_colIdx != nullptr);
+    assert(A != nullptr);
+    assert(rowIdx != nullptr);
+    assert(colIdx != nullptr);
     CHECK_CUDA(cudaMemset(d_x, 0, N * sizeof(double)));
 
     //==============================================================================
     // Sort the COO matrix by row index and convert it to CSR format
-    sort_coo(N, nz, d_A, d_rowIdx, d_colIdx);
+    sort_coo(N, nz, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx);
     cusparseXcoo2csr(cusHandle, d_rowIdx, nz, N, d_rowPtrA, CUSPARSE_INDEX_BASE_ZERO);
     CHECK_CUSPARSE(cusparseCreateCsr(&d_matA, N, N, nz, d_rowPtrA, d_colIdx, d_A,
         CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F));
