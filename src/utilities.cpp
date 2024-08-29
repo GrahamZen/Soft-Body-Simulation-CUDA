@@ -145,9 +145,7 @@ glm::mat4 utilityCore::modelMatrix(const glm::vec3& pos, const glm::vec3& rot, c
 
 template <typename T>
 void utilityCore::inspectHost(const T* host_ptr, int size, const char* str) {
-    std::string s;
-    if (str) s = str;
-    std::cout << "---------------------------inspect:" + s + std::string("-", 33 - s.length()) << std::endl;
+    std::cout << std::string("-------------------inspect:") + std::string(str) + std::string(45 - strlen(str), '-') << std::endl;
     if constexpr (is_glm_type<T>::value) {
         for (int i = 0; i < size; i++) {
             std::cout << "glm::" << glm::to_string(host_ptr[i]) << "," << std::endl;
@@ -155,7 +153,10 @@ void utilityCore::inspectHost(const T* host_ptr, int size, const char* str) {
     }
     else {
         for (int i = 0; i < size; i++) {
-            std::cout << host_ptr[i] << std::endl;
+            if (host_ptr[i] < 1e-12)
+                std::cout << 0 << std::endl;
+            else
+                std::cout << host_ptr[i] << std::endl;
         }
     }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;

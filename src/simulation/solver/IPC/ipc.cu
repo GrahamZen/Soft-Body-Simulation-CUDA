@@ -7,7 +7,7 @@
 
 IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData)
     : numVerts(solverData.numVerts), FEMSolver(threadsPerBlock, solverData), energy(solverData),
-    linearSolver(new CholeskySpImmedSolver<double>())
+    linearSolver(new CholeskySpImmedSolver<double>(solverData.numVerts * 3))
 {
     cudaMalloc(&p, sizeof(double) * solverData.numVerts * 3);
     cudaMalloc(&xTmp, sizeof(glm::dvec3) * solverData.numVerts);
@@ -24,7 +24,7 @@ IPCSolver::~IPCSolver()
 void IPCSolver::Update(SolverData<double>& solverData, SolverParams& solverParams)
 {
     SolverStep(solverData, solverParams);
-    solverData.pFixedBodies->HandleCollisions(solverData.XTilde, solverData.V, solverData.numVerts, (double)solverParams.muT, (double)solverParams.muN);
+    solverData.pFixedBodies->HandleCollisions(solverData.X, solverData.V, solverData.numVerts, (double)solverParams.muT, (double)solverParams.muN);
 }
 
 void IPCSolver::SolverPrepare(SolverData<double>& solverData, SolverParams& solverParams)

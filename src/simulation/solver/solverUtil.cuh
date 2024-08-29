@@ -17,6 +17,14 @@ __inline__ __device__ void printMatrix(const Matrix<HighP, Rows, Cols>& m, const
     printf("--------------------------------\n");
 }
 
+template<typename HighP, size_t N>
+__inline__ __device__ void printVector(const Vector<HighP, N>& v, const char* name) {
+    printf("Vector %d %s\n", N, name);
+    for (size_t i = 0; i < N; i++) {
+        printf("%f ", v[i]);
+    }
+    printf("\n--------------------------------\n");
+}
 
 template<typename HighP>
 __inline__ __device__ void printGLMMatrix(const glm::tmat3x3<HighP>& m, const char* name) {
@@ -118,17 +126,17 @@ __global__ void AddExternal(glm::vec3* V, int numVerts, bool jump, float mass, g
 
 template <typename HighP>
 __inline__ __device__ HighP frobeniusNorm(const glm::tmat3x3<HighP>& m) {
-    return sqrt(m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2] +
+    return m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2] +
         m[1][0] * m[1][0] + m[1][1] * m[1][1] + m[1][2] * m[1][2] +
-        m[2][0] * m[2][0] + m[2][1] * m[2][1] + m[2][2] * m[2][2]);
+        m[2][0] * m[2][0] + m[2][1] * m[2][1] + m[2][2] * m[2][2];
 }
 
 template <typename HighP>
 __device__ glm::tmat3x3<HighP> Build_Edge_Matrix(const glm::tvec3<HighP>* X, const indexType* Tet, int tet) {
     glm::tmat3x3<HighP> ret((HighP)0);
-    ret[0] = X[Tet[tet * 4]] - X[Tet[tet * 4 + 3]];
-    ret[1] = X[Tet[tet * 4 + 1]] - X[Tet[tet * 4 + 3]];
-    ret[2] = X[Tet[tet * 4 + 2]] - X[Tet[tet * 4 + 3]];
+    ret[0] = X[Tet[tet * 4 + 1]] - X[Tet[tet * 4]];
+    ret[1] = X[Tet[tet * 4 + 2]] - X[Tet[tet * 4]];
+    ret[2] = X[Tet[tet * 4 + 3]] - X[Tet[tet * 4]];
 
     return ret;
 }
@@ -160,13 +168,13 @@ template <typename HighP>
 __device__ Matrix9x12<HighP> ComputePFPx(const glm::tmat3x3<HighP>& DmInv)
 {
     const HighP m = DmInv[0][0];
-    const HighP n = DmInv[1][0];
-    const HighP o = DmInv[2][0];
-    const HighP p = DmInv[0][1];
+    const HighP n = DmInv[0][1];
+    const HighP o = DmInv[0][2];
+    const HighP p = DmInv[1][0];
     const HighP q = DmInv[1][1];
-    const HighP r = DmInv[2][1];
-    const HighP s = DmInv[0][2];
-    const HighP t = DmInv[1][2];
+    const HighP r = DmInv[1][2];
+    const HighP s = DmInv[2][0];
+    const HighP t = DmInv[2][1];
     const HighP u = DmInv[2][2];
     const HighP t1 = -m - p - s;
     const HighP t2 = -n - q - t;

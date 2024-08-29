@@ -42,7 +42,7 @@ namespace PdUtil {
 
             // there are numTets of AiSi in total
 
-            glm::mat4x3 AiSi = glm::transpose(DmInvs[index]) * glm::mat4x3{ 1, 0, 0, 0, 1, 0, 0, 0, 1, -1, -1, -1 };
+            glm::mat4x3 AiSi = glm::transpose(DmInvs[index]) * glm::mat4x3{ -1, -1, -1, 1, 0, 0, 0, 1, 0, 0, 0, 1 };
             glm::mat4x4 SiTAiAiSi = glm::transpose(AiSi) * AiSi;
 
             int start = index * 48;
@@ -114,7 +114,7 @@ namespace PdUtil {
             const glm::vec3 v3 = glm::vec3(qn[v3Ind + 0], qn[v3Ind + 1], qn[v3Ind + 2]);
             const glm::mat3 DmInv = DmInvs[index];
 
-            glm::mat3 R = glm::mat3(v0 - v3, v1 - v3, v2 - v3) * DmInv;
+            glm::mat3 R = glm::mat3(v1 - v0, v2 - v0, v3 - v0) * DmInv;
             glm::mat3 U;
             glm::mat3 S;
 
@@ -128,7 +128,7 @@ namespace PdUtil {
             }
 
             const glm::mat4x3 piTAiSi = glm::abs(V0[index]) * wi * R * glm::transpose(DmInv)
-                * glm::mat4x3{ 1, 0, 0, 0, 1, 0, 0, 0, 1, -1, -1, -1 };
+                * glm::mat4x3{ -1, -1, -1, 1, 0, 0, 0, 1, 0, 0, 0, 1 };
 
             atomicAdd(&(xProj[v0Ind + 0]), piTAiSi[0][0]);
             atomicAdd(&(xProj[v0Ind + 1]), piTAiSi[0][1]);
