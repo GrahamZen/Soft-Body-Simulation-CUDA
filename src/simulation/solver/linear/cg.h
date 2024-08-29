@@ -20,7 +20,6 @@ private:
     cusparseSpMatDescr_t d_matA = nullptr, d_matL = nullptr;
     cusparseSpSVDescr_t spsvDescrL = nullptr;
     cusparseSpSVDescr_t spsvDescrU = nullptr;
-    int* d_rowPtrA; // CSR 
 
     int N = 0;
     int max_iter;

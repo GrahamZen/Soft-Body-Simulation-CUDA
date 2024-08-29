@@ -11,4 +11,5 @@ protected:
     T* d_A = nullptr;
     int* d_rowIdx = nullptr;
     int* d_colIdx = nullptr;
+    int* d_rowPtrA = nullptr; // CSR 
 };

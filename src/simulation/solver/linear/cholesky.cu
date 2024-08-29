@@ -1,5 +1,4 @@
 #include <simulation/solver/linear/cholesky.h>
-#include <thrust/execution_policy.h>
 #include <linear/linearUtils.cuh>
 
 template<typename T>
@@ -84,6 +83,7 @@ CholeskySpLinearSolver<T>::~CholeskySpLinearSolver()
     cudaFree(buffer_gpu);
     cudaFree(dev_x_permuted);
     cudaFree(dev_b_permuted);
+    cudaFree(d_rowPtrA);
 }
 
 template<typename T>
@@ -151,50 +151,51 @@ template<>
 CholeskySpLinearSolver<double>::CholeskySpLinearSolver(int threadsPerBlock, int* rowIdx, int* colIdx, double* A, int ASize, int len) {
     sort_coo(ASize, len, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx);
     int nnz = len;
+    cudaMalloc((void**)&d_rowPtrA, sizeof(int) * (ASize + 1));
     cusparseHandle_t handle;
     cusparseCreate(&handle);
-    cusparseXcoo2csr(handle, d_rowIdx, nnz, ASize, d_rowIdx, CUSPARSE_INDEX_BASE_ZERO);
+    cusparseXcoo2csr(handle, d_rowIdx, nnz, ASize, d_rowPtrA, CUSPARSE_INDEX_BASE_ZERO);
 
     cusolverSpCreate(&cusolverHandle);
     cusparseCreateMatDescr(&descrA);
     cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
     cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
 
-    ComputeAMD(cusolverHandle, ASize, nnz, d_rowIdx, d_colIdx, d_A);
+    ComputeAMD(cusolverHandle, ASize, nnz, d_rowPtrA, d_colIdx, d_A);
     size_t cholSize = 0;
     size_t internalSize = 0;
     cusolverSpCreateCsrcholInfo(&d_info);
-    cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnz, descrA, d_rowIdx, d_colIdx, d_info);
-    cusolverSpDcsrcholBufferInfo(cusolverHandle, ASize, nnz, descrA, d_A, d_rowIdx, d_colIdx, d_info, &internalSize, &cholSize);
+    cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnz, descrA, d_rowPtrA, d_colIdx, d_info);
+    cusolverSpDcsrcholBufferInfo(cusolverHandle, ASize, nnz, descrA, d_A, d_rowPtrA, d_colIdx, d_info, &internalSize, &cholSize);
     cudaMalloc((void**)&buffer_gpu, sizeof(char) * cholSize);
     cudaMalloc((void**)&dev_b_permuted, sizeof(double) * ASize);
     cudaMalloc((void**)&dev_x_permuted, sizeof(double) * ASize);
-    cusolverSpDcsrcholFactor(cusolverHandle, ASize, nnz, descrA, d_A, d_rowIdx, d_colIdx, d_info, buffer_gpu);
+    cusolverSpDcsrcholFactor(cusolverHandle, ASize, nnz, descrA, d_A, d_rowPtrA, d_colIdx, d_info, buffer_gpu);
 }
 
 template<> CholeskySpLinearSolver<float>::CholeskySpLinearSolver(int threadsPerBlock, int* rowIdx, int* colIdx, float* A, int ASize, int len) {
     sort_coo(ASize, len, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx);
     int nnz = len;
-    // transform d_rowIdx into csr format
+    cudaMalloc((void**)&d_rowPtrA, sizeof(int) * (ASize + 1));
     cusparseHandle_t handle;
     cusparseCreate(&handle);
-    cusparseXcoo2csr(handle, d_rowIdx, nnz, ASize, d_rowIdx, CUSPARSE_INDEX_BASE_ZERO);
+    cusparseXcoo2csr(handle, d_rowIdx, nnz, ASize, d_rowPtrA, CUSPARSE_INDEX_BASE_ZERO);
 
     cusolverSpCreate(&cusolverHandle);
     cusparseCreateMatDescr(&descrA);
     cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
     cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
 
-    ComputeAMD(cusolverHandle, ASize, nnz, d_rowIdx, d_colIdx, d_A);
+    ComputeAMD(cusolverHandle, ASize, nnz, d_rowPtrA, d_colIdx, d_A);
     size_t cholSize = 0;
     size_t internalSize = 0;
     cusolverSpCreateCsrcholInfo(&d_info);
-    cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnz, descrA, d_rowIdx, d_colIdx, d_info);
-    cusolverSpScsrcholBufferInfo(cusolverHandle, ASize, nnz, descrA, d_A, d_rowIdx, d_colIdx, d_info, &internalSize, &cholSize);
+    cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnz, descrA, d_rowPtrA, d_colIdx, d_info);
+    cusolverSpScsrcholBufferInfo(cusolverHandle, ASize, nnz, descrA, d_A, d_rowPtrA, d_colIdx, d_info, &internalSize, &cholSize);
     cudaMalloc((void**)&buffer_gpu, sizeof(char) * cholSize);
     cudaMalloc((void**)&dev_b_permuted, sizeof(float) * ASize);
     cudaMalloc((void**)&dev_x_permuted, sizeof(float) * ASize);
-    cusolverSpScsrcholFactor(cusolverHandle, ASize, nnz, descrA, d_A, d_rowIdx, d_colIdx, d_info, buffer_gpu);
+    cusolverSpScsrcholFactor(cusolverHandle, ASize, nnz, descrA, d_A, d_rowPtrA, d_colIdx, d_info, buffer_gpu);
 }
 
 template<typename T>

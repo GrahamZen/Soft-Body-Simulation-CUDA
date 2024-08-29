@@ -1,33 +1,6 @@
 #include <linear/cg.h>
 #include <linear/linearUtils.cuh>
 
-#define CHECK_CUDA(func)                                                       \
-{                                                                              \
-    cudaError_t status = (func);                                               \
-    if (status != cudaSuccess) {                                               \
-        printf("CUDA API failed at line %d with error: %s (%d)\n",             \
-               __LINE__, cudaGetErrorString(status), status);                  \
-    }                                                                          \
-}
-
-#define CHECK_CUSPARSE(func)                                                   \
-{                                                                              \
-    cusparseStatus_t status = (func);                                          \
-    if (status != CUSPARSE_STATUS_SUCCESS) {                                   \
-        printf("cuSPARSE API failed at line %d with error: %s (%d)\n",         \
-               __LINE__, cusparseGetErrorString(status), status);              \
-    }                                                                          \
-}
-
-#define CHECK_CUBLAS(func)                                                     \
-{                                                                              \
-    cublasStatus_t status = (func);                                            \
-    if (status != CUBLAS_STATUS_SUCCESS) {                                     \
-        printf("CUBLAS API failed at line %d with error: %d\n",                \
-               __LINE__, status);                                              \
-    }                                                                          \
-}
-
 CGSolver::CGSolver(int N, int max_iter, double tolerance) : N(N), max_iter(max_iter), tolerance(tolerance)
 {
     CHECK_CUBLAS(cublasCreate(&cubHandle));
