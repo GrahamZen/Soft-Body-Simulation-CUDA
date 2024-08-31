@@ -166,7 +166,7 @@ void PdSolver::Update(SolverData<float>& solverData, SolverParams& solverParams)
     if (solverParams.handleCollision) {
         solverParams.pCollisionDetection->DetectCollision(solverData.dev_tIs, solverData.dev_Normals);
         int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-        PdUtil::CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts);
+        CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts);
     }
     else
         cudaMemcpy(solverData.X, solverData.XTilde, sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);

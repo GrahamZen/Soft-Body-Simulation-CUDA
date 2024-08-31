@@ -2,29 +2,6 @@
 #include <simulation/solver/projective/pdUtil.cuh>
 
 namespace PdUtil {
-    __global__ void CCDKernel(glm::vec3* X, glm::vec3* XTilde, glm::vec3* V, colliPrecision* tI, glm::vec3* normals, float muT, float muN, int numVerts) {
-        int idx = threadIdx.x + blockIdx.x * blockDim.x;
-        if (idx >= numVerts) return;
-        float interval = glm::length(XTilde - X);
-
-        if (tI[idx] < 1.0f)
-        {
-            glm::vec3 normal = normals[idx];
-            glm::vec3 vel = XTilde[idx] - X[idx];
-            glm::vec3 velNormal = glm::dot(vel, normal) * normal;
-            glm::vec3 vT = vel - velNormal;
-            float mag_vT = glm::length(vT);
-            float a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(velNormal) / mag_vT, 0.0f);
-            //V[idx] = -muN * velNormal + a * vT;
-            //V[idx] = X[idx] - XTilde[idx];
-        }
-        else
-        {
-            X[idx] = XTilde[idx];
-        }
-        //XTilde[idx] = X[idx];
-    }
-
     // Should compute SiTAiTAiSi, which is a sparse matrix
     // Ai here is I
     // size of row, col, val are 48 * numTets + numVerts

@@ -1,4 +1,5 @@
 #include <IPC/ipc.h>
+#include <collision/bvh.h>
 #include <linear/choleskyImmed.h>
 #include <fixedBodyData.h>
 #include <utilities.cuh>
@@ -24,6 +25,13 @@ IPCSolver::~IPCSolver()
 void IPCSolver::Update(SolverData<double>& solverData, SolverParams& solverParams)
 {
     SolverStep(solverData, solverParams);
+    if (solverParams.handleCollision) {
+        cudaMemcpy(solverData.XTilde, solverData.X, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
+        cudaMemcpy(solverData.X, x_n, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
+        solverParams.pCollisionDetection->DetectCollision(solverData.dev_tIs, solverData.dev_Normals);
+        int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+        CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts);
+    }
     solverData.pFixedBodies->HandleCollisions(solverData.X, solverData.V, solverData.numVerts, (double)solverParams.muT, (double)solverParams.muN);
 }
 
