@@ -49,5 +49,4 @@ private:
     size_t old_ic02BufferSizeInBytes = 0;
     size_t old_bufferSizeL = 0;
     size_t old_bufferSizeU = 0;
-    
 };

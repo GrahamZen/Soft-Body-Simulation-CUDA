@@ -3,8 +3,9 @@
 #include <linear/choleskyImmed.h>
 #include <fixedBodyData.h>
 #include <utilities.cuh>
-#include <cuda_runtime.h>
+#include <solver/solverUtil.cuh>
 #include <thrust/transform_reduce.h>
+#include <thrust/device_ptr.h>
 
 IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData, double tol)
     : numVerts(solverData.numVerts), tolerance(tol), FEMSolver(threadsPerBlock, solverData),
@@ -65,6 +66,41 @@ namespace IPC {
             v[index] = (x[index] - x_n[index]) * dtInv;
         }
     }
+
+    __global__ void DOFEliminationHessKernel(int* hessianRowIdx, int* hessianColIdx, double* hessianVal, int nnz, indexType* DBC, int numDBC)
+    {
+        int idx = threadIdx.x + blockIdx.x * blockDim.x;
+        if (idx >= nnz) return;
+
+        int row = hessianRowIdx[idx];
+        int col = hessianColIdx[idx];
+        for (int i = 0; i < numDBC; i++)
+        {
+            if (DBC[i] * 3 == row && DBC[i] * 3 == col || DBC[i] * 3 + 1 == row && DBC[i] * 3 + 1 == col || DBC[i] * 3 + 2 == row && DBC[i] * 3 + 2 == col)
+                hessianVal[idx] = 1;
+            else if (DBC[i] * 3 == row || DBC[i] * 3 + 1 == row || DBC[i] * 3 + 2 == row || DBC[i] * 3 == col || DBC[i] * 3 + 1 == col || DBC[i] * 3 + 2 == col)
+            {
+                hessianVal[idx] = 0;
+                break;
+            }
+        }
+    }
+    __global__ void DOFEliminationGradKernel(double* gradient, int numVerts, indexType* DBC, int numDBC)
+    {
+        int idx = threadIdx.x + blockIdx.x * blockDim.x;
+        if (idx >= numVerts) return;
+
+        for (int i = 0; i < numDBC; i++)
+        {
+            if (DBC[i] == idx)
+            {
+                gradient[idx * 3] = 0;
+                gradient[idx * 3 + 1] = 0;
+                gradient[idx * 3 + 2] = 0;
+                break;
+            }
+        }
+    }
 }
 
 void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams& solverParams)
@@ -102,7 +138,16 @@ void IPCSolver::SearchDirection(SolverData<double>& solverData, double h2)
 {
     energy.Gradient(solverData, h2);
     energy.Hessian(solverData, h2);
+    DOFElimination(solverData);
     linearSolver->Solve(solverData.numVerts * 3, energy.gradient, p, energy.hessianVal, energy.nnz, energy.hessianRowIdx, energy.hessianColIdx);
+}
+
+void IPCSolver::DOFElimination(SolverData<double>& solverData)
+{
+    int blocks = (energy.nnz + threadsPerBlock - 1) / threadsPerBlock;
+    IPC::DOFEliminationHessKernel << <blocks, threadsPerBlock >> > (energy.hessianRowIdx, energy.hessianColIdx, energy.hessianVal, energy.nnz, solverData.DBC, solverData.numDBC);
+    blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    IPC::DOFEliminationGradKernel << <blocks, threadsPerBlock >> > (energy.gradient, numVerts, solverData.DBC, solverData.numDBC);
 }
 
 bool IPCSolver::EndCondition(double h)
@@ -112,46 +157,4 @@ bool IPCSolver::EndCondition(double h)
         [] __host__ __device__(double x) { return abs(x); }, 0.0, thrust::maximum<double>()) / h;
 
     return inf_norm < tolerance;
-}
-
-IPEnergy::IPEnergy(const SolverData<double>& solverData) : inertia(solverData, nnz, solverData.numVerts, solverData.mass),
-elastic(new CorotatedEnergy<double>(solverData, nnz))
-{
-    cudaMalloc(&gradient, sizeof(double) * solverData.numVerts * 3);
-    cudaMalloc(&hessianVal, sizeof(double) * nnz);
-    cudaMalloc(&hessianRowIdx, sizeof(int) * nnz);
-    cudaMalloc(&hessianColIdx, sizeof(int) * nnz);
-    inertia.SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
-    elastic->SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
-}
-
-IPEnergy::~IPEnergy()
-{
-    cudaFree(gradient);
-    cudaFree(hessianVal);
-    cudaFree(hessianRowIdx);
-    cudaFree(hessianColIdx);
-}
-
-double IPEnergy::Val(const glm::dvec3* Xs, const SolverData<double>& solverData, double h2) const
-{
-    // double inertiaEnergy = inertia.Val(Xs, solverData);
-    // double gravityEnergy = gravity.Val(Xs, solverData);
-    // double elasticEnergy = elastic->Val(Xs, solverData);
-    return inertia.Val(Xs, solverData) + h2 * (gravity.Val(Xs, solverData) + elastic->Val(Xs, solverData));
-}
-
-void IPEnergy::Gradient(const SolverData<double>& solverData, double h2) const
-{
-    cudaMemset(gradient, 0, sizeof(double) * solverData.numVerts * 3);
-    inertia.Gradient(gradient, solverData, 1);
-    gravity.Gradient(gradient, solverData, h2);
-    elastic->Gradient(gradient, solverData, h2);
-}
-
-void IPEnergy::Hessian(const SolverData<double>& solverData, double h2) const
-{
-    inertia.Hessian(solverData, 1);
-    gravity.Hessian(solverData, h2);
-    elastic->Hessian(solverData, h2);
 }

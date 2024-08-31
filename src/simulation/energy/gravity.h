@@ -3,6 +3,7 @@
 #include <def.h>
 #include <cuda_runtime.h>
 #include <thrust/transform_reduce.h>
+#include <thrust/iterator/counting_iterator.h>
 
 template <typename HighP>
 class GravityEnergy : public Energy<HighP> {

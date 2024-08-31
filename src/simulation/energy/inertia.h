@@ -1,10 +1,9 @@
 #pragma once
 
 #include <energy/energy.h>
-#include <cuda_runtime.h>
-#include <thrust/transform_reduce.h>
-#include <cuda/functional>
 #include <glm/gtx/norm.hpp>
+#include <thrust/transform_reduce.h>
+#include <thrust/iterator/counting_iterator.h>
 
 template <typename HighP>
 class InertiaEnergy : public Energy<HighP> {

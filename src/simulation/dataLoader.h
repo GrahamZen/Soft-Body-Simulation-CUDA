@@ -15,17 +15,18 @@ class DataLoader {
 public:
     DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock) {}
     void CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale,
-        const glm::vec3& rot, bool centralize, int startIndex, SolverAttribute attrib);
+        const glm::vec3& rot, bool centralize, int startIndex, SoftBodyAttribute attrib);
     void CollectData(const char* mshFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
-        bool centralize, int startIndex, SolverAttribute attrib);
+        bool centralize, int startIndex, SoftBodyAttribute attrib);
     void AllocData(std::vector<int>& startIndices, SolverData<HighP> &solverData, indexType*& edges, indexType*& tetFather);
 private:
     static std::vector<indexType> loadEleFile(const std::string& EleFilename, int startIndex, int& numTets);
     static std::vector<glm::tvec3<HighP>> loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts);
     static std::vector<indexType> loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris);
     void CollectEdges(const std::vector<indexType>& triIdx);
-    std::vector<std::tuple<SolverData<HighP>, SoftBodyData, SolverAttribute>> m_softBodyData;
+    std::vector<std::tuple<SolverData<HighP>, SoftBodyData, SoftBodyAttribute>> m_softBodyData;
     std::vector<std::vector<indexType>> m_edges;
+    int totalNumDBC = 0;
     int totalNumVerts = 0;
     int totalNumTets = 0;
     int totalNumEdges = 0;
