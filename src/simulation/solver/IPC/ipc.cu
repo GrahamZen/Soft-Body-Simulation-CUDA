@@ -76,12 +76,10 @@ namespace IPC {
         int col = hessianColIdx[idx];
         for (int i = 0; i < numDBC; i++)
         {
-            if (DBC[i] * 3 == row && DBC[i] * 3 == col || DBC[i] * 3 + 1 == row && DBC[i] * 3 + 1 == col || DBC[i] * 3 + 2 == row && DBC[i] * 3 + 2 == col)
-                hessianVal[idx] = 1;
-            else if (DBC[i] * 3 == row || DBC[i] * 3 + 1 == row || DBC[i] * 3 + 2 == row || DBC[i] * 3 == col || DBC[i] * 3 + 1 == col || DBC[i] * 3 + 2 == col)
-            {
-                hessianVal[idx] = 0;
-                break;
+            if (DBC[i] == row / 3 || DBC[i] == col / 3) {
+                hessianVal[idx] = (row == col);
+                if (row != col)
+                    break;
             }
         }
     }
