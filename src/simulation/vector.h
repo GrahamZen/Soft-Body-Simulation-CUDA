@@ -13,7 +13,7 @@ struct Vector {
 
     __host__ __device__ Vector(const glm::tmat3x3<HighP>& mat) {
         for (int i = 0; i < N; ++i) {
-            value[i] = mat[i % 3][i / 3];
+            value[i] = mat[i / 3][i % 3];
         }
     }
 

@@ -19,7 +19,7 @@ class Plane;
 class Cylinder;
 
 template <typename T>
-void inspectGLM(T* dev_ptr, int size, const char* str = "") {
+void inspectGLM(const T* dev_ptr, int size, const char* str = "") {
     std::vector<T> host_ptr(size);
     cudaMemcpy(host_ptr.data(), dev_ptr, sizeof(T) * size, cudaMemcpyDeviceToHost);
     utilityCore::inspectHost(host_ptr.data(), size, str);

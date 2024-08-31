@@ -31,7 +31,7 @@ __inline__ __device__ void printGLMMatrix(const glm::tmat3x3<HighP>& m, const ch
     printf("Matrix 3 x 3 %s\n", name);
     for (size_t i = 0; i < 3; i++) {
         for (size_t j = 0; j < 3; j++) {
-            printf("%f ", m[i][j]);
+            printf("%f ", m[j][i]);
         }
         printf("\n");
     }
@@ -78,15 +78,6 @@ __inline__ __device__ glm::tmat3x3<HighP> dI3df(const glm::tmat3x3<HighP>& F) {
     return ret;
 }
 
-template <typename HighP>
-__device__ void matVecMul9x9(const HighP* matrix, const HighP* vector, HighP* result) {
-    // result is assumed to be initialized to 0
-    for (int i = 0; i < 9; i++) {
-        for (int j = 0; j < 9; j++) {
-            result[i] += matrix[i * 9 + j] * vector[j];
-        }
-    }
-}
 
 template <typename HighP>
 __inline__ __device__ void svdGLM(const glm::tmat3x3<HighP>& A, glm::tmat3x3<HighP>& U, glm::tmat3x3<HighP>& S, glm::tmat3x3<HighP>& V)
@@ -168,13 +159,13 @@ template <typename HighP>
 __device__ Matrix9x12<HighP> ComputePFPx(const glm::tmat3x3<HighP>& DmInv)
 {
     const HighP m = DmInv[0][0];
-    const HighP n = DmInv[0][1];
-    const HighP o = DmInv[0][2];
-    const HighP p = DmInv[1][0];
+    const HighP n = DmInv[1][0];
+    const HighP o = DmInv[2][0];
+    const HighP p = DmInv[0][1];
     const HighP q = DmInv[1][1];
-    const HighP r = DmInv[1][2];
-    const HighP s = DmInv[2][0];
-    const HighP t = DmInv[2][1];
+    const HighP r = DmInv[2][1];
+    const HighP s = DmInv[0][2];
+    const HighP t = DmInv[1][2];
     const HighP u = DmInv[2][2];
     const HighP t1 = -m - p - s;
     const HighP t2 = -n - q - t;

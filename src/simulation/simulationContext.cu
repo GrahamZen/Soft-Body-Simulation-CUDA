@@ -159,7 +159,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(colliPrecision));
     }
     mSolverData.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
-    mSolver = new IPCSolver{ threadsPerBlock, mSolverData };
+    mSolver = new IPCSolver{ threadsPerBlock, mSolverData, 5e-2 };
 }
 
 SimulationCUDAContext::~SimulationCUDAContext()

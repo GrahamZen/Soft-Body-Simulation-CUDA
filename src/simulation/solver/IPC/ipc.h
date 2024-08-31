@@ -26,7 +26,7 @@ struct IPEnergy {
 
 class IPCSolver : public FEMSolver<double> {
 public:
-    IPCSolver(int threadsPerBlock, const SolverData<double>&);
+    IPCSolver(int threadsPerBlock, const SolverData<double>&, double tolerance = 1e-2);
     ~IPCSolver();
     virtual void Update(SolverData<double>& solverData, SolverParams& solverParams) override;
     bool EndCondition(double h);
@@ -36,7 +36,7 @@ protected:
     void SearchDirection(SolverData<double>& solverData, double h2);
 private:
     int numVerts = 0;
-    double tolerance = 1e-2;
+    double tolerance;
     // Hessian(sparse)
     double* p = nullptr; // search direction
     glm::dvec3* xTmp = nullptr;

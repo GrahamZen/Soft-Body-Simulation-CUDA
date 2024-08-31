@@ -153,7 +153,7 @@ void utilityCore::inspectHost(const T* host_ptr, int size, const char* str) {
     }
     else {
         for (int i = 0; i < size; i++) {
-            if (host_ptr[i] < 1e-12)
+            if (abs(host_ptr[i]) < 1e-12)
                 std::cout << 0 << std::endl;
             else
                 std::cout << host_ptr[i] << std::endl;

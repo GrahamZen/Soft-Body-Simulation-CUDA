@@ -12,7 +12,7 @@ public:
     CorotatedEnergy(const SolverData<HighP>& solverData, int& hessianIdxOffset);
     virtual ~CorotatedEnergy() override = default;
     virtual int NNZ(const SolverData<HighP>& solverData) const override;
-    virtual HighP Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData, HighP coef) const override;
+    virtual HighP Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData) const override;
     virtual void Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef) const override;
     virtual void Hessian(const SolverData<HighP>& solverData, HighP coef) const override;
 };
@@ -28,7 +28,8 @@ namespace Corotated {
         const int v2Ind = Tet[index * 4 + 2] * 3;
         const int v3Ind = Tet[index * 4 + 3] * 3;
         glm::tmat3x3<HighP> DmInv = DmInvs[index];
-        glm::tmat3x3<HighP> F = Build_Edge_Matrix(X, Tet, index) * DmInv;
+        glm::tmat3x3<HighP> Ds = Build_Edge_Matrix(X, Tet, index);
+        glm::tmat3x3<HighP> F = Ds * DmInv;
         glm::tmat3x3<HighP> U, S, V;
 
         svdRV(F, U, S, V);
@@ -94,10 +95,10 @@ namespace Corotated {
                     for (int l = 0; l < 3; l++) {
                         int row = Tet[tetIndex * 4 + i] * 3 + k;
                         int col = Tet[tetIndex * 4 + j] * 3 + l;
-                        int idx = (i * 4 + j) * 9 + k * 3 + l;
-                        hessianVal[tetIndex * 144 + idx] = Hessian[i * 3 + k][j * 3 + l];
-                        hessianRowIdx[tetIndex * 144 + idx] = row;
-                        hessianColIdx[tetIndex * 144 + idx] = col;
+                        int idx = tetIndex * 144 + (i * 4 + j) * 9 + k * 3 + l;
+                        hessianVal[idx] = Hessian[i * 3 + k][j * 3 + l];
+                        hessianRowIdx[idx] = row;
+                        hessianColIdx[idx] = col;
                     }
                 }
             }
@@ -120,7 +121,7 @@ inline int CorotatedEnergy<HighP>::NNZ(const SolverData<HighP>& solverData) cons
 }
 
 template <typename HighP>
-HighP CorotatedEnergy<HighP>::Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData, HighP coef) const {
+HighP CorotatedEnergy<HighP>::Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData) const {
     HighP sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(solverData.numTets),
@@ -128,17 +129,17 @@ HighP CorotatedEnergy<HighP>::Val(const glm::tvec3<HighP>* Xs, const SolverData<
         glm::tmat3x3<HighP> Ds = Build_Edge_Matrix(Xs, solverData.Tet, tetIndex);
         glm::tmat3x3<HighP> V = Ds * solverData.DmInv[tetIndex];
         glm::tmat3x3<HighP> U;
-        glm::tmat3x3<HighP> S;
+        glm::tmat3x3<HighP> Sigma;
         HighP Vol = solverData.V0[tetIndex];
-        svdRV(V, U, S, V);
-        HighP traceSigmaMinusI = trace(S - glm::tmat3x3<HighP>(1));
-        return Vol * (solverData.mu[tetIndex] * frobeniusNorm(S - glm::tmat3x3<HighP>(1))
+        svdGLM(V, U, Sigma, V);
+        HighP traceSigmaMinusI = trace(Sigma - glm::tmat3x3<HighP>(1));
+        return Vol * (solverData.mu[tetIndex] * frobeniusNorm(Sigma - glm::tmat3x3<HighP>(1))
             + 0.5 * solverData.lambda[tetIndex] * traceSigmaMinusI * traceSigmaMinusI);
     },
         (HighP)0,
         thrust::plus<HighP>()
     );
-    return coef * sum;
+    return sum;
 }
 
 template <typename HighP>
