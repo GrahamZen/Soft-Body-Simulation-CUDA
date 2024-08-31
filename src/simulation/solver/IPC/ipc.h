@@ -1,28 +1,10 @@
 #pragma once
 
 #include <simulation/solver/femSolver.h>
-#include <energy/corotated.h>
-#include <energy/gravity.h>
-#include <energy/inertia.h>
+#include <energy/ip.h>
 
 template<typename T>
 class LinearSolver;
-
-struct IPEnergy {
-    IPEnergy(const SolverData<double>& solverData);
-    ~IPEnergy();
-    double Val(const glm::dvec3* Xs, const SolverData<double>& solverData, double h2) const;
-    void Gradient(const SolverData<double>& solverData, double h2) const;
-    void Hessian(const SolverData<double>& solverData, double h2) const;
-    double* gradient = nullptr;
-    int nnz = 0;
-    double* hessianVal = nullptr;
-    int* hessianRowIdx = nullptr;
-    int* hessianColIdx = nullptr;
-    InertiaEnergy<double> inertia;
-    GravityEnergy<double> gravity;
-    ElasticEnergy<double>* elastic = nullptr;
-};
 
 class IPCSolver : public FEMSolver<double> {
 public:
@@ -34,7 +16,7 @@ protected:
     virtual void SolverPrepare(SolverData<double>& solverData, SolverParams& solverParams) override;
     virtual void SolverStep(SolverData<double>& solverData, SolverParams& solverParams) override;
     void SearchDirection(SolverData<double>& solverData, double h2);
-    void DOFElimination();
+    void DOFElimination(SolverData<double>& solverData);
 private:
     int numVerts = 0;
     double tolerance;
