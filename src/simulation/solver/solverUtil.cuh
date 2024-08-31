@@ -211,7 +211,7 @@ __device__ Matrix9x12<HighP> ComputePFPx(const glm::tmat3x3<HighP>& DmInv)
 }
 
 template <typename HighP>
-__global__ void CCDKernel(glm::tvec3<HighP>* X, glm::tvec3<HighP>* XTilde, glm::tvec3<HighP>* V, colliPrecision* tI, glm::vec3* normals, float muT, float muN, int numVerts) {
+__global__ void IPCCDKernel(glm::tvec3<HighP>* X, glm::tvec3<HighP>* XTilde, glm::tvec3<HighP>* V, colliPrecision* tI, glm::vec3* normals, float muT, float muN, int numVerts) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= numVerts) return;
     HighP interval = glm::length(XTilde - X);
@@ -225,6 +225,30 @@ __global__ void CCDKernel(glm::tvec3<HighP>* X, glm::tvec3<HighP>* XTilde, glm::
         HighP mag_vT = glm::length(vT);
         //HighP a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(velNormal) / mag_vT, 0.0);
         V[idx] = (HighP)-muN * velNormal;
+        // V[idx] = X[idx] - XTilde[idx];
+    }
+    else
+    {
+        X[idx] = XTilde[idx];
+    }
+    //XTilde[idx] = X[idx];
+}
+
+template <typename HighP>
+__global__ void CCDKernel(glm::tvec3<HighP>* X, glm::tvec3<HighP>* XTilde, glm::tvec3<HighP>* V, colliPrecision* tI, glm::vec3* normals, float muT, float muN, int numVerts) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    if (idx >= numVerts) return;
+    HighP interval = glm::length(XTilde - X);
+
+    if (tI[idx] < 1.0f)
+    {
+        glm::tvec3<HighP> normal = normals[idx];
+        glm::tvec3<HighP> vel = XTilde[idx] - X[idx];
+        glm::tvec3<HighP> velNormal = glm::dot(vel, normal) * normal;
+        glm::tvec3<HighP> vT = vel - velNormal;
+        HighP mag_vT = glm::length(vT);
+        //HighP a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(velNormal) / mag_vT, 0.0);
+        // V[idx] = (HighP)-muN * velNormal;
         // V[idx] = X[idx] - XTilde[idx];
     }
     else
