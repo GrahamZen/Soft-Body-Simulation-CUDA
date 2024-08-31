@@ -27,9 +27,9 @@
             "rot": [0.0, 0.0, 0.0],
             "scale": [4, 4, 4],
             "mass": 10.0,
-            "mu": 200.0,
+            "mu": 20000.0,
             "lambda": 5000.0,
-            "constraints": 0
+            "DBC": []
         },
         {
             "name": "armadillo0",
@@ -42,9 +42,9 @@
             "rot": [0.0, 0.0, 0.0],
             "scale": [0.2, 0.2, 0.2],
             "mass": 1.0,
-            "mu": 200.0,
+            "mu": 20000.0,
             "lambda": 5000.0,
-            "constraints": 0
+            "DBC": []
         },
         {
             "name": "bunny",
@@ -52,9 +52,9 @@
             "eleFile": "../assets/bunny/bunny.1.ele",
             "faceFile": "../assets/bunny/bunny.1.face",
             "mass": 10.0,
-            "mu": 200.0,
+            "mu": 20000.0,
             "lambda": 5000.0,
-            "constraints": 0,
+            "DBC": [],
             "pos": [0.0, 25.0, 25.0],
             "rot": [0.0, 180.0, 0.0],
             "scale": [35, 35, 35],
@@ -67,9 +67,9 @@
             "eleFile": "../assets/sphere/sphere.1.ele",
             "faceFile": "../assets/sphere/sphere.1.face",
             "mass": 10.0,
-            "mu": 200.0,
+            "mu": 20000.0,
             "lambda": 5000.0,
-            "constraints": 0,
+            "DBC": [],
             "pos": [0.0, 10.0, 25.0],
             "rot": [0.0, 0.0, 0.0],
             "scale": [20, 20, 20],
@@ -81,9 +81,9 @@
             "nodeFile": "../assets/cube/cube.1.node",
             "eleFile": "../assets/cube/cube.1.ele",
             "mass": 10.0,
-            "mu": 200.0,
+            "mu": 200000.0,
             "lambda": 5000.0,
-            "constraints": 0,
+            "DBC": [1, 4],
             "pos": [0.0, 10.0, 25.0],
             "rot": [0.0, 0.0, 0.0],
             "scale": [5, 5, 5],
@@ -95,9 +95,9 @@
             "nodeFile": "../assets/tet/tet.node",
             "eleFile": "../assets/tet/tet.ele",
             "mass": 10.0,
-            "mu": 200.0,
+            "mu": 20000.0,
             "lambda": 5000.0,
-            "constraints": 0,
+            "DBC": [0],
             "pos": [0.0, 10.0, 25.0],
             "rot": [0.0, 0.0, 0.0],
             "scale": [4, 4, 4],
@@ -118,7 +118,7 @@
     "contexts": [
         {
             "name": "bunny&house",
-            "load": true,
+            "load": false,
             "dt": 0.01,
             "gravity": 98,
             "damp": 0.999,
@@ -146,8 +146,8 @@
         },
         {
             "name": "armadillo&bunny",
-            "load": true,
-            "dt": 0.01,
+            "load": false,
+            "dt": 0.02,
             "gravity": 200,
             "damp": 0.999,
             "muN": 0.5,
@@ -186,13 +186,13 @@
         {
             "name": "example of intersection",
             "load": true,
-            "dt": 0.01,
-            "gravity": 98,
+            "dt": 0.05,
+            "gravity": 9.8,
             "damp": 0.999,
             "muN": 0.5,
             "muT": 0.5,
             "softBodies": [
-                { "name": "tet", "pos": [0.0, 150.0, 0.0], "rot": [30.0, 0.0, 30.0]},
+                { "name": "cube", "pos": [0.0, 150.0, 0.0], "rot": [30.0, 0.0, 30.0]},
                 { "name": "tet", "pos": [0.0, 50.0, 0.0], "rot": [0.0, 0.0, 0.0]}
             ],
             "fixedBodies": [
