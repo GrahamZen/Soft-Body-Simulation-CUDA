@@ -6,19 +6,15 @@
 #include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
 
-ExplicitSolver::ExplicitSolver(int threadsPerBlock, const SolverData& solverData) : FEMSolver(threadsPerBlock)
+ExplicitSolver::ExplicitSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver<float>(threadsPerBlock, solverData)
 {
-    if (!solverData.dev_ExtForce)
-        cudaMalloc((void**)&solverData.dev_ExtForce, sizeof(glm::vec3) * solverData.numVerts);
-    cudaMemset(solverData.dev_ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
-    if (!solverData.inv_Dm)
-        cudaMalloc((void**)&solverData.inv_Dm, sizeof(glm::mat4) * solverData.numTets);
+    if (!solverData.ExtForce)
+        cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::vec3) * solverData.numVerts);
+    cudaMemset(solverData.ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
     cudaMalloc((void**)&V_sum, sizeof(glm::vec3) * solverData.numVerts);
     cudaMalloc((void**)&V_num, sizeof(int) * solverData.numVerts);
     cudaMemset(V_sum, 0, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(V_num, 0, sizeof(int) * solverData.numVerts);
-    int blocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    ExplicitUtil::computeInvDm << < blocks, threadsPerBlock >> > (solverData.inv_Dm, solverData.numTets, solverData.X, solverData.Tet);
 }
 
 ExplicitSolver::~ExplicitSolver()
@@ -26,23 +22,23 @@ ExplicitSolver::~ExplicitSolver()
 }
 
 
-void ExplicitSolver::SolverPrepare(SolverData& solverData, SolverParams& solverParams)
+void ExplicitSolver::SolverPrepare(SolverData<float>& solverData, SolverParams& solverParams)
 {
 }
 
 
-void ExplicitSolver::SolverStep(SolverData& solverData, SolverParams& solverParams)
+void ExplicitSolver::SolverStep(SolverData<float>& solverData, SolverParams& solverParams)
 {
     glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.solverAttr.mass, 0.0f };
     thrust::device_ptr<glm::vec3> dev_ptr(solverData.Force);
     thrust::fill(thrust::device, dev_ptr, dev_ptr + solverData.numVerts, gravity);
     Laplacian_Smoothing(solverData, 0.5);
-    ExplicitUtil::ComputeForcesSVD << <(solverData.numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.Force, solverData.XTilt, solverData.Tet, solverData.numTets, solverData.inv_Dm, solverParams.solverAttr.stiffness_0, solverParams.solverAttr.stiffness_1);
-    ExplicitUtil::EulerMethod << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.XTilt, solverData.V, solverData.Force, solverData.numVerts, solverParams.solverAttr.mass, solverParams.dt);
+    ExplicitUtil::ComputeForcesSVD << <(solverData.numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.Force, solverData.XTilde, solverData.Tet, solverData.numTets, solverData.DmInv, solverParams.solverAttr.mu, solverParams.solverAttr.lambda);
+    ExplicitUtil::EulerMethod << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.XTilde, solverData.V, solverData.Force, solverData.numVerts, solverParams.solverAttr.mass, solverParams.dt);
 }
 
 
-void ExplicitSolver::Update(SolverData& solverData, SolverParams& solverParams)
+void ExplicitSolver::Update(SolverData<float>& solverData, SolverParams& solverParams)
 {
     AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, solverParams.solverAttr.jump, solverParams.solverAttr.mass, solverParams.extForce.jump);
     for (size_t i = 0; i < 10; i++)
@@ -52,7 +48,7 @@ void ExplicitSolver::Update(SolverData& solverData, SolverParams& solverParams)
 }
 
 
-void ExplicitSolver::Laplacian_Smoothing(SolverData& solverData, float blendAlpha)
+void ExplicitSolver::Laplacian_Smoothing(SolverData<float>& solverData, float blendAlpha)
 {
     cudaMemset(V_sum, 0, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(V_num, 0, sizeof(int) * solverData.numVerts);

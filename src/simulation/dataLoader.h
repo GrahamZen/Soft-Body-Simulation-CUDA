@@ -1,16 +1,41 @@
-#include <simulation/simulationContext.h>
+#pragma once
+
+#include <def.h>
+#include <vector>
+#include <string>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 #include <filesystem>
 #include <set>
 
+template<typename HighP>
+class DataLoader {
+    friend class SimulationCUDAContext;
+public:
+    DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock) {}
+    void CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale,
+        const glm::vec3& rot, bool centralize, int startIndex, SolverAttribute attrib);
+    void CollectData(const char* mshFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
+        bool centralize, int startIndex, SolverAttribute attrib);
+    void AllocData(std::vector<int>& startIndices, SolverData<HighP> &solverData, indexType*& edges, indexType*& tetFather);
+private:
+    static std::vector<indexType> loadEleFile(const std::string& EleFilename, int startIndex, int& numTets);
+    static std::vector<glm::tvec3<HighP>> loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts);
+    static std::vector<indexType> loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris);
+    void CollectEdges(const std::vector<indexType>& triIdx);
+    std::vector<std::tuple<SolverData<HighP>, SoftBodyData, SolverAttribute>> m_softBodyData;
+    std::vector<std::vector<indexType>> m_edges;
+    int totalNumVerts = 0;
+    int totalNumTets = 0;
+    int totalNumEdges = 0;
+    const int threadsPerBlock;
+};
+
 namespace fs = std::filesystem;
 
-DataLoader::DataLoader(const int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock)
-{
-}
-
-std::vector<indexType> DataLoader::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
+template<typename HighP>
+std::vector<indexType> DataLoader<HighP>::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
 {
     std::string line;
     std::ifstream file(EleFilename);
@@ -41,7 +66,8 @@ std::vector<indexType> DataLoader::loadEleFile(const std::string& EleFilename, i
     return Tet;
 }
 
-std::vector<indexType> DataLoader::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
+template<typename HighP>
+std::vector<indexType> DataLoader<HighP>::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
 {
     std::string line;
     std::ifstream file(faceFilename);
@@ -71,7 +97,9 @@ std::vector<indexType> DataLoader::loadFaceFile(const std::string& faceFilename,
     return Triangle;
 }
 
-std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
+
+template<typename HighP>
+std::vector<glm::tvec3<HighP>> DataLoader<HighP>::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
 {
     std::ifstream file(nodeFilename);
     if (!file.is_open()) {
@@ -84,8 +112,8 @@ std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename,
     std::getline(file, line);
     std::istringstream iss(line);
     iss >> numVerts;
-    std::vector<glm::vec3> X(numVerts);
-    glm::vec3 center(0.0f);
+    std::vector<glm::tvec3<HighP>> X(numVerts);
+    glm::tvec3<HighP> center(0.0f);
 
     for (int i = 0; i < numVerts && std::getline(file, line); ++i) {
         std::istringstream lineStream(line);
@@ -114,7 +142,8 @@ std::vector<glm::vec3> DataLoader::loadNodeFile(const std::string& nodeFilename,
     return X;
 }
 
-void DataLoader::CollectEdges(const std::vector<indexType>& triIdx) {
+template<typename HighP>
+void DataLoader<HighP>::CollectEdges(const std::vector<indexType>& triIdx) {
     std::set<std::pair<indexType, indexType>> uniqueEdges;
     std::vector<indexType> edges;
 

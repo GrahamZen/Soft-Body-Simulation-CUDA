@@ -25,23 +25,23 @@
 #define gone					1065353216
 #define gsine_pi_over_eight		1053028117
 #define gcosine_pi_over_eight   1064076127
-#define gone_half				0.5f
 #define gsmall_number			1.e-12f
 #define gtiny_number			1.e-20f
 #define gfour_gamma_squared		5.8284273147583007813f
 
 union un { float f; unsigned int ui; };
 
+template <typename HighP>
 __device__ __forceinline__
 void svd(
-	float a11, float a12, float a13, float a21, float a22, float a23, float a31, float a32, float a33,			// input A     
-	float& u11, float& u12, float& u13, float& u21, float& u22, float& u23, float& u31, float& u32, float& u33,	// output U      
-	float& s11,
-	//float &s12, float &s13, float &s21, 
-	float& s22,
-	//float &s23, float &s31, float &s32, 
-	float& s33,	// output S
-	float& v11, float& v12, float& v13, float& v21, float& v22, float& v23, float& v31, float& v32, float& v33	// output V
+	HighP a11, HighP a12, HighP a13, HighP a21, HighP a22, HighP a23, HighP a31, HighP a32, HighP a33,			// input A     
+	HighP& u11, HighP& u12, HighP& u13, HighP& u21, HighP& u22, HighP& u23, HighP& u31, HighP& u32, HighP& u33,	// output U      
+	HighP& s11,
+	//HighP &s12, HighP &s13, HighP &s21, 
+	HighP& s22,
+	//HighP &s23, HighP &s31, HighP &s32, 
+	HighP& s33,	// output S
+	HighP& v11, HighP& v12, HighP& v13, HighP& v21, HighP& v22, HighP& v23, HighP& v31, HighP& v32, HighP& v33	// output V
 )
 {
 	un Sa11, Sa21, Sa31, Sa12, Sa22, Sa32, Sa13, Sa23, Sa33;

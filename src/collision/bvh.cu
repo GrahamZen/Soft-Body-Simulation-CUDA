@@ -16,12 +16,12 @@
 //generate a 30-bit morton code
 __device__ unsigned int genMortonCode(AABB bbox, glmVec3 geoMin, glmVec3 geoMax)
 {
-    dataType x = (bbox.min.x + bbox.max.x) * 0.5f;
-    dataType y = (bbox.min.y + bbox.max.y) * 0.5f;
-    dataType z = (bbox.min.y + bbox.max.y) * 0.5f;
-    dataType normalizedX = (x - geoMin.x) / (geoMax.x - geoMin.x);
-    dataType normalizedY = (y - geoMin.y) / (geoMax.y - geoMin.y);
-    dataType normalizedZ = (z - geoMin.z) / (geoMax.z - geoMin.z);
+    colliPrecision x = (bbox.min.x + bbox.max.x) * 0.5f;
+    colliPrecision y = (bbox.min.y + bbox.max.y) * 0.5f;
+    colliPrecision z = (bbox.min.y + bbox.max.y) * 0.5f;
+    colliPrecision normalizedX = (x - geoMin.x) / (geoMax.x - geoMin.x);
+    colliPrecision normalizedY = (y - geoMin.y) / (geoMax.y - geoMin.y);
+    colliPrecision normalizedZ = (z - geoMin.z) / (geoMax.z - geoMin.z);
 
     normalizedX = glm::min(glm::max(normalizedX * 1024.0, 0.0), 1023.0);
     normalizedY = glm::min(glm::max(normalizedY * 1024.0, 0.0), 1023.0);
@@ -78,26 +78,6 @@ __device__ void buildBBox(BVHNode& curr, const BVHNode& left, const BVHNode& rig
     curr.bbox = AABB{ newMin, newMax };
     curr.isLeaf = 0;
 }
-
-// build the bounding box and morton code for each SoftBody
-__global__ void buildLeafMorton(int startIndex, int numTri, dataType minX, dataType minY, dataType minZ,
-    dataType maxX, dataType maxY, dataType maxZ, const indexType* tet, const glm::vec3* X, const glm::vec3* XTilt, BVHNode* leafNodes,
-    unsigned int* mortonCodes)
-{
-    int ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (ind < numTri)
-    {
-        int leafPos = ind + numTri - 1;
-        leafNodes[leafPos].bbox = computeTetTrajBBox(X[tet[ind * 4]], X[tet[ind * 4 + 1]], X[tet[ind * 4 + 2]], X[tet[ind * 4 + 3]],
-            XTilt[tet[ind * 4]], XTilt[tet[ind * 4 + 1]], XTilt[tet[ind * 4 + 2]], XTilt[tet[ind * 4 + 3]]);
-        leafNodes[leafPos].isLeaf = 1;
-        leafNodes[leafPos].leftIndex = -1;
-        leafNodes[leafPos].rightIndex = -1;
-        leafNodes[leafPos].TetrahedronIndex = ind;
-        mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glmVec3(minX, minY, minZ), glmVec3(maxX, maxY, maxZ));
-    }
-}
-
 
 //input the unique morton code
 //codeCount is the size of the unique morton code
@@ -234,8 +214,8 @@ void BVH::Init(int _numTets, int _numVerts, int maxThreads)
     int numVerts = _numVerts;
     int numNodes = numTets * 2 - 1;
     cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode));
-    cudaMalloc((void**)&dev_tI, numVerts * sizeof(dataType));
-    cudaMemset(dev_tI, 0, numVerts * sizeof(dataType));
+    cudaMalloc((void**)&dev_tI, numVerts * sizeof(colliPrecision));
+    cudaMemset(dev_tI, 0, numVerts * sizeof(colliPrecision));
     cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
     cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
     cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
@@ -280,24 +260,6 @@ void BVH::BuildBBoxes(BuildType buildType) {
     }
 }
 
-void BVH::BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const indexType* tets)
-{
-    cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
-
-    buildLeafMorton << <numblocksTets, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
-        tets, X, XTilt, dev_BVHNodes, dev_mortonCodes);
-
-    thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTets, dev_BVHNodes + numTets - 1);
-
-    buildSplitList << <numblocksTets, threadsPerBlock >> > (numTets, dev_mortonCodes, dev_BVHNodes);
-
-    BuildBBoxes(buildType);
-
-    cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
-    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(ReadyFlagType));
-    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
-}
-
 BVH::BVH(const int _threadsPerBlock) :
     threadsPerBlock(_threadsPerBlock) {}
 
@@ -326,9 +288,9 @@ const BVHNode* BVH::GetBVHNodes() const
     return dev_BVHNodes;
 }
 
-void CollisionDetection::DetectCollision(dataType* tI, glm::vec3* nors)
+void CollisionDetection::DetectCollision(colliPrecision* tI, glm::vec3* nors)
 {
-    thrust::device_ptr<dataType> dev_ptr(tI);
+    thrust::device_ptr<colliPrecision> dev_ptr(tI);
     thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
     if (BroadPhase()) {
         PrepareRenderData();

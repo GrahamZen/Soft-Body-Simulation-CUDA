@@ -15,7 +15,8 @@ public:
     FixedBodyData& operator=(const FixedBodyData&) = delete;
     FixedBodyData(FixedBodyData&&) = default;
     FixedBodyData& operator=(FixedBodyData&&) = default;
-    void HandleCollisions(glm::vec3* X, glm::vec3* V, int numVerts, float muT, float muN);
+    template<typename HighP>
+    void HandleCollisions(glm::tvec3<HighP>* X, glm::tvec3<HighP>* V, int numVerts, HighP muT, HighP muN);
     ~FixedBodyData();
 private:
     Sphere* dev_spheres = nullptr;

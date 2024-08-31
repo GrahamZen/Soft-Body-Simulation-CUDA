@@ -26,13 +26,15 @@ namespace utilityCore
     extern std::istream& safeGetline(std::istream& is, std::string& t); // Thanks to http://stackoverflow.com/a/6089413
     glm::mat4 modelMatrix(const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale);
     template <typename T>
-    void inspectHost(const T*, int);
+    void inspectHost(const T*, int, const char* str = "");
     void inspectHost(const unsigned int*, int);
     void inspectHostMorton(const unsigned int* host_ptr, int size);
     void inspectHost(const BVHNode* hstBVHNodes, int size);
     void inspectHost(const AABB*, int);
     void inspectHost(const Query* query, int size);
     void inspectHost(const Sphere* spheres, int size);
+    template <typename T>
+    void inspectHost(const std::vector<T>& val, const std::vector<int>& rowIdx, const std::vector<int>& colIdx, int size);
 
     template <typename T>
     bool compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int size);

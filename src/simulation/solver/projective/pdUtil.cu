@@ -6,7 +6,7 @@ namespace PdUtil {
     // Ai here is I
     // size of row, col, val are 48 * numTets + numVerts
     // row, col, val are used to initialize sparse matrix SiTSi
-    __global__ void computeSiTSi(int* outIdx, float* val, const float* V0, const glm::mat3* DmInvs, const indexType* Tets, float weight, int numTets, int numVerts)
+    __global__ void computeSiTSi(int* rowIdx, int* colIdx, float* val, const float* V0, const glm::mat3* DmInvs, const indexType* Tets, float weight, int numTets, int numVerts)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numTets)
@@ -19,7 +19,7 @@ namespace PdUtil {
 
             // there are numTets of AiSi in total
 
-            glm::mat4x3 AiSi = glm::transpose(DmInvs[index]) * glm::mat4x3{ 1, 0, 0, 0, 1, 0, 0, 0, 1, -1, -1, -1 };
+            glm::mat4x3 AiSi = glm::transpose(DmInvs[index]) * glm::mat4x3{ -1, -1, -1, 1, 0, 0, 0, 1, 0, 0, 0, 1 };
             glm::mat4x4 SiTAiAiSi = glm::transpose(AiSi) * AiSi;
 
             int start = index * 48;
@@ -32,23 +32,22 @@ namespace PdUtil {
                     int vc = Tets[index * 4 + j] * 3;
                     for (int k = 0; k < 3; k++)
                     {
-                        wrapRowColVal(start + (i * 12 + j * 3 + k), outIdx, val, vc + k, vr + k, SiTAiAiSi[j][i] * weight * V0[index], rowLen);
+                        setRowColVal(start + (i * 12 + j * 3 + k), rowIdx, colIdx, val, vc + k, vr + k, SiTAiAiSi[j][i] * weight * V0[index]);
                     }
                 }
             }
         }
     }
 
-    __global__ void setMDt_2(int* outIdx, float* val, int startIndex, float massDt_2, int numVerts)
+    __global__ void setMDt_2(int* rowIdx, int* colIdx, float* val, int startIndex, float massDt_2, int numVerts)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
             int offset = index * 3;
-            int rowLen = numVerts * 3;
-            wrapRowColVal(startIndex + offset + 0, outIdx, val, offset, offset, massDt_2, rowLen);
-            wrapRowColVal(startIndex + offset + 1, outIdx, val, offset + 1, offset + 1, massDt_2, rowLen);
-            wrapRowColVal(startIndex + offset + 2, outIdx, val, offset + 2, offset + 2, massDt_2, rowLen);
+            setRowColVal(startIndex + offset + 0, rowIdx, colIdx, val, offset, offset, massDt_2);
+            setRowColVal(startIndex + offset + 1, rowIdx, colIdx, val, offset + 1, offset + 1, massDt_2);
+            setRowColVal(startIndex + offset + 2, rowIdx, colIdx, val, offset + 2, offset + 2, massDt_2);
         }
     }
 
@@ -92,7 +91,7 @@ namespace PdUtil {
             const glm::vec3 v3 = glm::vec3(qn[v3Ind + 0], qn[v3Ind + 1], qn[v3Ind + 2]);
             const glm::mat3 DmInv = DmInvs[index];
 
-            glm::mat3 R = glm::mat3(v0 - v3, v1 - v3, v2 - v3) * DmInv;
+            glm::mat3 R = glm::mat3(v1 - v0, v2 - v0, v3 - v0) * DmInv;
             glm::mat3 U;
             glm::mat3 S;
 
@@ -106,7 +105,7 @@ namespace PdUtil {
             }
 
             const glm::mat4x3 piTAiSi = glm::abs(V0[index]) * wi * R * glm::transpose(DmInv)
-                * glm::mat4x3{ 1, 0, 0, 0, 1, 0, 0, 0, 1, -1, -1, -1 };
+                * glm::mat4x3{ -1, -1, -1, 1, 0, 0, 0, 1, 0, 0, 0, 1 };
 
             atomicAdd(&(xProj[v0Ind + 0]), piTAiSi[0][0]);
             atomicAdd(&(xProj[v0Ind + 1]), piTAiSi[0][1]);
@@ -160,26 +159,6 @@ namespace PdUtil {
             // sn is of size 3*numVerts
             vel[index] = (newPosition - pos[index]) * dt_1;
             pos[index] = newPosition;
-        }
-    }
-
-    __device__ glm::mat3 Build_Edge_Matrix(const glm::vec3* X, const indexType* Tet, int tet) {
-        glm::mat3 ret(0.0f);
-        ret[0] = X[Tet[tet * 4]] - X[Tet[tet * 4 + 3]];
-        ret[1] = X[Tet[tet * 4 + 1]] - X[Tet[tet * 4 + 3]];
-        ret[2] = X[Tet[tet * 4 + 2]] - X[Tet[tet * 4 + 3]];
-
-        return ret;
-    }
-
-    __global__ void computeInvDmV0(float* V0, glm::mat3* inv_Dm, int numTets, const glm::vec3* X, const indexType* Tet)
-    {
-        int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < numTets)
-        {
-            glm::mat3 Dm = Build_Edge_Matrix(X, Tet, index);
-            inv_Dm[index] = glm::inverse(Dm);
-            V0[index] = glm::abs(glm::determinant(Dm)) / 6.0f;
         }
     }
 }

@@ -6,7 +6,6 @@
 #include <vector>
 
 class SimulationCUDAContext;
-class SolverData;
 
 class SoftBody : public Mesh {
 public:

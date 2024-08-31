@@ -95,10 +95,9 @@ void RenderImGui()
     ImGui::Checkbox("Enable Detection", &imguiData->handleCollision);
     ImGui::Checkbox("Visualize BVH", &imguiData->BVHVis);
     const std::vector<const char*> buildTypeNameItems = { "Serial", "Atomic", "Cooperative" };
-    int buildType;
-    if (ImGui::Combo("BVH Build Type", &buildType, buildTypeNameItems.data(), buildTypeNameItems.size()))
+    if (ImGui::Combo("BVH Build Type", &context->GetBVHBuildType(), buildTypeNameItems.data(), buildTypeNameItems.size()))
     {
-        context->SetBVHBuildType(static_cast<BVH::BuildType>(buildType));
+        context->SetBVHBuildType(static_cast<BVH::BuildType>(context->GetBVHBuildType()));
     }
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
     bool globalSolverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
@@ -118,8 +117,8 @@ void RenderImGui()
     bool zoomChanged = ImGui::DragFloat("Zoom", &imguiData->zoom, 10.f, 0.01f, 10000.0f, "%.4f");
     ImGui::Separator();
     ImGui::Text("Soft body Attributes");
-    imguiData->softBodyAttr.stiffness_0.second = ImGui::DragFloat("Stiffness 0", &imguiData->softBodyAttr.stiffness_0.first, 100.f, 0.0f, 100000.0f, "%.2f");
-    imguiData->softBodyAttr.stiffness_1.second = ImGui::DragFloat("Stiffness 1", &imguiData->softBodyAttr.stiffness_1.first, 100.f, 0.0f, 100000.0f, "%.2f");
+    imguiData->softBodyAttr.mu.second = ImGui::DragFloat("Stiffness 0", &imguiData->softBodyAttr.mu.first, 100.f, 0.0f, 100000.0f, "%.2f");
+    imguiData->softBodyAttr.lambda.second = ImGui::DragFloat("Stiffness 1", &imguiData->softBodyAttr.lambda.first, 100.f, 0.0f, 100000.0f, "%.2f");
     imguiData->softBodyAttr.damp.second = ImGui::DragFloat("Damp", &imguiData->softBodyAttr.damp.first, 0.01f, 0.0f, 1.0f, "%.4f");
     imguiData->softBodyAttr.muN.second = ImGui::DragFloat("muN", &imguiData->softBodyAttr.muN.first, 0.01f, 0.0f, 100.0f, "%.4f");
     imguiData->softBodyAttr.muT.second = ImGui::DragFloat("muT", &imguiData->softBodyAttr.muT.first, 0.01f, 0.0f, 100.0f, "%.4f");

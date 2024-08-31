@@ -100,7 +100,7 @@ void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
         context->camchanged = true;
     }
     else if (rightMousePressed) {
-        context->zoom += (ypos - lastY) / context->height * 5.f;
+        context->zoom += (ypos - lastY) / context->height * 50.f;
         context->zoom = std::fmax(0.1f, context->zoom);
         context->camchanged = true;
     }
@@ -113,8 +113,8 @@ void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
         right.y = 0.0f;
         right = glm::normalize(right);
 
-        cam.lookAt -= (float)(xpos - lastX) * right * 0.01f;
-        cam.lookAt += (float)(ypos - lastY) * forward * 0.01f;
+        cam.lookAt -= (float)(xpos - lastX) * right * 0.05f;
+        cam.lookAt += (float)(ypos - lastY) * forward * 0.05f;
         context->camchanged = true;
     }
     lastX = xpos;

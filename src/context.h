@@ -37,8 +37,8 @@ public:
     struct SoftBodyAttr
     {
         int currSoftBodyId = -1;
-        std::pair<float, bool> stiffness_0;
-        std::pair<float, bool> stiffness_1;
+        std::pair<float, bool> mu;
+        std::pair<float, bool> lambda;
         std::pair<float, bool> damp;
         std::pair<float, bool> muN;
         std::pair<float, bool> muT;
@@ -67,6 +67,7 @@ public:
     void ResetCamera();
     void Draw();
     void SetBVHBuildType(BVH::BuildType buildType);
+    int& GetBVHBuildType();
     int GetNumQueries() const;
     int GetIteration() const { return iteration; }
     const std::vector<int>& GetDOFs() const { return DOFs; }
@@ -78,7 +79,7 @@ public:
     const int height = 1024;
     bool panelModified = false;
     bool camchanged = false;
-
+    int bvhBuildType = 1;
     float zoom, theta, phi;
     glm::vec3 cameraPosition;
     GuiDataContainer* guiData;

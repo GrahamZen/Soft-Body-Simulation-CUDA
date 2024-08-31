@@ -117,13 +117,13 @@ int Context::GetMaxCGThreads()
 void Context::PollEvents() {
     auto& attrs = guiData->softBodyAttr;
     if (attrs.currSoftBodyId == -1) return;
-    bool result = attrs.stiffness_0.second || attrs.stiffness_1.second || attrs.damp.second || attrs.muN.second || attrs.muT.second || attrs.getJumpDirty();
+    bool result = attrs.mu.second || attrs.lambda.second || attrs.damp.second || attrs.muN.second || attrs.muT.second || attrs.getJumpDirty();
     if (result)
         mcrpSimContext->UpdateSingleSBAttr(guiData->softBodyAttr.currSoftBodyId, guiData->softBodyAttr);
     else
         return;
-    attrs.stiffness_0.second = false;
-    attrs.stiffness_1.second = false;
+    attrs.mu.second = false;
+    attrs.lambda.second = false;
     attrs.damp.second = false;
     attrs.muN.second = false;
     attrs.muT.second = false;
@@ -385,6 +385,11 @@ void Context::Draw() {
 void Context::SetBVHBuildType(BVH::BuildType buildType)
 {
     mcrpSimContext->SetBVHBuildType(buildType);
+}
+
+int& Context::GetBVHBuildType()
+{
+    return bvhBuildType;
 }
 
 void Context::Update() {

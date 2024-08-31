@@ -20,7 +20,8 @@ public:
     void Init(int numTets, int numVerts, int maxThreads);
     void PrepareRenderData();
     const BVHNode* GetBVHNodes() const;
-    void BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const indexType* tets);
+    template<typename HighP>
+    void BuildBVHTree(BuildType buildType, const AABB& ctxAABB, int numTets, const glm::tvec3<HighP>* X, glm::tvec3<HighP>* XTilde, const indexType* tets);
 private:
     void BuildBBoxes(BuildType buildType);
     BVHNode* dev_BVHNodes = nullptr;
@@ -28,7 +29,7 @@ private:
     unsigned int* dev_mortonCodes = nullptr;
     ReadyFlagType* dev_ready = nullptr;
     int numTets;
-    dataType* dev_tI;
+    colliPrecision* dev_tI;
     int* dev_indicesToReport;
     const int threadsPerBlock;
     dim3 numblocksTets;
@@ -42,7 +43,7 @@ class CollisionDetection : public QueryDisplay {
 public:
     CollisionDetection(const SimulationCUDAContext* simContext, const int threadsPerBlock, size_t maxNumQueries);
     ~CollisionDetection();
-    void DetectCollision(dataType* tI, glm::vec3* nors);
+    void DetectCollision(colliPrecision* tI, glm::vec3* nors);
     void Init(int numTets, int numVerts, int maxThreads);
     void PrepareRenderData();
     void Draw(SurfaceShader*);
@@ -52,10 +53,11 @@ public:
     void SetBuildType(BVH::BuildType);
     BVH::BuildType GetBuildType();
 private:
-    SingleQueryDisplay& GetSQDisplay(int i, const glm::vec3* Xs, Query* guiQuery);
+    template<typename HighP>
+    SingleQueryDisplay& GetSQDisplay(int i, const glm::tvec3<HighP>* Xs, Query* guiQuery);
     AABB GetAABB() const;
     bool BroadPhase();
-    void NarrowPhase(dataType*& tI, glm::vec3*& nors);
+    void NarrowPhase(colliPrecision*& tI, glm::vec3*& nors);
     bool DetectCollisionCandidates(const BVHNode* dev_BVHNodes);
     Query* dev_queries;
     SingleQueryDisplay mSqDisplay;

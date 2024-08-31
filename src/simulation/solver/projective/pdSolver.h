@@ -3,25 +3,23 @@
 #include <Eigen/SparseCholesky>
 #include <Eigen/SparseCore>
 #include <simulation/solver/femSolver.h>
-#include <context.h>
 #include <Eigen/Dense>
 
-class SimulationCUDAContext;
+template<typename T>
 class LinearSolver;
 
-class PdSolver : public FEMSolver {
+class PdSolver : public FEMSolver<float> {
 public:
-    PdSolver(int threadsPerBlock, const SolverData&);
+    PdSolver(int threadsPerBlock, const SolverData<float>&);
     ~PdSolver();
     void SetGlobalSolver(bool useEigen) { this->useEigen = useEigen; }
-    virtual void Update(SolverData& solverData, SolverParams& solverParams) override;
+    virtual void Update(SolverData<float>& solverData, SolverParams& solverParams) override;
 protected:
-    virtual void SolverPrepare(SolverData& solverData, SolverParams& solverParams) override;
-    virtual void SolverStep(SolverData& solverData, SolverParams& solverParams) override;
+    virtual void SolverPrepare(SolverData<float>& solverData, SolverParams& solverParams) override;
+    virtual void SolverStep(SolverData<float>& solverData, SolverParams& solverParams) override;
 private:
-    LinearSolver* ls = nullptr;
+    LinearSolver<float>* ls = nullptr;
     bool useEigen = false;
-    float* Mass;
 
     float* masses;
     float* sn;

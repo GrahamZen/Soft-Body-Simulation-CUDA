@@ -115,11 +115,14 @@ void SingleQueryDisplay::MapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec3** bufV
     }
 }
 
-void SingleQueryDisplay::UnMapDevicePtr()
+void SingleQueryDisplay::UnMapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec3** bufVertPosDevPtr, glm::vec3** bufTriPosDevPtr)
 {
-    cudaGraphicsUnmapResources(1, &cuda_bufPos_resource, 0);
-    cudaGraphicsUnmapResources(1, &cuda_bufVertPos_resource, 0);
-    cudaGraphicsUnmapResources(1, &cuda_bufTriPos_resource, 0);
+    if (bufPosDevPtr)
+        cudaGraphicsUnmapResources(1, &cuda_bufPos_resource, 0);
+    if (bufVertPosDevPtr)
+        cudaGraphicsUnmapResources(1, &cuda_bufVertPos_resource, 0);
+    if (bufTriPosDevPtr)
+        cudaGraphicsUnmapResources(1, &cuda_bufTriPos_resource, 0);
 }
 
 void SingleQueryDisplay::SetCount(int cnt)

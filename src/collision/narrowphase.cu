@@ -61,19 +61,20 @@ struct EqualQuery {
     }
 };
 
-__global__ void detectCollisionNarrow(int numQueries, Query* queries, const glm::vec3* Xs, const glm::vec3* XTilts)
+template<typename HighP>
+__global__ void detectCollisionNarrow(int numQueries, Query* queries, const glm::tvec3<HighP>* Xs, const glm::tvec3<HighP>* XTildes)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numQueries)
     {
         glmVec3 normal;
         Query& q = queries[index];
-        q.toi = ccdCollisionTest(q, Xs, XTilts, normal);
+        q.toi = ccdCollisionTest(q, Xs, XTildes, normal);
         q.normal = normal;
     }
 }
 
-__global__ void storeTi(int numQueries, Query* queries, dataType* tI, glm::vec3* nors)
+__global__ void storeTi(int numQueries, Query* queries, colliPrecision* tI, glm::vec3* nors)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numQueries)
@@ -117,7 +118,7 @@ __global__ void storeTi(int numQueries, Query* queries, dataType* tI, glm::vec3*
     }
 }
 
-__global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::vec3* XTilts, Query* queries, glm::vec3* Vs)
+__global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::vec3* XTildes, Query* queries, glm::vec3* Vs)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numQueries)
@@ -128,8 +129,8 @@ __global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::ve
         {
             if (q.toi < 1.0f)
             {
-                float distance1 = glm::length(XTilts[q.v0] - Xs[q.v0]) * (1.0f - q.toi) + 0.001f;
-                float distance2 = glm::length(XTilts[q.v1] - Xs[q.v1]) * (1.0f - q.toi) + 0.001f;
+                float distance1 = glm::length(XTildes[q.v0] - Xs[q.v0]) * (1.0f - q.toi) + 0.001f;
+                float distance2 = glm::length(XTildes[q.v1] - Xs[q.v1]) * (1.0f - q.toi) + 0.001f;
                 glm::vec3 vel1 = 1.0f / distance1 * q.normal;
                 glm::vec3 vel2 = 1.0f / distance2 * q.normal;
 
@@ -146,7 +147,7 @@ __global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::ve
         {
             if (q.toi < 1.0f)
             {
-                float distance = glm::length(XTilts[q.v0] - Xs[q.v0]) * (1.0f - q.toi) + 0.001f;
+                float distance = glm::length(XTildes[q.v0] - Xs[q.v0]) * (1.0f - q.toi) + 0.001f;
                 glm::vec3 vel = 1.0f / distance * q.normal;
 
                 atomicAdd(&Vs[q.v0][0], vel[0]);
@@ -169,17 +170,17 @@ __global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::ve
     }
 }
 
-void CollisionDetection::NarrowPhase(dataType*& tI, glm::vec3*& nors)
+void CollisionDetection::NarrowPhase(colliPrecision*& tI, glm::vec3*& nors)
 {
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, mPSimContext->mSolverData.X, mPSimContext->mSolverData.XTilt);
+    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, mPSimContext->mSolverData.X, mPSimContext->mSolverData.XTilde);
     thrust::device_ptr<Query> dev_queriesPtr(dev_queries);
 
     thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());
     auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
     int numQueries = new_end - dev_queriesPtr;
     numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    //computeNewVel << <numBlocksQuery, threadsPerBlock >> > (numQueries, Xs, XTilts, dev_queries, mPSimContext->mSolverData.V);
+    //computeNewVel << <numBlocksQuery, threadsPerBlock >> > (numQueries, Xs, XTildes, dev_queries, mPSimContext->mSolverData.V);
     storeTi << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, tI, nors);
     cudaDeviceSynchronize();
 }

@@ -1,47 +1,40 @@
 #pragma once
 
+#include <linear/linear.h>
 #include <cusolverDn.h>
 #include <cusolverSp_LOWLEVEL_PREVIEW.h>
 #include <cusolverSp.h>
 #include <cusparse.h>
 
-class LinearSolver {
-public:
-    LinearSolver() = default;
-    virtual ~LinearSolver() = default;
-    virtual void Solve(float* d_b, int bSize, float* d_x) = 0;
-};
 
-class CholeskySplinearSolver : public LinearSolver {
+template<typename T>
+class CholeskySpLinearSolver : public LinearSolver<T> {
 public:
-    CholeskySplinearSolver(int threadsPerBlock, int* AIdx, float* val, int ASize, int nnz);
-    virtual ~CholeskySplinearSolver() override;
-    virtual void Solve(float* d_b, int bSize, float* d_x) override;
+    CholeskySpLinearSolver(int threadsPerBlock, int* rowIdx, int* colIdx, T* val, int ASize, int len);
+    virtual ~CholeskySpLinearSolver() override;
+    virtual void Solve(int N, T* d_b, T* d_x, T* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, T* d_guess = nullptr) override;
 private:
-    void ApproximateMinimumDegree(int ASize, int* ARow, int* ACol, float* AVal);
+    void ComputeAMD(cusolverSpHandle_t handle, int rowsA, int nnzA, int* dev_csrRowPtrA, int* dev_csrColIndA, T* dev_csrValA);
     cusolverSpHandle_t cusolverHandle;
     cusparseMatDescr_t descrA;
     csrcholInfo_t d_info;
     void* buffer_gpu = nullptr;
-    int* d_rowPtr;
-    int* d_colIdx;
-    float* d_val;
-    int* d_P;
-    float* d_tmp;
-    int* d_mapBfromC;
+    int* d_p = nullptr;
+    T* dev_b_permuted = nullptr, * dev_x_permuted = nullptr;
     int n;
-    int nnz;
 };
 
-class CholeskyDnlinearSolver : public LinearSolver {
+template<typename T>
+class CholeskyDnLinearSolver : public LinearSolver<T> {
 public:
-    CholeskyDnlinearSolver(int threadsPerBlock, int* AIdx, float* tmpVal, int ASize, int len);
-    virtual ~CholeskyDnlinearSolver() override;
-    virtual void Solve(float* d_b, int bSize, float* d_x) override;
+    CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx, T* tmpVal, int ASize, int len);
+    virtual ~CholeskyDnLinearSolver() override;
+    virtual void Solve(int N, T* d_b, T* d_x, T* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, T* d_guess = nullptr) override;
 private:
+    cudaDataType_t dataType = std::is_same<T, double>::value ? CUDA_R_64F : CUDA_R_32F;
     cusolverDnParams_t params;
     int* d_info = nullptr;    /* error info */
     cusolverDnHandle_t cusolverHandle;
     void* d_work = nullptr;              /* device workspace */
-    float* d_A;
+    T* d_predecomposedA;
 };
