@@ -67,7 +67,7 @@ __global__ void processQueries(const Query* queries, int numQueries, glm::vec4* 
 
 void CollisionDetection::PrepareRenderData()
 {
-    if (mPSimContext->context->guiData->QueryVis) {
+    if (mPSimContext->context->guiData->QueryVis && numQueries > 0) {
         glm::vec3* pos;
         glm::vec4* col;
         MapDevicePosPtr(&pos, &col);

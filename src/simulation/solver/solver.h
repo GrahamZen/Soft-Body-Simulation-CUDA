@@ -2,11 +2,12 @@
 
 #include <def.h>
 
-struct SolverAttribute {
+struct SoftBodyAttribute {
     float mass = 1.0f;
     float mu = 20000.0f;
     float lambda = 5000.0f;
-    int numConstraints = 0;
+    indexType* DBC = nullptr;
+    size_t numDBC = 0;
     bool jump = false;
 };
 
@@ -23,7 +24,7 @@ struct SolverParams {
     struct ExternalForce {
         glm::vec3 jump = glm::vec3(0.f, 400.f, 0.f);
     }extForce;
-    SolverAttribute solverAttr;
+    SoftBodyAttribute softBodyAttr;
     float damp = 0.999f;
     float muN = 0.5f;
     float muT = 0.5f;

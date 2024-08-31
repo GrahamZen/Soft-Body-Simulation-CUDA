@@ -34,6 +34,7 @@ protected:
     virtual void SolverPrepare(SolverData<double>& solverData, SolverParams& solverParams) override;
     virtual void SolverStep(SolverData<double>& solverData, SolverParams& solverParams) override;
     void SearchDirection(SolverData<double>& solverData, double h2);
+    void DOFElimination();
 private:
     int numVerts = 0;
     double tolerance;

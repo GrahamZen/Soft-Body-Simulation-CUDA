@@ -105,6 +105,11 @@ void IPCSolver::SearchDirection(SolverData<double>& solverData, double h2)
     linearSolver->Solve(solverData.numVerts * 3, energy.gradient, p, energy.hessianVal, energy.nnz, energy.hessianRowIdx, energy.hessianColIdx);
 }
 
+void IPCSolver::DOFElimination()
+{
+
+}
+
 bool IPCSolver::EndCondition(double h)
 {
     thrust::device_ptr<double> dev_ptr(p);

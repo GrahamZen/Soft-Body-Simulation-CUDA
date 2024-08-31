@@ -29,7 +29,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, SolverParams& solver
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     float dt = solverParams.dt;
-    float const m_1_dt2 = solverParams.solverAttr.mass / (dt * dt);
+    float const m_1_dt2 = solverParams.softBodyAttr.mass / (dt * dt);
     int len = solverData.numVerts * 3 + 48 * solverData.numTets;
     int ASize = 3 * solverData.numVerts;
 
@@ -49,7 +49,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, SolverParams& solver
     cudaMalloc((void**)&tmpVal, sizeof(int) * len);
     cudaMemset(tmpVal, 0, sizeof(int) * len);
 
-    PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, tmpVal, solverData.V0, solverData.DmInv, solverData.Tet, solverParams.solverAttr.mu, solverData.numTets, solverData.numVerts);
+    PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, tmpVal, solverData.V0, solverData.DmInv, solverData.Tet, solverParams.softBodyAttr.mu, solverData.numTets, solverData.numVerts);
     PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
@@ -122,20 +122,20 @@ void PdSolver::SolverStep(SolverData<float>& solverData, SolverParams& solverPar
     float dt = solverParams.dt;
     float const dtInv = 1.0f / dt;
     float const dt2 = dt * dt;
-    float const dt2_m_1 = dt2 / solverParams.solverAttr.mass;
+    float const dt2_m_1 = dt2 / solverParams.softBodyAttr.mass;
     float const m_1_dt2 = 1.f / dt2_m_1;
 
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
 
-    glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.solverAttr.mass, 0.0f };
+    glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.softBodyAttr.mass, 0.0f };
     thrust::device_ptr<glm::vec3> dev_ptr(solverData.ExtForce);
     thrust::fill(dev_ptr, dev_ptr + solverData.numVerts, gravity);
     PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, solverData.ExtForce, masses, m_1_dt2, solverData.numVerts);
     for (int i = 0; i < solverParams.numIterations; i++)
     {
         cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
-        PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverParams.solverAttr.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
+        PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverParams.softBodyAttr.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
         PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
 
         if (useEigen)
@@ -156,7 +156,7 @@ void PdSolver::SolverStep(SolverData<float>& solverData, SolverParams& solverPar
 
 void PdSolver::Update(SolverData<float>& solverData, SolverParams& solverParams)
 {
-    AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, solverParams.solverAttr.jump, solverParams.solverAttr.mass, solverParams.extForce.jump);
+    AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, solverParams.softBodyAttr.jump, solverParams.softBodyAttr.mass, solverParams.extForce.jump);
     if (!solverReady)
     {
         SolverPrepare(solverData, solverParams);

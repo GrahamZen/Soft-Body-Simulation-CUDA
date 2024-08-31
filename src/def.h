@@ -20,6 +20,7 @@ struct SolverData {
     glm::tvec3<HighP>* X = nullptr;
     glm::tvec3<HighP>* X0 = nullptr;
     glm::tvec3<HighP>* XTilde = nullptr;
+    indexType* DBC = nullptr;
     HighP* mass = nullptr;
     HighP* mu = nullptr;
     HighP* lambda = nullptr;
@@ -29,6 +30,7 @@ struct SolverData {
     glm::vec3* dev_Normals = nullptr;
     FixedBodyData* pFixedBodies = nullptr;
     HighP* V0 = nullptr;
+    int numDBC = 0;
     int numTets = 0;
     int numVerts = 0;
 };
