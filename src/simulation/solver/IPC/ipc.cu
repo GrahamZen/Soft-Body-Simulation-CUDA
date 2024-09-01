@@ -33,7 +33,6 @@ void IPCSolver::Update(SolverData<double>& solverData, SolverParams& solverParam
         int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
         IPCCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts);
     }
-    solverData.pFixedBodies->HandleCollisions(solverData.X, solverData.V, solverData.numVerts, (double)solverParams.muT, (double)solverParams.muN);
 }
 
 void IPCSolver::SolverPrepare(SolverData<double>& solverData, SolverParams& solverParams)
@@ -114,7 +113,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams& solverP
 
     SearchDirection(solverData, h2);
     while (!EndCondition(h)) {
-        double alpha = 1;
+        double alpha = energy.InitStepSize(solverData, p);
         while (true) {
             IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, alpha, solverData.numVerts);
             double E = energy.Val(xTmp, solverData, h2);

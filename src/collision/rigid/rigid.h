@@ -22,4 +22,5 @@ public:
     const glm::mat4 m_model;
     const glm::mat4 m_inverseModel;
     const glm::mat4 m_inverseTransposeModel;
+    const float kappa = 1e2;
 };

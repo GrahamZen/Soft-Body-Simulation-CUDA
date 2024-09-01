@@ -8,6 +8,8 @@ class Plane;
 class Cylinder;
 
 class FixedBodyData {
+    template<typename HighP>
+    friend class BarrierEnergy;
 public:
     FixedBodyData();
     FixedBodyData(int threadsPerBlock, const std::vector<FixedBody*>&);

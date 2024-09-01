@@ -322,6 +322,7 @@ void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, SolverData<Hig
     if (totalNumDBC > 0) {
         cudaMalloc((void**)&solverData.DBC, sizeof(indexType) * totalNumDBC);
     }
+    cudaMalloc((void**)&solverData.contact_area, sizeof(HighP) * totalNumVerts);
     cudaMalloc((void**)&solverData.mass, sizeof(HighP) * totalNumVerts);
     cudaMalloc((void**)&solverData.mu, sizeof(HighP) * totalNumTets);
     cudaMalloc((void**)&solverData.lambda, sizeof(HighP) * totalNumTets);

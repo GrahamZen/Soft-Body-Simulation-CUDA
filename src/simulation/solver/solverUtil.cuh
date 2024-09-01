@@ -7,35 +7,28 @@
 
 template<typename HighP, size_t Rows, size_t Cols>
 __inline__ __device__ void printMatrix(const Matrix<HighP, Rows, Cols>& m, const char* name) {
-    printf("Matrix %d x %d %s\n", Rows, Cols, name);
-    for (size_t i = 0; i < Rows; i++) {
-        for (size_t j = 0; j < Cols; j++) {
-            printf("%f ", m[i][j]);
-        }
-        printf("\n");
-    }
-    printf("--------------------------------\n");
+    printf("Matrix %d x %d %s\n%f %f %f\n%f %f %f\n%f %f %f\n--------------------------------\n", Rows, Cols, name,
+        m[0][0], m[0][1], m[0][2],
+        m[1][0], m[1][1], m[1][2],
+        m[2][0], m[2][1], m[2][2]);
 }
 
 template<typename HighP, size_t N>
 __inline__ __device__ void printVector(const Vector<HighP, N>& v, const char* name) {
-    printf("Vector %d %s\n", N, name);
-    for (size_t i = 0; i < N; i++) {
-        printf("%f ", v[i]);
-    }
-    printf("\n--------------------------------\n");
+    printf("Vector %d %s\n%f %f %f \n--------------------------------\n", N, name, v[0], v[1], v[2]);
 }
 
 template<typename HighP>
 __inline__ __device__ void printGLMMatrix(const glm::tmat3x3<HighP>& m, const char* name) {
-    printf("Matrix 3 x 3 %s\n", name);
-    for (size_t i = 0; i < 3; i++) {
-        for (size_t j = 0; j < 3; j++) {
-            printf("%f ", m[j][i]);
-        }
-        printf("\n");
-    }
-    printf("--------------------------------\n");
+    printf("Matrix 3 x 3 %s\n%f %f %f\n%f %f %f\n%f %f %f\n--------------------------------\n", name,
+        m[0][0], m[0][1], m[0][2],
+        m[1][0], m[1][1], m[1][2],
+        m[2][0], m[2][1], m[2][2]);
+}
+
+template<typename HighP>
+__inline__ __host__ __device__ void printGLMVector(const glm::tvec3<HighP>& v, const char* name) {
+    printf("Vector 3 %s\n%f %f %f \n--------------------------------\n", name, v.x, v.y, v.z);
 }
 
 template <typename HighP>
@@ -133,7 +126,7 @@ __device__ glm::tmat3x3<HighP> Build_Edge_Matrix(const glm::tvec3<HighP>* X, con
 }
 
 template <typename HighP>
-__global__ void computeInvDmV0(HighP* V0, glm::tmat3x3<HighP>* DmInv, int numTets, const glm::tvec3<HighP>* X, const indexType* Tet)
+__global__ void computeInvDmV0(HighP* V0, glm::tmat3x3<HighP>* DmInv, int numTets, const glm::tvec3<HighP>* X, const indexType* Tet, HighP* contact_area, HighP* degree)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
     if (index < numTets)
@@ -141,6 +134,26 @@ __global__ void computeInvDmV0(HighP* V0, glm::tmat3x3<HighP>* DmInv, int numTet
         glm::tmat3x3<HighP> Dm = Build_Edge_Matrix(X, Tet, index);
         DmInv[index] = glm::inverse(Dm);
         V0[index] = glm::abs(glm::determinant(Dm)) / 6.0f;
+        const indexType i0 = Tet[index * 4];
+        const indexType i1 = Tet[index * 4 + 1];
+        const indexType i2 = Tet[index * 4 + 2];
+        const indexType i3 = Tet[index * 4 + 3];
+        const glm::tvec3<HighP> x0 = X[i0];
+        const glm::tvec3<HighP> x1 = X[i1];
+        const glm::tvec3<HighP> x2 = X[i2];
+        const glm::tvec3<HighP> x3 = X[i3];
+        HighP area0 = 0.5f * glm::length(glm::cross(x1 - x0, x2 - x0));
+        HighP area1 = 0.5f * glm::length(glm::cross(x2 - x1, x3 - x1));
+        HighP area2 = 0.5f * glm::length(glm::cross(x3 - x2, x0 - x2));
+        HighP area3 = 0.5f * glm::length(glm::cross(x0 - x3, x1 - x3));
+        atomicAdd(&contact_area[i0], (area0 + area2 + area3) / 3.0f);
+        atomicAdd(&contact_area[i1], (area0 + area1 + area3) / 3.0f);
+        atomicAdd(&contact_area[i2], (area0 + area1 + area2) / 3.0f);
+        atomicAdd(&contact_area[i3], (area1 + area2 + area3) / 3.0f);
+        atomicAdd(&degree[i0], (HighP)1);
+        atomicAdd(&degree[i1], (HighP)1);
+        atomicAdd(&degree[i2], (HighP)1);
+        atomicAdd(&degree[i3], (HighP)1);
     }
 }
 

@@ -11,19 +11,12 @@ namespace PdUtil {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numTets)
         {
-            //int posStart = index * 12;
-            int v0Ind = Tets[index * 4 + 0] * 3;
-            int v1Ind = Tets[index * 4 + 1] * 3;
-            int v2Ind = Tets[index * 4 + 2] * 3;
-            int v3Ind = Tets[index * 4 + 3] * 3;
-
             // there are numTets of AiSi in total
 
             glm::mat4x3 AiSi = glm::transpose(DmInvs[index]) * glm::mat4x3{ -1, -1, -1, 1, 0, 0, 0, 1, 0, 0, 0, 1 };
             glm::mat4x4 SiTAiAiSi = glm::transpose(AiSi) * AiSi;
 
             int start = index * 48;
-            int rowLen = 3 * numVerts;
             for (int i = 0; i < 4; i++)
             {
                 int vr = Tets[index * 4 + i] * 3;
