@@ -2,7 +2,6 @@
 #include <collision/bvh.h>
 #include <linear/choleskyImmed.h>
 #include <fixedBodyData.h>
-#include <utilities.cuh>
 #include <solver/solverUtil.cuh>
 #include <thrust/transform_reduce.h>
 #include <thrust/device_ptr.h>

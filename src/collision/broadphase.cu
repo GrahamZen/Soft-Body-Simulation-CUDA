@@ -4,11 +4,10 @@
 #include <collision/bvh.cuh>
 #include <collision/bvh.h>
 #include <simulation/simulationContext.h>
-#include <thrust/device_vector.h>
+#include <collision/intersections.h>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 #include <thrust/remove.h>
-#include <collision/intersections.h>
 #include <cuda_runtime.h>
 
 // build the bounding box and morton code for each SoftBody

@@ -1,10 +1,8 @@
 #pragma once
 
-#include <utilities.cuh>
 #include <collision/bvh.h>
 #include <collision/intersections.h>
 #include <simulation/simulationContext.h>
-#include <glm/glm.hpp>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 #include <thrust/device_vector.h>

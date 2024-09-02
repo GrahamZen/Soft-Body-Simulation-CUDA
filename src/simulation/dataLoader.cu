@@ -325,7 +325,7 @@ void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, SolverData<Hig
         edgeOffset += m_impl->m_edges[i].size();
         dbcOffset += softBodyAttr.numDBC;
         delete[] softBodyAttr.DBC;
-        softbodies.push_back(new SoftBody(&softBodyData, softBodyAttr));
+        softbodies.push_back(new SoftBody(&softBodyData, softBodyAttr, threadsPerBlock));
     }
     cudaMemcpy(solverData.X0, solverData.X, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(solverData.XTilde, solverData.X, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);

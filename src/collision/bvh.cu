@@ -4,8 +4,6 @@
 #include <utilities.cuh>
 #include <collision/bvh.cuh>
 #include <simulation/simulationContext.h>
-#include <glm/glm.hpp>
-#include <cuda_runtime.h>
 #include <cooperative_groups.h>
 #include <thrust/sort.h>
 #include <thrust/execution_policy.h>
