@@ -107,7 +107,6 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams& solverP
     int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     cudaMemcpy(x_n, solverData.X, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
     IPC::computeXTilde << <blocks, threadsPerBlock >> > (solverData.XTilde, solverData.X, solverData.V, h, solverData.numVerts);
-
     double E_last = 0;
     E_last = energy.Val(solverData.X, solverData, h2);
 

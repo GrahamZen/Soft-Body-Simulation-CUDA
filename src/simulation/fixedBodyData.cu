@@ -95,10 +95,10 @@ __global__ void handleSphereCollision(glm::tvec3<HighP>* X, glm::tvec3<HighP>* V
         glm::tvec3<HighP> sphereCenter = glm::tvec3<HighP>(spheres[j].m_model[3]);
         HighP sphereRadius = spheres[j].m_radius;
         glm::tvec3<HighP> toCenter = X[i] - sphereCenter;
-        HighP distance = glm::length(toCenter);
-        if (distance < sphereRadius) {
+        HighP d = glm::length(toCenter);
+        if (d < sphereRadius) {
             glm::tvec3<HighP> normal = glm::normalize(toCenter);
-            X[i] += distance * normal;
+            X[i] += d * normal;
             glm::tvec3<HighP> vN = glm::dot(V[i], normal) * normal;
             glm::tvec3<HighP> vT = V[i] - vN;
             HighP mag_vT = glm::length(vT);

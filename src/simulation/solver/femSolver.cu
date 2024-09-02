@@ -14,7 +14,7 @@ FEMSolver<HighP>::FEMSolver(int threadsPerBlock, const SolverData<HighP>& solver
     thrust::device_vector<HighP> degree(solverData.numVerts);
     thrust::device_ptr<HighP> ptr(solverData.contact_area);
     computeInvDmV0 << < blocks, threadsPerBlock >> > (solverData.V0, solverData.DmInv, solverData.numTets, solverData.X, solverData.Tet, solverData.contact_area, degree.data().get());
-    thrust::transform(ptr, ptr + solverData.numTets, degree.begin(), ptr, thrust::divides<HighP>());
+    thrust::transform(ptr, ptr + solverData.numVerts, degree.begin(), ptr, thrust::divides<HighP>());
 }
 
 template class FEMSolver<float>;

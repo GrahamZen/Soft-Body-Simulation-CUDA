@@ -36,9 +36,9 @@ namespace Corotated {
         glm::tmat3x3<HighP> R = U * glm::transpose(V);
         glm::tmat3x3<HighP> P = 2 * mu[index] * (F - R) + lambda[index] * trace(glm::transpose(R) * F - glm::tmat3x3<HighP>(1)) * R;
         glm::tmat3x3<HighP> dPsidx = coef * Vol[index] * P * glm::transpose(DmInv);
-        atomicAdd(&grad[v0Ind + 0], -dPsidx[0][0]-dPsidx[1][0]-dPsidx[2][0]);
-        atomicAdd(&grad[v0Ind + 1], -dPsidx[0][1]-dPsidx[1][1]-dPsidx[2][1]);
-        atomicAdd(&grad[v0Ind + 2], -dPsidx[0][2]-dPsidx[1][2]-dPsidx[2][2]);
+        atomicAdd(&grad[v0Ind + 0], -dPsidx[0][0] - dPsidx[1][0] - dPsidx[2][0]);
+        atomicAdd(&grad[v0Ind + 1], -dPsidx[0][1] - dPsidx[1][1] - dPsidx[2][1]);
+        atomicAdd(&grad[v0Ind + 2], -dPsidx[0][2] - dPsidx[1][2] - dPsidx[2][2]);
         atomicAdd(&grad[v1Ind + 0], dPsidx[0][0]);
         atomicAdd(&grad[v1Ind + 1], dPsidx[0][1]);
         atomicAdd(&grad[v1Ind + 2], dPsidx[0][2]);
