@@ -38,6 +38,7 @@ void IPEnergy::Gradient(const SolverData<double>& solverData, double h2) const
 
 void IPEnergy::Hessian(const SolverData<double>& solverData, double h2) const
 {
+    cudaMemset(hessianVal, 0, sizeof(double) * nnz);
     inertia.Hessian(solverData, 1);
     gravity.Hessian(solverData, h2);
     elastic->Hessian(solverData, h2);

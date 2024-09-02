@@ -116,18 +116,15 @@ __global__ void handleCylinderCollision(glm::tvec3<HighP>* X, glm::tvec3<HighP>*
     for (int j = 0; j < numCylinders; j++) {
         const Cylinder cy = cylinders[j];
         glm::tvec3<HighP> axis = glm::tvec3<HighP>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
-        glm::tvec3<HighP> cylinderCenter = glm::tvec3<HighP>(cylinders[j].m_model[3]);
-        HighP cylinderRadius = cylinders[j].m_radius;
+        glm::tmat3x3<HighP> nnT =glm::tmat3x3<HighP>(1.f) - glm::outerProduct(axis, axis);
+        glm::tvec3<HighP> cylinderCenter = glm::tvec3<HighP>(cy.m_model[3]);
+        HighP cylinderRadius = cy.m_radius;
+        glm::tvec3<HighP> n = nnT * (X[i] - cylinderCenter);
+        HighP d = glm::length(n);
 
-        glm::tvec3<HighP> toCenter = X[i] - cylinderCenter;
-        glm::tvec3<HighP> projOnAxis = glm::dot(toCenter, axis) * axis;
-        glm::tvec3<HighP> closestPoint = cylinderCenter + projOnAxis;
-        glm::tvec3<HighP> toClosestPoint = X[i] - closestPoint;
-        HighP distance = glm::length(toClosestPoint);
-
-        if (distance < cylinderRadius) {
-            glm::tvec3<HighP> normal = glm::normalize(toClosestPoint);
-            X[i] += (cylinderRadius - distance) * normal;
+        if (d < cylinderRadius) {
+            glm::tvec3<HighP> normal = glm::normalize(n);
+            X[i] += (cylinderRadius - d) * normal;
             glm::tvec3<HighP> vN = glm::dot(V[i], normal) * normal;
             glm::tvec3<HighP> vT = V[i] - vN;
             HighP mag_vT = glm::length(vT);

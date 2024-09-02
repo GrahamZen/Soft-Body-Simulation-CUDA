@@ -2,13 +2,15 @@
 #include <solver/solverUtil.cuh>
 #include <fixedBodyData.h>
 #include <plane.h>
+#include <cylinder.h>
 #include <glm/glm.hpp>
 #include <thrust/transform_reduce.h>
 #include <thrust/iterator/counting_iterator.h>
 
 namespace Barrier {
     template <typename HighP>
-    __global__ void hessianKern(HighP* hessianVal, int* hessianRowIdx, int* hessianColIdx, glm::tvec3<HighP>* X, int numVerts, Plane* planes, int numPlanes, HighP dhat, HighP* contact_area, HighP coef) {
+    __global__ void hessianKern(HighP* hessianVal, int* hessianRowIdx, int* hessianColIdx, glm::tvec3<HighP>* X, int numVerts,
+        Plane* planes, int numPlanes, Cylinder* cylinders, int numCylinders, HighP dhat, HighP* contact_area, HighP coef) {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= numVerts)
             return;
@@ -35,10 +37,37 @@ namespace Barrier {
                 }
             }
         }
+        for (int j = 0; j < numCylinders; j++) {
+            const Cylinder cy = cylinders[j];
+            glm::tvec3<HighP> axis = glm::tvec3<HighP>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
+            glm::tmat3x3<HighP> nnT = glm::tmat3x3<HighP>(1.f) - glm::outerProduct(axis, axis);
+            glm::tvec3<HighP> cylinderCenter = glm::tvec3<HighP>(cy.m_model[3]);
+            HighP cylinderRadius = cy.m_radius;
+            glm::tvec3<HighP> n = nnT * (x - cylinderCenter);
+            HighP d = glm::length(n) - cylinderRadius;
+            glm::tvec3<HighP> normal = glm::normalize(n);
+            if (d < dhat)
+            {
+                glm::tmat3x3<HighP> hess = coef * contact_area[idx] * dhat * cy.kappa / (2 * d * d * dhat) * (d + dhat) * glm::outerProduct(normal, normal);
+                for (int k = 0; k < 3; k++)
+                {
+                    for (int l = 0; l < 3; l++)
+                    {
+                        int rowIdx = idx * 3 + k;
+                        int colIdx = idx * 3 + l;
+                        int index = idx * 9 + k * 3 + l;
+                        hessianVal[index] += hess[k][l];
+                        hessianRowIdx[index] = rowIdx;
+                        hessianColIdx[index] = colIdx;
+                    }
+                }
+            }
+        }
     }
 
     template <typename HighP>
-    __global__ void gradientKern(HighP* grad, glm::tvec3<HighP>* X, int numVerts, Plane* planes, int numPlanes, HighP dhat, HighP* contact_area, HighP coef) {
+    __global__ void gradientKern(HighP* grad, glm::tvec3<HighP>* X, int numVerts, Plane* planes, int numPlanes, Cylinder* cylinders, int numCylinders,
+        HighP dhat, HighP* contact_area, HighP coef) {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= numVerts)
             return;
@@ -52,6 +81,24 @@ namespace Barrier {
             {
                 HighP s = d / dhat;
                 glm::tvec3<HighP> gradient = coef * contact_area[idx] * dhat * (plane.kappa / 2 * (log(s) / dhat + (s - 1) / d)) * floorUp;
+                grad[idx * 3] += gradient.x;
+                grad[idx * 3 + 1] += gradient.y;
+                grad[idx * 3 + 2] += gradient.z;
+            }
+        }
+        for (int j = 0; j < numCylinders; j++) {
+            const Cylinder cy = cylinders[j];
+            glm::tvec3<HighP> axis = glm::tvec3<HighP>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
+            glm::tmat3x3<HighP> nnT = glm::tmat3x3<HighP>(1.f) - glm::outerProduct(axis, axis);
+            glm::tvec3<HighP> cylinderCenter = glm::tvec3<HighP>(cy.m_model[3]);
+            HighP cylinderRadius = cy.m_radius;
+            glm::tvec3<HighP> n = nnT * (x - cylinderCenter);
+            HighP d = glm::length(n) - cylinderRadius;
+            glm::tvec3<HighP> normal = glm::normalize(n);
+            if (d < dhat)
+            {
+                HighP s = d / dhat;
+                glm::tvec3<HighP> gradient = coef * contact_area[idx] * dhat * (cy.kappa / 2 * (log(s) / dhat + (s - 1) / d)) * normal;
                 grad[idx * 3] += gradient.x;
                 grad[idx * 3 + 1] += gradient.y;
                 grad[idx * 3 + 2] += gradient.z;
@@ -72,18 +119,35 @@ BarrierEnergy<HighP>::BarrierEnergy(const SolverData<HighP>& solverData, int& he
 template <typename HighP>
 HighP BarrierEnergy<HighP>::Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData) const {
     const Plane* planes = solverData.pFixedBodies->dev_planes;
+    const Cylinder* cylinders = solverData.pFixedBodies->dev_cylinders;
+    int numCylinders = solverData.pFixedBodies->numCylinders;
     int numPlanes = solverData.pFixedBodies->numPlanes;
     HighP dhat = this->dhat;
     HighP sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(solverData.numVerts),
         [=]__host__ __device__(indexType vertIdx) {
+        const glm::tvec3<HighP> x = Xs[vertIdx];
         HighP sum = 0.0;
         for (int j = 0; j < numPlanes; j++)
         {
             glm::tvec3<HighP> floorPos = glm::tvec3<HighP>(planes[j].m_model[3]);
             glm::tvec3<HighP> floorUp = planes[j].m_floorUp;
-            HighP d = glm::dot(Xs[vertIdx] - floorPos, floorUp);
+            HighP d = glm::dot(x - floorPos, floorUp);
+            if (d < dhat)
+            {
+                HighP s = d / dhat;
+                sum += solverData.contact_area[vertIdx] * dhat * planes[j].kappa * 0.5 * (s - 1) * log(s);
+            }
+        }
+        for (int j = 0; j < numCylinders; j++) {
+            const Cylinder cy = cylinders[j];
+            glm::tvec3<HighP> axis = glm::tvec3<HighP>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
+            glm::tmat3x3<HighP> nnT = glm::tmat3x3<HighP>(1.f) - glm::outerProduct(axis, axis);
+            glm::tvec3<HighP> cylinderCenter = glm::tvec3<HighP>(cy.m_model[3]);
+            HighP cylinderRadius = cy.m_radius;
+            glm::tvec3<HighP> n = nnT * (x - cylinderCenter);
+            HighP d = glm::length(n) - cylinderRadius;
             if (d < dhat)
             {
                 HighP s = d / dhat;
@@ -100,11 +164,10 @@ HighP BarrierEnergy<HighP>::Val(const glm::tvec3<HighP>* Xs, const SolverData<Hi
 template<typename HighP>
 void BarrierEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef) const
 {
-    // m(x - x_tilde).
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    Barrier::gradientKern << <numBlocks, threadsPerBlock >> > (grad, solverData.X, solverData.numVerts, solverData.pFixedBodies->dev_planes,
-        solverData.pFixedBodies->numPlanes, dhat, solverData.contact_area, coef);
+    Barrier::gradientKern << <numBlocks, threadsPerBlock >> > (grad, solverData.X, solverData.numVerts, solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes,
+        solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, dhat, solverData.contact_area, coef);
 }
 
 template <typename HighP>
@@ -113,13 +176,15 @@ void BarrierEnergy<HighP>::Hessian(const SolverData<HighP>& solverData, HighP co
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     Barrier::hessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.numVerts,
-        solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes, dhat, solverData.contact_area, coef);
+        solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes, solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, dhat, solverData.contact_area, coef);
 }
 
 template<typename HighP>
 HighP BarrierEnergy<HighP>::InitStepSize(const SolverData<HighP>& solverData, HighP* p) const
 {
     const Plane* planes = solverData.pFixedBodies->dev_planes;
+    const Cylinder* cylinders = solverData.pFixedBodies->dev_cylinders;
+    int numCylinders = solverData.pFixedBodies->numCylinders;
     int numPlanes = solverData.pFixedBodies->numPlanes;
     return thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
@@ -127,6 +192,7 @@ HighP BarrierEnergy<HighP>::InitStepSize(const SolverData<HighP>& solverData, Hi
         [=]__host__ __device__(indexType vertIdx) {
         HighP alpha = 1.0;
         glm::tvec3<HighP> localP{ -p[vertIdx * 3], -p[vertIdx * 3 + 1], -p[vertIdx * 3 + 2] };
+        const glm::tvec3<HighP> x = solverData.X[vertIdx];
         for (int j = 0; j < numPlanes; j++)
         {
             glm::tvec3<HighP> floorUp = planes[j].m_floorUp;
@@ -134,7 +200,25 @@ HighP BarrierEnergy<HighP>::InitStepSize(const SolverData<HighP>& solverData, Hi
             HighP p_n = glm::dot(localP, floorUp);
             if (p_n < 0)
             {
-                alpha = min(alpha, 0.9 * glm::dot(floorUp, solverData.X[vertIdx] - floorPos) / -p_n);
+                alpha = min(alpha, 0.9 * glm::dot(floorUp, x - floorPos) / -p_n);
+            }
+        }
+        for (int j = 0; j < numCylinders; j++)
+        {
+            const Cylinder cy = cylinders[j];
+            glm::tvec3<HighP> axis = glm::tvec3<HighP>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
+            glm::tmat3x3<HighP> nnT = glm::tmat3x3<HighP>(1.f) - glm::outerProduct(axis, axis);
+            glm::tvec3<HighP> cylinderCenter = glm::tvec3<HighP>(cy.m_model[3]);
+            HighP cylinderRadius = cy.m_radius;
+            glm::tvec3<HighP> n = nnT * (x - cylinderCenter);
+            HighP p_n = glm::dot(localP, n);
+            if (p_n < 0)
+            {
+                glm::tvec3<HighP> pp = nnT * localP;
+                HighP pp2 = glm::dot(pp, pp);
+                HighP n2 = glm::dot(n, n);
+                HighP ndotpp = glm::dot(n, pp);
+                alpha = min(alpha, 0.9 * (-ndotpp - sqrt(ndotpp * ndotpp - pp2 * (n2 - cylinderRadius * cylinderRadius))) / pp2);
             }
         }
         return alpha;
