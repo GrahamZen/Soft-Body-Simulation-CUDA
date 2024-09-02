@@ -8,9 +8,9 @@
 
 class SoftBody;
 class SurfaceShader;
-using solverPrecision = double;
 
 class SimulationCUDAContext {
+    template<typename HighP>
     friend class CollisionDetection;
 public:
     SimulationCUDAContext(Context* ctx, const std::string& _name, nlohmann::json& json,
@@ -21,10 +21,10 @@ public:
     const std::vector<const char*>& GetNamesSoftBodies() const { return namesSoftBodies; }
     void UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr);
     void SetDt(float dt) { mSolverParams.dt = dt; }
-    void SetBVHBuildType(BVH::BuildType);
+    void SetBVHBuildType(BVH<solverPrecision>::BuildType);
     void SetGlobalSolver(bool useEigen);
     void Draw(SurfaceShader*, SurfaceShader*);
-    const SolverParams& GetSolverParams() const;
+    const SolverParams<solverPrecision>& GetSolverParams() const;
     int GetTetCnt() const;
     int GetVertCnt() const;
     int GetThreadsPerBlock() const { return threadsPerBlock; }
@@ -42,6 +42,6 @@ private:
 
     Context* context = nullptr;
     const std::string name;
-    SolverParams mSolverParams;
+    SolverParams<solverPrecision> mSolverParams;
     Solver<solverPrecision>* mSolver = nullptr;
 };

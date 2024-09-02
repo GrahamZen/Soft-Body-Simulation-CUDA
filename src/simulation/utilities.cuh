@@ -12,6 +12,7 @@ void checkCUDAErrorFn(const char* msg, const char* file, int line);
 #define _cstar 0.923879532 // cos(pi/8)
 #define _sstar 0.3826834323 // sin(p/8)
 
+template<typename HighP>
 class BVHNode;
 class Query;
 class Sphere;
@@ -28,8 +29,11 @@ void inspectGLM(const T* dev_ptr, int size, const char* str = "") {
 template <typename T>
 void inspectSparseMatrix(T* dev_val, int* dev_rowIdx, int* dev_colIdx, int nnz, int size);
 void inspectMortonCodes(const int* dev_mortonCodes, int numTets);
-void inspectBVHNode(const BVHNode* dev_BVHNodes, int numTets);
-void inspectBVH(const AABB* dev_aabbs, int size);
+
+template<typename HighP>
+void inspectBVHNode(const BVHNode<HighP>* dev_BVHNodes, int numTets);
+template<typename HighP>
+void inspectBVH(const AABB<HighP>* dev_aabbs, int size);
 void inspectQuerys(const Query* dev_query, int size);
 void inspectSphere(const Sphere* dev_spheres, int size);
 
@@ -48,4 +52,5 @@ template<typename HighP>
 __global__ void PopulateTriPos(glm::vec3* vertices, glm::tvec3<HighP>* X, indexType* Tet, int numTris);
 
 __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* X, int numVerts);
-__global__ void populateBVHNodeAABBPos(BVHNode* nodes, glm::vec3* pos, int numNodes);
+template<typename HighP>
+__global__ void populateBVHNodeAABBPos(BVHNode<HighP>* nodes, glm::vec3* pos, int numNodes);

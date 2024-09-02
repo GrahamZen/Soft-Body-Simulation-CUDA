@@ -5,10 +5,12 @@
 #include <thrust/device_vector.h>
 #include <vector>
 
-__device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
-    const glmVec3& v4, const glmVec3& v5, const glmVec3& v6, const glmVec3& v7);
+template<typename HighP>
+__device__ AABB<HighP> computeTetTrajBBox(const glm::tvec3<HighP>& v0, const glm::tvec3<HighP>& v1, const glm::tvec3<HighP>& v2, const glm::tvec3<HighP>& v3,
+    const glm::tvec3<HighP>& v4, const glm::tvec3<HighP>& v5, const glm::tvec3<HighP>& v6, const glm::tvec3<HighP>& v7);
 
-__device__ unsigned int genMortonCode(AABB bbox, glmVec3 geoMin, glmVec3 geoMax);
+template<typename HighP>
+__device__ unsigned int genMortonCode(AABB<HighP> bbox, glm::tvec3<HighP> geoMin, glm::tvec3<HighP> geoMax);
 
 __inline__ __device__ unsigned int expandBits(unsigned int v)
 {
@@ -28,5 +30,5 @@ __inline__ __device__ int getSign(int tmp)
         return -1;
     //return (tmp > 0) - (tmp < 0);
 }
-
-__global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNode* nodes);
+template<typename HighP>
+__global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNode<HighP>* nodes);

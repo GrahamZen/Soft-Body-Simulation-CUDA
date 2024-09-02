@@ -287,7 +287,7 @@ SimulationCUDAContext* Context::LoadSimContext() {
         return nullptr;
     }
     int maxThreads = GetMaxCGThreads();
-    SolverParams::ExternalForce extForce;
+    SolverParams<solverPrecision>::ExternalForce extForce;
     nlohmann::json json;
     fileStream >> json;
     fileStream.close();
@@ -382,7 +382,7 @@ void Context::Draw() {
     mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
 }
 
-void Context::SetBVHBuildType(BVH::BuildType buildType)
+void Context::SetBVHBuildType(BVH<solverPrecision>::BuildType buildType)
 {
     mcrpSimContext->SetBVHBuildType(buildType);
 }

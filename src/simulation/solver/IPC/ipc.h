@@ -10,11 +10,11 @@ class IPCSolver : public FEMSolver<double> {
 public:
     IPCSolver(int threadsPerBlock, const SolverData<double>&, double tolerance = 1e-2);
     ~IPCSolver();
-    virtual void Update(SolverData<double>& solverData, SolverParams& solverParams) override;
+    virtual void Update(SolverData<double>& solverData, SolverParams<double>& solverParams) override;
     bool EndCondition(double h);
 protected:
-    virtual void SolverPrepare(SolverData<double>& solverData, SolverParams& solverParams) override;
-    virtual void SolverStep(SolverData<double>& solverData, SolverParams& solverParams) override;
+    virtual void SolverPrepare(SolverData<double>& solverData, SolverParams<double>& solverParams) override;
+    virtual void SolverStep(SolverData<double>& solverData, SolverParams<double>& solverParams) override;
     void SearchDirection(SolverData<double>& solverData, double h2);
     void DOFElimination(SolverData<double>& solverData);
 private:

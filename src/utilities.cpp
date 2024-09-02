@@ -173,9 +173,9 @@ template void utilityCore::inspectHost<glm::tmat4x4<double>>(const glm::tmat4x4<
 template void utilityCore::inspectHost<int>(const int*, int, const char* str);
 template void utilityCore::inspectHost<float>(const float*, int, const char* str);
 template void utilityCore::inspectHost<double>(const double*, int, const char* str);
-template void utilityCore::inspectHost<colliPrecision>(const colliPrecision*, int, const char* str);
 
-void utilityCore::inspectHost(const BVHNode* hstBVHNodes, int size) {
+template<typename HighP>
+void utilityCore::inspectHost(const BVHNode<HighP>* hstBVHNodes, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size; i++)
     {
@@ -186,7 +186,8 @@ void utilityCore::inspectHost(const BVHNode* hstBVHNodes, int size) {
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
-void utilityCore::inspectHost(const AABB* aabb, int size) {
+template<typename HighP>
+void utilityCore::inspectHost(const AABB<HighP>* aabb, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size; i++)
     {

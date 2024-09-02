@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <cuda_gl_interop.h>
 
+template<typename HighP>
 class BVHNode;
 
 class Wireframe : public Drawable

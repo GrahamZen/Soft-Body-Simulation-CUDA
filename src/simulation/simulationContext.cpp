@@ -45,7 +45,7 @@ void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::Soft
     softBodies[index]->SetAttributes(softBodyAttr);
 }
 
-void SimulationCUDAContext::SetBVHBuildType(BVH::BuildType buildType)
+void SimulationCUDAContext::SetBVHBuildType(BVH<solverPrecision>::BuildType buildType)
 {
     mSolverParams.pCollisionDetection->SetBuildType(buildType);
 }
@@ -81,7 +81,7 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
         mSolverParams.pCollisionDetection->Draw(flatShaderProgram);
 }
 
-const SolverParams& SimulationCUDAContext::GetSolverParams() const
+const SolverParams<solverPrecision>& SimulationCUDAContext::GetSolverParams() const
 {
     return mSolverParams;
 }

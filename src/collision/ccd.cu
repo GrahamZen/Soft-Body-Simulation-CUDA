@@ -7,7 +7,7 @@
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
 
-__constant__ colliPrecision AABBThreshold = 0.01;
+__constant__ double AABBThreshold = 0.01;
 
 template<typename HighP>
 struct HighPtoFloatP {
@@ -16,10 +16,11 @@ struct HighPtoFloatP {
     }
 };
 
-__device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
-    const glmVec3& v4, const glmVec3& v5, const glmVec3& v6, const glmVec3& v7)
+template<typename HighP>
+__device__ AABB<HighP> computeTetTrajBBox(const glm::tvec3<HighP>& v0, const glm::tvec3<HighP>& v1, const glm::tvec3<HighP>& v2, const glm::tvec3<HighP>& v3,
+    const glm::tvec3<HighP>& v4, const glm::tvec3<HighP>& v5, const glm::tvec3<HighP>& v6, const glm::tvec3<HighP>& v7)
 {
-    glmVec3 min, max;
+    glm::tvec3<HighP> min, max;
     min.x = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.x, v1.x), v2.x), v3.x), v4.x), v5.x), v6.x), v7.x);
     min.y = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.y, v1.y), v2.y), v3.y), v4.y), v5.y), v6.y), v7.y);
     min.z = fminf(fminf(fminf(fminf(fminf(fminf(fminf(v0.z, v1.z), v2.z), v3.z), v4.z), v5.z), v6.z), v7.z);
@@ -27,17 +28,28 @@ __device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const g
     max.y = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.y, v1.y), v2.y), v3.y), v4.y), v5.y), v6.y), v7.y);
     max.z = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.z, v1.z), v2.z), v3.z), v4.z), v5.z), v6.z), v7.z);
 
-    return AABB{ min - AABBThreshold, max + AABBThreshold };
+    return AABB<HighP>{ min - (HighP)AABBThreshold, max + (HighP)AABBThreshold };
 }
 
-AABB AABB::expand(const AABB& aabb)const {
-    return AABB{
+template AABB<float> computeTetTrajBBox(const glm::tvec3<float>& v0, const glm::tvec3<float>& v1, const glm::tvec3<float>& v2, const glm::tvec3<float>& v3,
+    const glm::tvec3<float>& v4, const glm::tvec3<float>& v5, const glm::tvec3<float>& v6, const glm::tvec3<float>& v7);
+template AABB<double> computeTetTrajBBox(const glm::tvec3<double>& v0, const glm::tvec3<double>& v1, const glm::tvec3<double>& v2, const glm::tvec3<double>& v3,
+    const glm::tvec3<double>& v4, const glm::tvec3<double>& v5, const glm::tvec3<double>& v6, const glm::tvec3<double>& v7);
+
+template<typename HighP>
+AABB<HighP> AABB<HighP>::expand(const AABB<HighP>& aabb)const {
+    return AABB<HighP>{
         glm::min(min, aabb.min),
-        glm::max(max, aabb.max)
+            glm::max(max, aabb.max)
     };
 }
 
-CollisionDetection::CollisionDetection(const SimulationCUDAContext* simContext, const int _threadsPerBlock, size_t _maxNumQueries) : mPSimContext(simContext), threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxNumQueries), m_bvh(_threadsPerBlock)
+template AABB<float> AABB<float>::expand(const AABB<float>& aabb)const;
+template AABB<double> AABB<double>::expand(const AABB<double>& aabb)const;
+
+template<typename HighP>
+CollisionDetection<HighP>::CollisionDetection(const SolverData<HighP>* solverData, const Context* context, const int _threadsPerBlock, size_t _maxNumQueries) :
+    mpSolverData(solverData), mpContext(context), threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxNumQueries), m_bvh(_threadsPerBlock)
 {
     cudaMalloc(&dev_queries, maxNumQueries * sizeof(Query));
 
@@ -48,7 +60,8 @@ CollisionDetection::CollisionDetection(const SimulationCUDAContext* simContext, 
     mSqDisplay.create();
 }
 
-CollisionDetection::~CollisionDetection()
+template<typename HighP>
+CollisionDetection<HighP>::~CollisionDetection<HighP>()
 {
     cudaFree(dev_queries);
     cudaFree(dev_numQueries);
@@ -65,17 +78,18 @@ __global__ void processQueries(const Query* queries, int numQueries, glm::vec4* 
     }
 }
 
-void CollisionDetection::PrepareRenderData()
+template<typename HighP>
+void CollisionDetection<HighP>::PrepareRenderData()
 {
-    if (mPSimContext->context->guiData->QueryVis && numQueries > 0) {
+    if (mpContext->guiData->QueryVis && numQueries > 0) {
         glm::vec3* pos;
         glm::vec4* col;
         MapDevicePosPtr(&pos, &col);
-        thrust::device_ptr<const glm::tvec3<solverPrecision>> dvec3_ptr(mPSimContext->mSolverData.X);
+        thrust::device_ptr<const glm::tvec3<HighP>> dvec3_ptr(mpSolverData->X);
         thrust::device_ptr<glm::vec3> vec3_ptr(pos);
 
         thrust::transform(dvec3_ptr, dvec3_ptr + numVerts, vec3_ptr,
-            [] __host__ __device__(const glm::tvec3<solverPrecision> &d) {
+            [] __host__ __device__(const glm::tvec3<HighP> &d) {
             return glm::vec3(static_cast<float>(d.x), static_cast<float>(d.y), static_cast<float>(d.z));
         });
         cudaMemset(col, 0, numVerts * sizeof(glm::vec4));
@@ -83,27 +97,28 @@ void CollisionDetection::PrepareRenderData()
         processQueries << <numBlocks, threadsPerBlock >> > (dev_queries, numQueries, col);
         UnMapDevicePtr();
     }
-    if (mPSimContext->context->guiData->BVHVis) {
+    if (mpContext->guiData->BVHVis) {
         m_bvh.PrepareRenderData();
     }
 }
 
-void CollisionDetection::Draw(SurfaceShader* flatShaderProgram)
+template<typename HighP>
+void CollisionDetection<HighP>::Draw(SurfaceShader* flatShaderProgram)
 {
-    if (mPSimContext->context->guiData->BVHVis)
+    if (mpContext->guiData->BVHVis)
         flatShaderProgram->draw(m_bvh, 0);
-    if (mPSimContext->context->guiData->QueryVis)
+    if (mpContext->guiData->QueryVis)
         flatShaderProgram->drawPoints(*this);
-    if (mPSimContext->context->guiData->QueryDebugMode) {
-        glLineWidth(mPSimContext->context->guiData->LineWidth);
-        flatShaderProgram->drawSingleQuery(GetSQDisplay(mPSimContext->context->guiData->CurrQueryId, mPSimContext->mSolverData.X,
-            mPSimContext->context->guiData->QueryDirty ? mPSimContext->context->guiData->mPQuery : nullptr));
-        mPSimContext->context->guiData->QueryDirty = false;
+    if (mpContext->guiData->QueryDebugMode) {
+        glLineWidth(mpContext->guiData->LineWidth);
+        flatShaderProgram->drawSingleQuery(GetSQDisplay(mpContext->guiData->CurrQueryId, mpSolverData->X,
+            mpContext->guiData->QueryDirty ? mpContext->guiData->mPQuery : nullptr));
+        mpContext->guiData->QueryDirty = false;
     }
 }
 
 template<typename HighP>
-SingleQueryDisplay& CollisionDetection::GetSQDisplay(int i, const glm::tvec3<HighP>* X, Query* guiQuery)
+SingleQueryDisplay& CollisionDetection<HighP>::GetSQDisplay(int i, const glm::tvec3<HighP>* X, Query* guiQuery)
 {
     if (numQueries == 0) {
         mSqDisplay.SetCount(0);
@@ -155,3 +170,6 @@ SingleQueryDisplay& CollisionDetection::GetSQDisplay(int i, const glm::tvec3<Hig
     }
     return mSqDisplay;
 }
+
+template class CollisionDetection<float>;
+template class CollisionDetection<double>;

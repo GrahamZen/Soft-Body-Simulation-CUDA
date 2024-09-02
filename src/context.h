@@ -8,6 +8,8 @@ class Camera;
 class SimulationCUDAContext;
 class SurfaceShader;
 
+using solverPrecision = float;
+
 class GuiDataContainer
 {
 public:
@@ -66,7 +68,7 @@ public:
     void Update();
     void ResetCamera();
     void Draw();
-    void SetBVHBuildType(BVH::BuildType buildType);
+    void SetBVHBuildType(BVH<solverPrecision>::BuildType buildType);
     int& GetBVHBuildType();
     int GetNumQueries() const;
     int GetIteration() const { return iteration; }

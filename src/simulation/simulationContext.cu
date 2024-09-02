@@ -23,7 +23,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     :context(ctx), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
 {
     DataLoader<solverPrecision> dataLoader(threadsPerBlock);
-    mSolverParams.pCollisionDetection = new CollisionDetection{ this, _threadsPerBlockBVH, 1 << 16 };
+    mSolverParams.pCollisionDetection = new CollisionDetection<solverPrecision>{ &mSolverData, ctx, _threadsPerBlockBVH, 1 << 16 };
     if (json.contains("dt")) {
         mSolverParams.dt = json["dt"].get<float>();
     }
@@ -157,13 +157,13 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
             }
 
         }
-        dataLoader.AllocData(startIndices, mSolverData, dev_Edges, dev_TetFathers, softBodies);
+        dataLoader.AllocData(startIndices, mSolverData, softBodies);
         mSolverParams.pCollisionDetection->Init(mSolverData.numTets, mSolverData.numVerts, maxThreads);
         cudaMalloc((void**)&mSolverData.dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
-        cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(colliPrecision));
+        cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(solverPrecision));
     }
     mSolverData.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
-    mSolver = new IPCSolver{ threadsPerBlock, mSolverData, 5e-2 };
+    mSolver = new PdSolver{ threadsPerBlock, mSolverData};
 }
 
 SimulationCUDAContext::~SimulationCUDAContext()

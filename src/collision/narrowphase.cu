@@ -65,14 +65,15 @@ __global__ void detectCollisionNarrow(int numQueries, Query* queries, const glm:
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numQueries)
     {
-        glmVec3 normal;
+        glm::tvec3<HighP> normal;
         Query& q = queries[index];
         q.toi = ccdCollisionTest(q, Xs, XTildes, normal);
         q.normal = normal;
     }
 }
 
-__global__ void storeTi(int numQueries, Query* queries, colliPrecision* tI, glm::vec3* nors)
+template<typename HighP>
+__global__ void storeTi(int numQueries, Query* queries, HighP* tI, glm::vec3* nors)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numQueries)
@@ -168,17 +169,21 @@ __global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::ve
     }
 }
 
-void CollisionDetection::NarrowPhase(colliPrecision*& tI, glm::vec3*& nors)
+template<typename HighP>
+void CollisionDetection<HighP>::NarrowPhase(HighP*& tI, glm::vec3*& nors)
 {
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, mPSimContext->mSolverData.X, mPSimContext->mSolverData.XTilde);
+    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, mpSolverData->X, mpSolverData->XTilde);
     thrust::device_ptr<Query> dev_queriesPtr(dev_queries);
 
     thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());
     auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
     int numQueries = new_end - dev_queriesPtr;
     numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    //computeNewVel << <numBlocksQuery, threadsPerBlock >> > (numQueries, Xs, XTildes, dev_queries, mPSimContext->mSolverData.V);
+    //computeNewVel << <numBlocksQuery, threadsPerBlock >> > (numQueries, Xs, XTildes, dev_queries, mpSolverData->V);
     storeTi << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, tI, nors);
     cudaDeviceSynchronize();
 }
+
+template class CollisionDetection<float>;
+template class CollisionDetection<double>;

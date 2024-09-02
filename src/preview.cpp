@@ -6,6 +6,7 @@
 #include <imgui_impl_opengl3.h>
 #include <ctime>
 
+template<typename HighP>
 class BVH;
 GLFWwindow* window;
 GuiDataContainer* imguiData = nullptr;
@@ -97,7 +98,7 @@ void RenderImGui()
     const std::vector<const char*> buildTypeNameItems = { "Serial", "Atomic", "Cooperative" };
     if (ImGui::Combo("BVH Build Type", &context->GetBVHBuildType(), buildTypeNameItems.data(), buildTypeNameItems.size()))
     {
-        context->SetBVHBuildType(static_cast<BVH::BuildType>(context->GetBVHBuildType()));
+        context->SetBVHBuildType(static_cast<BVH<solverPrecision>::BuildType>(context->GetBVHBuildType()));
     }
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
     bool globalSolverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);

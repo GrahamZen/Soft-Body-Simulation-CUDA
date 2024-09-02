@@ -22,12 +22,12 @@ ExplicitSolver::~ExplicitSolver()
 }
 
 
-void ExplicitSolver::SolverPrepare(SolverData<float>& solverData, SolverParams& solverParams)
+void ExplicitSolver::SolverPrepare(SolverData<float>& solverData, SolverParams<float>& solverParams)
 {
 }
 
 
-void ExplicitSolver::SolverStep(SolverData<float>& solverData, SolverParams& solverParams)
+void ExplicitSolver::SolverStep(SolverData<float>& solverData, SolverParams<float>& solverParams)
 {
     glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.softBodyAttr.mass, 0.0f };
     thrust::device_ptr<glm::vec3> dev_ptr(solverData.Force);
@@ -38,7 +38,7 @@ void ExplicitSolver::SolverStep(SolverData<float>& solverData, SolverParams& sol
 }
 
 
-void ExplicitSolver::Update(SolverData<float>& solverData, SolverParams& solverParams)
+void ExplicitSolver::Update(SolverData<float>& solverData, SolverParams<float>& solverParams)
 {
     AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, solverParams.softBodyAttr.jump, solverParams.softBodyAttr.mass, solverParams.extForce.jump);
     for (size_t i = 0; i < 10; i++)

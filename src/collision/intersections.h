@@ -9,7 +9,8 @@ __host__ __device__ inline unsigned int utilhash(unsigned int a);
 /**
  * Multiplies a mat4 and a vec4 and returns a vec3 clipped from the vec4.
  */
-__host__ __device__ glmVec3 multiplyMV(glmMat4 m, glmVec4 v);
+template<typename HighP>
+__host__ __device__ glm::tvec3<HighP> multiplyMV(glm::tmat4x4<HighP> m, glm::tvec4<HighP> v);
 
 template<typename T>
 inline __host__ __device__ void swap(T& lhs, T& rhs) {
@@ -29,12 +30,16 @@ __host__ __device__ void sortThree(T& a, T& b, T& c);
 template<typename T>
 __host__ __device__ void sortFour(T& a, T& b, T& c, T& d);
 
-__host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilde, const AABB& bbox);
-__host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilde, const AABB& bbox, colliPrecision& tmin, colliPrecision& tmax);
-__host__ __device__ bool bboxIntersectionTest(const AABB& box1, const AABB& box2);
 template<typename HighP>
-__host__ __device__ colliPrecision ccdCollisionTest(const Query& query, const glm::tvec3<HighP>* Xs, const glm::tvec3<HighP>* XTildes, glmVec3& n);
+__host__ __device__ bool edgeBboxIntersectionTest(const glm::tvec3<HighP>& X0, const glm::tvec3<HighP>& XTilde, const AABB<HighP>& bbox);
+template<typename HighP>
+__host__ __device__ bool edgeBboxIntersectionTest(const glm::tvec3<HighP>& X0, const glm::tvec3<HighP>& XTilde, const AABB<HighP>& bbox, HighP& tmin, HighP& tmax);
+template<typename HighP>
+__host__ __device__ bool bboxIntersectionTest(const AABB<HighP>& box1, const AABB<HighP>& box2);
+template<typename HighP>
+__host__ __device__ HighP ccdCollisionTest(const Query& query, const glm::tvec3<HighP>* Xs, const glm::tvec3<HighP>* XTildes, glm::tvec3<HighP>& n);
 
-__host__ __device__ colliPrecision ccdTriangleIntersectionTest(const glmVec3& x0, const glmVec3& v0,
-    const glmVec3& x1, const glmVec3& x2, const glmVec3& x3, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
-    const glmVec3& xTilde0, const glmVec3& xTilde1, const glmVec3& xTilde2, const glmVec3& xTilde3, glmVec3& n);
+template<typename HighP>
+__host__ __device__ HighP ccdTriangleIntersectionTest(const glm::tvec3<HighP>& x0, const glm::tvec3<HighP>& v0,
+    const glm::tvec3<HighP>& x1, const glm::tvec3<HighP>& x2, const glm::tvec3<HighP>& x3, const glm::tvec3<HighP>& v1, const glm::tvec3<HighP>& v2, const glm::tvec3<HighP>& v3,
+    const glm::tvec3<HighP>& xTilde0, const glm::tvec3<HighP>& xTilde1, const glm::tvec3<HighP>& xTilde2, const glm::tvec3<HighP>& xTilde3, glm::tvec3<HighP>& n);

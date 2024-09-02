@@ -114,17 +114,19 @@ void inspectMortonCodes(const int* dev_mortonCodes, int numTets) {
     utilityCore::inspectHostMorton(hstMorton.data(), numTets);
 }
 
-void inspectBVHNode(const BVHNode* dev_BVHNodes, int numTets)
+template<typename HighP>
+void inspectBVHNode(const BVHNode<HighP>* dev_BVHNodes, int numTets)
 {
-    std::vector<BVHNode> hstBVHNodes(2 * numTets - 1);
-    cudaMemcpy(hstBVHNodes.data(), dev_BVHNodes, sizeof(BVHNode) * (2 * numTets - 1), cudaMemcpyDeviceToHost);
+    std::vector<BVHNode<HighP>> hstBVHNodes(2 * numTets - 1);
+    cudaMemcpy(hstBVHNodes.data(), dev_BVHNodes, sizeof(BVHNode<HighP>) * (2 * numTets - 1), cudaMemcpyDeviceToHost);
     utilityCore::inspectHost(hstBVHNodes.data(), 2 * numTets - 1);
 }
 
-void inspectBVH(const AABB* dev_aabbs, int size)
+template<typename HighP>
+void inspectBVH(const AABB<HighP>* dev_aabbs, int size)
 {
-    std::vector<AABB> hstAABB(size);
-    cudaMemcpy(hstAABB.data(), dev_aabbs, sizeof(AABB) * size, cudaMemcpyDeviceToHost);
+    std::vector<AABB<HighP>> hstAABB(size);
+    cudaMemcpy(hstAABB.data(), dev_aabbs, sizeof(AABB<HighP>) * size, cudaMemcpyDeviceToHost);
     utilityCore::inspectHost(hstAABB.data(), size);
 }
 
@@ -157,10 +159,11 @@ __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int nu
     }
 }
 
-__global__ void populateBVHNodeAABBPos(BVHNode* nodes, glm::vec3* pos, int numNodes) {
+template<typename HighP>
+__global__ void populateBVHNodeAABBPos(BVHNode<HighP>* nodes, glm::vec3* pos, int numNodes) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= numNodes) return;
-    const AABB& aabb = nodes[idx].bbox;
+    const AABB<HighP>& aabb = nodes[idx].bbox;
     pos[idx * 8 + 0] = glm::vec3(aabb.min.x, aabb.min.y, aabb.max.z);
     pos[idx * 8 + 1] = glm::vec3(aabb.max.x, aabb.min.y, aabb.max.z);
     pos[idx * 8 + 2] = glm::vec3(aabb.max.x, aabb.max.y, aabb.max.z);
@@ -170,3 +173,6 @@ __global__ void populateBVHNodeAABBPos(BVHNode* nodes, glm::vec3* pos, int numNo
     pos[idx * 8 + 6] = glm::vec3(aabb.max.x, aabb.max.y, aabb.min.z);
     pos[idx * 8 + 7] = glm::vec3(aabb.min.x, aabb.max.y, aabb.min.z);
 }
+
+template __global__ void populateBVHNodeAABBPos(BVHNode<float>* nodes, glm::vec3* pos, int numNodes);
+template __global__ void populateBVHNodeAABBPos(BVHNode<double>* nodes, glm::vec3* pos, int numNodes);

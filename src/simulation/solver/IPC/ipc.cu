@@ -22,7 +22,7 @@ IPCSolver::~IPCSolver()
     cudaFree(x_n);
 }
 
-void IPCSolver::Update(SolverData<double>& solverData, SolverParams& solverParams)
+void IPCSolver::Update(SolverData<double>& solverData, SolverParams<double>& solverParams)
 {
     SolverStep(solverData, solverParams);
     if (solverParams.handleCollision) {
@@ -34,7 +34,7 @@ void IPCSolver::Update(SolverData<double>& solverData, SolverParams& solverParam
     }
 }
 
-void IPCSolver::SolverPrepare(SolverData<double>& solverData, SolverParams& solverParams)
+void IPCSolver::SolverPrepare(SolverData<double>& solverData, SolverParams<double>& solverParams)
 {
 }
 namespace IPC {
@@ -99,7 +99,7 @@ namespace IPC {
     }
 }
 
-void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams& solverParams)
+void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>& solverParams)
 {
     double h = solverParams.dt;
     double h2 = h * h;

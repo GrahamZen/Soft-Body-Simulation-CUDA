@@ -9,7 +9,9 @@
 #define SQRT_OF_ONE_THIRD 0.5773502691896257645091487805019574556476f
 #define EPSILON 0.00001f
 
+template<typename HighP>
 class BVHNode;
+template<typename HighP>
 class AABB;
 class Query;
 class Sphere;
@@ -29,8 +31,10 @@ namespace utilityCore
     void inspectHost(const T*, int, const char* str = "");
     void inspectHost(const unsigned int*, int);
     void inspectHostMorton(const unsigned int* host_ptr, int size);
-    void inspectHost(const BVHNode* hstBVHNodes, int size);
-    void inspectHost(const AABB*, int);
+    template<typename HighP>
+    void inspectHost(const BVHNode<HighP>* hstBVHNodes, int size);
+    template<typename HighP>
+    void inspectHost(const AABB<HighP>*, int);
     void inspectHost(const Query* query, int size);
     void inspectHost(const Sphere* spheres, int size);
     template <typename T>
