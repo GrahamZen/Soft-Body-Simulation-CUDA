@@ -9,7 +9,7 @@ class SimulationCUDAContext;
 
 class SoftBody : public Mesh {
 public:
-    SoftBody(SimulationCUDAContext*, SoftBodyAttribute&, SoftBodyData*);
+    SoftBody(const SoftBodyData* dataPtr, const SoftBodyAttribute _attrib, int threadsPerBlock = 256);
     ~SoftBody();
     SoftBody(const SoftBody&) = delete;
     SoftBody& operator=(const SoftBody&) = delete;

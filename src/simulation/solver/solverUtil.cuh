@@ -6,7 +6,7 @@
 #include <cuda_runtime.h>
 
 template<typename HighP, size_t Rows, size_t Cols>
-__inline__ __device__ void printMatrix(const Matrix<HighP, Rows, Cols>& m, const char* name) {
+__inline__ __host__ __device__ void printMatrix(const Matrix<HighP, Rows, Cols>& m, const char* name) {
     printf("Matrix %d x %d %s\n%f %f %f\n%f %f %f\n%f %f %f\n--------------------------------\n", Rows, Cols, name,
         m[0][0], m[0][1], m[0][2],
         m[1][0], m[1][1], m[1][2],
@@ -14,12 +14,12 @@ __inline__ __device__ void printMatrix(const Matrix<HighP, Rows, Cols>& m, const
 }
 
 template<typename HighP, size_t N>
-__inline__ __device__ void printVector(const Vector<HighP, N>& v, const char* name) {
+__inline__ __host__ __device__ void printVector(const Vector<HighP, N>& v, const char* name) {
     printf("Vector %d %s\n%f %f %f \n--------------------------------\n", N, name, v[0], v[1], v[2]);
 }
 
 template<typename HighP>
-__inline__ __device__ void printGLMMatrix(const glm::tmat3x3<HighP>& m, const char* name) {
+__inline__ __host__ __device__ void printGLMMatrix(const glm::tmat3x3<HighP>& m, const char* name) {
     printf("Matrix 3 x 3 %s\n%f %f %f\n%f %f %f\n%f %f %f\n--------------------------------\n", name,
         m[0][0], m[0][1], m[0][2],
         m[1][0], m[1][1], m[1][2],
@@ -32,37 +32,37 @@ __inline__ __host__ __device__ void printGLMVector(const glm::tvec3<HighP>& v, c
 }
 
 template <typename HighP>
-__inline__ __device__ HighP trace(const glm::tmat3x3<HighP>& a)
+__inline__ __host__ __device__ HighP trace(const glm::tmat3x3<HighP>& a)
 {
     return a[0][0] + a[1][1] + a[2][2];
 }
 
 template <typename HighP>
-__inline__ __device__ HighP trace2(const glm::tmat3x3<HighP>& a)
+__inline__ __host__ __device__ HighP trace2(const glm::tmat3x3<HighP>& a)
 {
     return (a[0][0] * a[0][0]) + (a[1][1] * a[1][1]) + (a[2][2] * a[2][2]);
 }
 
 template <typename HighP>
-__inline__ __device__ HighP trace4(const glm::tmat3x3<HighP>& a)
+__inline__ __host__ __device__ HighP trace4(const glm::tmat3x3<HighP>& a)
 {
     return a[0][0] * a[0][0] * a[0][0] * a[0][0] + a[1][1] * a[1][1] * a[1][1] * a[1][1] + a[2][2] * a[2][2] * a[2][2] * a[2][2];
 }
 
 template <typename HighP>
-__inline__ __device__ HighP detDiag(const glm::tmat3x3<HighP>& a)
+__inline__ __host__ __device__ HighP detDiag(const glm::tmat3x3<HighP>& a)
 {
     return a[0][0] * a[1][1] * a[2][2];
 }
 
 template <typename HighP>
-__inline__ __device__ HighP det2Diag(const glm::tmat3x3<HighP>& a)
+__inline__ __host__ __device__ HighP det2Diag(const glm::tmat3x3<HighP>& a)
 {
     return a[0][0] * a[0][0] * a[1][1] * a[1][1] * a[2][2] * a[2][2];
 }
 
 template <typename HighP>
-__inline__ __device__ glm::tmat3x3<HighP> dI3df(const glm::tmat3x3<HighP>& F) {
+__inline__ __host__ __device__ glm::tmat3x3<HighP> dI3df(const glm::tmat3x3<HighP>& F) {
     glm::tvec3<HighP> f0 = F[0], f1 = F[1], f2 = F[2];
     glm::tmat3x3<HighP> ret((HighP)0);
     ret[0] = glm::cross(f1, f2);
@@ -73,7 +73,7 @@ __inline__ __device__ glm::tmat3x3<HighP> dI3df(const glm::tmat3x3<HighP>& F) {
 
 
 template <typename HighP>
-__inline__ __device__ void svdGLM(const glm::tmat3x3<HighP>& A, glm::tmat3x3<HighP>& U, glm::tmat3x3<HighP>& S, glm::tmat3x3<HighP>& V)
+__inline__ __host__ __device__ void svdGLM(const glm::tmat3x3<HighP>& A, glm::tmat3x3<HighP>& U, glm::tmat3x3<HighP>& S, glm::tmat3x3<HighP>& V)
 {
     svd(A[0][0], A[1][0], A[2][0], A[0][1], A[1][1], A[2][1], A[0][2], A[1][2], A[2][2],
         U[0][0], U[1][0], U[2][0], U[0][1], U[1][1], U[2][1], U[0][2], U[1][2], U[2][2],
@@ -109,14 +109,14 @@ __device__ void polarDecomposition(const glm::tmat3x3<HighP>& F, glm::tmat3x3<Hi
 __global__ void AddExternal(glm::vec3* V, int numVerts, bool jump, float mass, glm::vec3 vel);
 
 template <typename HighP>
-__inline__ __device__ HighP frobeniusNorm(const glm::tmat3x3<HighP>& m) {
+__inline__ __host__ __device__ HighP frobeniusNorm(const glm::tmat3x3<HighP>& m) {
     return m[0][0] * m[0][0] + m[0][1] * m[0][1] + m[0][2] * m[0][2] +
         m[1][0] * m[1][0] + m[1][1] * m[1][1] + m[1][2] * m[1][2] +
         m[2][0] * m[2][0] + m[2][1] * m[2][1] + m[2][2] * m[2][2];
 }
 
 template <typename HighP>
-__device__ glm::tmat3x3<HighP> Build_Edge_Matrix(const glm::tvec3<HighP>* X, const indexType* Tet, int tet) {
+__host__ __device__ glm::tmat3x3<HighP> Build_Edge_Matrix(const glm::tvec3<HighP>* X, const indexType* Tet, int tet) {
     glm::tmat3x3<HighP> ret((HighP)0);
     ret[0] = X[Tet[tet * 4 + 1]] - X[Tet[tet * 4]];
     ret[1] = X[Tet[tet * 4 + 2]] - X[Tet[tet * 4]];

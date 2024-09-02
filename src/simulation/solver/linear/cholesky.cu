@@ -1,5 +1,5 @@
 #include <simulation/solver/linear/cholesky.h>
-#include <linear/linearUtils.cuh>
+#include <stdexcept>
 
 template<typename T>
 __global__ void FillMatrixA(int* AIdx, T* tmpVal, T* d_A, int n, int ASize) {

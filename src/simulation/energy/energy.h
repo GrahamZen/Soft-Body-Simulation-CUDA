@@ -18,17 +18,3 @@ protected:
     int* hessianColIdx = nullptr;
     int hessianIdxOffset = -1;
 };
-
-template<typename HighP>
-inline Energy<HighP>::Energy(int hessianIdxOffset) :hessianIdxOffset(hessianIdxOffset)
-{
-}
-
-template<typename HighP>
-inline void Energy<HighP>::SetHessianPtr(HighP* hessianVal, int* hessianRowIdx, int* hessianColIdx)
-{
-    if (hessianIdxOffset == -1)return;
-    this->hessianVal = hessianVal + hessianIdxOffset;
-    this->hessianRowIdx = hessianRowIdx + hessianIdxOffset;
-    this->hessianColIdx = hessianColIdx + hessianIdxOffset;
-}

@@ -3,14 +3,8 @@
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/softBody.h>
 #include <simulation/dataLoader.h>
-#include <simulation/MshLoader.h>
 #include <simulation/simulationContext.h>
-#include <glm/gtc/matrix_transform.hpp>
-#include <thrust/device_ptr.h>
-#include <thrust/device_vector.h>
-#include <thrust/host_vector.h>
-#include <thrust/transform.h>
-#include <thrust/fill.h>
+
 
 #define ERRORCHECK 1
 
@@ -143,31 +137,27 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
             }
             bool centralize = sbDefJson["centralize"].get<bool>();
             int startIndex = sbDefJson["start index"].get<int>();
+            SoftBodyAttribute attr{ mass, mu, lambda, host_DBC, DBC.size() };
             if (!mshFile.empty()) {
                 std::string baseName = mshFile.substr(nodeFile.find_last_of('/') + 1);
                 char* name = new char[baseName.size() + 1];
                 strcpy(name, baseName.c_str());
                 namesSoftBodies.push_back(name);
-                dataLoader.CollectData(mshFile.c_str(), pos, scale, rot, centralize, startIndex,
-                    SoftBodyAttribute{ mass, mu, lambda, host_DBC, DBC.size() });
+                dataLoader.CollectData(mshFile.c_str(), pos, scale, rot, centralize, startIndex, &attr);
             }
             else if (!nodeFile.empty()) {
                 std::string baseName = nodeFile.substr(nodeFile.find_last_of('/') + 1);
                 char* name = new char[baseName.size() + 1];
                 strcpy(name, baseName.c_str());
                 namesSoftBodies.push_back(name);
-                dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), faceFile.c_str(), pos, scale, rot, centralize, startIndex,
-                    SoftBodyAttribute{ mass, mu, lambda, host_DBC, DBC.size() });
+                dataLoader.CollectData(nodeFile.c_str(), eleFile.c_str(), faceFile.c_str(), pos, scale, rot, centralize, startIndex, &attr);
             }
             else {
                 throw std::runtime_error("Msh or node file must be provided!!!");
             }
 
         }
-        dataLoader.AllocData(startIndices, mSolverData, dev_Edges, dev_TetFathers);
-        for (auto softBodyData : dataLoader.m_softBodyData) {
-            softBodies.push_back(new SoftBody(this, std::get<2>(softBodyData), &std::get<1>(softBodyData)));
-        }
+        dataLoader.AllocData(startIndices, mSolverData, dev_Edges, dev_TetFathers, softBodies);
         mSolverParams.pCollisionDetection->Init(mSolverData.numTets, mSolverData.numVerts, maxThreads);
         cudaMalloc((void**)&mSolverData.dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(colliPrecision));
@@ -212,169 +202,6 @@ int SimulationCUDAContext::GetNumQueries() const {
 
 int SimulationCUDAContext::GetTetCnt() const {
     return mSolverData.numTets;
-}
-
-template<typename HighP>
-void DataLoader<HighP>::CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
-    bool centralize, int startIndex, SoftBodyAttribute attrib)
-{
-    totalNumDBC += attrib.numDBC;
-    SolverData<HighP> solverData;
-    SoftBodyData softBodyData;
-    auto vertices = loadNodeFile(nodeFileName, centralize, solverData.numVerts);
-    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<HighP>) * solverData.numVerts);
-    cudaMemcpy(solverData.X, vertices.data(), sizeof(glm::tvec3<HighP>) * solverData.numVerts, cudaMemcpyHostToDevice);
-
-    // transform
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, pos);
-    model = glm::scale(model, scale);
-    model = glm::rotate(model, glm::radians(rot.x), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(rot.z), glm::vec3(0.0f, 0.0f, 1.0f));
-    int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    TransformVertices << < blocks, threadsPerBlock >> > (solverData.X, model, solverData.numVerts);
-
-    auto tetIdx = loadEleFile(eleFileName, startIndex, solverData.numTets);
-    cudaMalloc((void**)&solverData.Tet, sizeof(indexType) * tetIdx.size());
-    cudaMemcpy(solverData.Tet, tetIdx.data(), sizeof(indexType) * tetIdx.size(), cudaMemcpyHostToDevice);
-    auto triIdx = loadFaceFile(faceFileName, startIndex, softBodyData.numTris);
-    if (!triIdx.empty()) {
-        cudaMalloc((void**)&softBodyData.Tri, sizeof(indexType) * triIdx.size());
-        cudaMemcpy(softBodyData.Tri, triIdx.data(), sizeof(indexType) * triIdx.size(), cudaMemcpyHostToDevice);
-    }
-    else {
-        softBodyData.Tri = nullptr;
-        softBodyData.numTris = 0;
-    }
-    CollectEdges(triIdx);
-    totalNumVerts += solverData.numVerts;
-    totalNumTets += solverData.numTets;
-
-    m_softBodyData.push_back({ solverData,softBodyData, attrib });
-}
-
-template<typename HighP>
-void DataLoader<HighP>::CollectData(const char* mshFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
-    bool centralize, int startIndex, SoftBodyAttribute attrib)
-{
-    totalNumDBC += attrib.numDBC;
-    SolverData<HighP> solverData;
-    SoftBodyData softBodyData;
-    igl::MshLoader _loader(mshFileName);
-    auto nodes = _loader.get_nodes();
-    std::vector<float> vertices(nodes.size());
-    solverData.numVerts = nodes.size() / 3;
-    std::transform(nodes.begin(), nodes.end(), vertices.begin(), [](igl::MshLoader::Float f) {
-        return static_cast<float>(f);
-        });
-    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<HighP>) * solverData.numVerts);
-    cudaMemcpy(solverData.X, vertices.data(), sizeof(glm::tvec3<HighP>) * solverData.numVerts, cudaMemcpyHostToDevice);
-
-    // transform
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::translate(model, pos);
-    model = glm::scale(model, scale);
-    model = glm::rotate(model, glm::radians(rot.x), glm::vec3(1.0f, 0.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(rot.y), glm::vec3(0.0f, 1.0f, 0.0f));
-    model = glm::rotate(model, glm::radians(rot.z), glm::vec3(0.0f, 0.0f, 1.0f));
-    int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    TransformVertices << < blocks, threadsPerBlock >> > (solverData.X, model, solverData.numVerts);
-
-    auto elements = _loader.get_elements();
-    std::vector<indexType> tetIdx(elements.size());
-    std::transform(elements.begin(), elements.end(), tetIdx.begin(), [](int i) {
-        return static_cast<indexType>(i);
-        });
-    solverData.numTets = tetIdx.size() / 4;
-    cudaMalloc((void**)&solverData.Tet, sizeof(indexType) * tetIdx.size());
-    cudaMemcpy(solverData.Tet, tetIdx.data(), sizeof(indexType) * tetIdx.size(), cudaMemcpyHostToDevice);
-    std::vector<indexType> triIdx;
-    if (!triIdx.empty()) {
-        cudaMalloc((void**)&softBodyData.Tri, sizeof(indexType) * triIdx.size());
-        cudaMemcpy(softBodyData.Tri, triIdx.data(), sizeof(indexType) * triIdx.size(), cudaMemcpyHostToDevice);
-    }
-    else {
-        softBodyData.Tri = nullptr;
-        softBodyData.numTris = 0;
-    }
-    CollectEdges(triIdx);
-    totalNumVerts += solverData.numVerts;
-    totalNumTets += solverData.numTets;
-
-    m_softBodyData.push_back({ solverData,softBodyData, attrib });
-}
-
-template<typename HighP>
-void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, SolverData<HighP>& solverData, indexType*& gEdges, indexType*& gTetFather)
-{
-    solverData.numVerts = totalNumVerts;
-    solverData.numTets = totalNumTets;
-    solverData.numDBC = totalNumDBC;
-    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&solverData.X0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&solverData.XTilde, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&solverData.V, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMemset(solverData.V, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMemset(solverData.ExtForce, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&solverData.Tet, sizeof(indexType) * totalNumTets * 4);
-    if (totalNumDBC > 0) {
-        cudaMalloc((void**)&solverData.DBC, sizeof(indexType) * totalNumDBC);
-    }
-    cudaMalloc((void**)&solverData.contact_area, sizeof(HighP) * totalNumVerts);
-    cudaMalloc((void**)&solverData.mass, sizeof(HighP) * totalNumVerts);
-    cudaMalloc((void**)&solverData.mu, sizeof(HighP) * totalNumTets);
-    cudaMalloc((void**)&solverData.lambda, sizeof(HighP) * totalNumTets);
-    cudaMalloc((void**)&gEdges, sizeof(indexType) * totalNumEdges * 2);
-    cudaMalloc((void**)&gTetFather, sizeof(indexType) * totalNumTets);
-    int vertOffset = 0, tetOffset = 0, edgeOffset = 0, dbcOffset = 0;
-    for (int i = 0; i < m_softBodyData.size(); i++)
-    {
-        auto& softBody = m_softBodyData[i];
-        startIndices.push_back(vertOffset);
-        SolverData<HighP>& softBodySolverData = std::get<0>(softBody);
-        SoftBodyData& softBodyData = std::get<1>(softBody);
-        const SoftBodyAttribute& softBodyAttr = std::get<2>(softBody);
-        cudaMemcpy(solverData.X + vertOffset, softBodySolverData.X, sizeof(glm::tvec3<HighP>) * softBodySolverData.numVerts, cudaMemcpyDeviceToDevice);
-        if (totalNumDBC > 0 && softBodyAttr.numDBC > 0) {
-            thrust::host_vector<indexType> hDBC(softBodyAttr.DBC, softBodyAttr.DBC + softBodyAttr.numDBC);
-            thrust::device_vector<indexType> dDBC(softBodyAttr.numDBC);
-            thrust::copy(hDBC.begin(), hDBC.end(), dDBC.begin());
-            thrust::device_ptr<indexType> dDBCPtr(solverData.DBC + dbcOffset);
-            thrust::transform(dDBC.begin(), dDBC.end(), dDBCPtr, [vertOffset] __device__(indexType x) {
-                return x + vertOffset;
-            });
-        }
-        thrust::transform(softBodySolverData.Tet, softBodySolverData.Tet + softBodySolverData.numTets * 4, thrust::device_pointer_cast(solverData.Tet) + tetOffset, [vertOffset] __device__(indexType x) {
-            return x + vertOffset;
-        });
-        if (softBodyData.Tri) {
-            thrust::for_each(thrust::device_pointer_cast(softBodyData.Tri), thrust::device_pointer_cast(softBodyData.Tri) + softBodyData.numTris * 3, [vertOffset] __device__(indexType & x) {
-                x += vertOffset;
-            });
-        }
-        thrust::fill(thrust::device_pointer_cast(gTetFather) + tetOffset / 4, thrust::device_pointer_cast(gTetFather) + tetOffset / 4 + softBodySolverData.numTets, i);
-        thrust::fill(thrust::device_pointer_cast(solverData.mass) + vertOffset, thrust::device_pointer_cast(solverData.mass) + vertOffset + softBodySolverData.numVerts, softBodyAttr.mass);
-        thrust::fill(thrust::device_pointer_cast(solverData.mu) + tetOffset / 4, thrust::device_pointer_cast(solverData.mu) + tetOffset / 4 + softBodySolverData.numTets, softBodyAttr.mu);
-        thrust::fill(thrust::device_pointer_cast(solverData.lambda) + tetOffset / 4, thrust::device_pointer_cast(solverData.lambda) + tetOffset / 4 + softBodySolverData.numTets, softBodyAttr.lambda);
-        cudaMemcpy(gEdges + edgeOffset, m_edges[i].data(), sizeof(indexType) * m_edges[i].size(), cudaMemcpyHostToDevice);
-        thrust::transform(thrust::device_pointer_cast(gEdges) + edgeOffset, thrust::device_pointer_cast(gEdges) + edgeOffset + m_edges[i].size(), thrust::device_pointer_cast(gEdges) + edgeOffset,
-            [vertOffset] __device__(indexType x) {
-            return x + vertOffset;
-        });
-        cudaFree(softBodySolverData.X);
-        cudaFree(softBodySolverData.Tet);
-        std::get<1>(softBody).numTets = softBodySolverData.numTets;
-        std::get<1>(softBody).Tet = solverData.Tet + tetOffset;
-        vertOffset += softBodySolverData.numVerts;
-        tetOffset += softBodySolverData.numTets * 4;
-        edgeOffset += m_edges[i].size();
-        dbcOffset += softBodyAttr.numDBC;
-        delete[] softBodyAttr.DBC;
-    }
-    cudaMemcpy(solverData.X0, solverData.X, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);
-    cudaMemcpy(solverData.XTilde, solverData.X, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
 
 void SimulationCUDAContext::PrepareRenderData() {

@@ -15,22 +15,3 @@ private:
     cusolverSpHandle_t cusolverHandle;
     cusparseMatDescr_t descrA;
 };
-
-template<typename T>
-inline CholeskySpImmedSolver<T>::CholeskySpImmedSolver(int N)
-{
-    cusparseCreate(&handle);
-    cusolverSpCreate(&cusolverHandle);
-    cusparseCreateMatDescr(&descrA);
-    cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
-    cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
-    cudaMalloc((void**)&d_rowPtrA, sizeof(int) * (N + 1));
-}
-
-template<typename T>
-CholeskySpImmedSolver<T>::~CholeskySpImmedSolver()
-{
-    cusparseDestroyMatDescr(descrA);
-    cusolverSpDestroy(cusolverHandle);
-    cudaFree(d_rowPtrA);
-}

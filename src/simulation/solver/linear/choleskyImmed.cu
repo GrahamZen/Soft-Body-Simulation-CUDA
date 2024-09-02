@@ -1,5 +1,26 @@
 #include <linear/choleskyImmed.h>
-#include "linearUtils.cuh"
+
+template<typename T>
+inline CholeskySpImmedSolver<T>::CholeskySpImmedSolver(int N)
+{
+    cusparseCreate(&handle);
+    cusolverSpCreate(&cusolverHandle);
+    cusparseCreateMatDescr(&descrA);
+    cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
+    cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
+    cudaMalloc((void**)&d_rowPtrA, sizeof(int) * (N + 1));
+}
+
+template<typename T>
+CholeskySpImmedSolver<T>::~CholeskySpImmedSolver()
+{
+    cusparseDestroyMatDescr(descrA);
+    cusolverSpDestroy(cusolverHandle);
+    cudaFree(d_rowPtrA);
+}
+
+template class CholeskySpImmedSolver<float>;
+template class CholeskySpImmedSolver<double>;
 
 template<>
 void CholeskySpImmedSolver<double>::Solve(int N, double* d_b, double* d_x, double* A, int nz, int* rowIdx, int* colIdx, double* d_guess)

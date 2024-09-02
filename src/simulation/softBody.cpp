@@ -1,8 +1,7 @@
 #include <simulation/softBody.h>
 #include <simulation/simulationContext.h>
 
-SoftBody::SoftBody(SimulationCUDAContext* context, SoftBodyAttribute& _attrib, SoftBodyData* dataPtr)
-    :softBodyData(*dataPtr), attrib(_attrib), threadsPerBlock(context->GetThreadsPerBlock())
+SoftBody::SoftBody(const SoftBodyData* dataPtr, const SoftBodyAttribute _attrib, int threadsPerBlock) :softBodyData(*dataPtr), attrib(_attrib), threadsPerBlock(threadsPerBlock)
 {
     Mesh::numTets = softBodyData.numTets;
     Mesh::numTris = softBodyData.numTris;

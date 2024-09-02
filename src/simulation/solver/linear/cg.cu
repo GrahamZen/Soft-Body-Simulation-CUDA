@@ -1,5 +1,5 @@
 #include <linear/cg.h>
-#include <linear/linearUtils.cuh>
+#include <iostream>
 
 CGSolver::CGSolver(int N, int max_iter, double tolerance) : N(N), max_iter(max_iter), tolerance(tolerance)
 {

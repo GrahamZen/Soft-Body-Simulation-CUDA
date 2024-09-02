@@ -38,7 +38,9 @@ FetchContent_MakeAvailable(Catch2)
 file(GLOB_RECURSE TEST_SOURCES "./*.cpp")
 add_executable(tests
 ${TEST_SOURCES}
-${CMAKE_SOURCE_DIR}/src/simulation/solver/linear/cg.cu)
+${CMAKE_SOURCE_DIR}/src/simulation/solver/linear/cg.cu
+${CMAKE_SOURCE_DIR}/src/simulation/solver/linear/linear.cu
+)
 target_include_directories(tests PUBLIC ${CMAKE_SOURCE_DIR}/src/simulation/solver/linear)
 target_link_libraries(tests PUBLIC
 Eigen3::Eigen
