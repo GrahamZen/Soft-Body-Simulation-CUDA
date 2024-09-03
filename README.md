@@ -76,7 +76,7 @@ For the global step, we just use a linear solve to find the q in the following e
 <img src="image/globalEquation.png" width="400">
 
 
-To deal this function, two ways of solving this large sparse linear problem are implemented with `Eigen` on CPU and cuSolver on GPU. Both way solve the problem by precompute and factorize the A matrix. And by our current observation, the `Eigen` implementation runs faster than the cuSolver one.
+To deal this function, two ways of solving this large sparse linear problem are implemented with `Eigen` on CPU and cuSolver on GPU. Both way solve the problem by precomputing and factorizing the A matrix. cuSolver seems to be faster than `Eigen`, but naively using `cusolverSpScsrcholFactor` and `cusolverSpScsrcholSolve` results in a much slower performance than `Eigen`! The reason is that these algorithm works for sparse matrices. Though the matrix itself is sparse, after the factorization, the matrix can be dense. The solution is to first apply **approximate minimum degree** reordering to the matrix to get a permutation vector, and then do the factorization with the permutation vector. When solving the linear system, we also need to apply the permutation vector to the right-hand side and apply the inverse permutation vector to the solution. The result is incredible! When the number of DOF is over 100000, fps is still stable at 60 for the GPU version.
 
 
 ## Collision Detection & Handling
