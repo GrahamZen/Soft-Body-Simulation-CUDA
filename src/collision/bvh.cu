@@ -10,11 +10,11 @@
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
 
-template<typename HighP>
-__device__ void buildBBox(BVHNode<HighP>& curr, const BVHNode<HighP>& left, const BVHNode<HighP>& right)
+template<typename Scalar>
+__device__ void buildBBox(BVHNode<Scalar>& curr, const BVHNode<Scalar>& left, const BVHNode<Scalar>& right)
 {
-    glm::tvec3<HighP> newMin;
-    glm::tvec3<HighP> newMax;
+    glm::tvec3<Scalar> newMin;
+    glm::tvec3<Scalar> newMax;
     newMin.x = glm::min(left.bbox.min.x, right.bbox.min.x);
     newMax.x = glm::max(left.bbox.max.x, right.bbox.max.x);
     newMin.y = glm::min(left.bbox.min.y, right.bbox.min.y);
@@ -22,16 +22,16 @@ __device__ void buildBBox(BVHNode<HighP>& curr, const BVHNode<HighP>& left, cons
     newMin.z = glm::min(left.bbox.min.z, right.bbox.min.z);
     newMax.z = glm::max(left.bbox.max.z, right.bbox.max.z);
 
-    curr.bbox = AABB<HighP>{ newMin, newMax };
+    curr.bbox = AABB<Scalar>{ newMin, newMax };
     curr.isLeaf = 0;
 }
 
-template<typename HighP>
-__global__ void buildBBoxesSerial(int leafCount, BVHNode<HighP>* nodes, BVH<HighP>::ReadyFlagType* ready) {
+template<typename Scalar>
+__global__ void buildBBoxesSerial(int leafCount, BVHNode<Scalar>* nodes, BVH<Scalar>::ReadyFlagType* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (ind >= leafCount - 1)return;
-    BVHNode<HighP> node = nodes[ind];
+    BVHNode<Scalar> node = nodes[ind];
     if (ready[ind] != 0)
         return;
     if (ready[node.leftIndex] != 0 && ready[node.rightIndex] != 0)
@@ -43,15 +43,15 @@ __global__ void buildBBoxesSerial(int leafCount, BVHNode<HighP>* nodes, BVH<High
 
 namespace cg = cooperative_groups;
 
-template<typename HighP>
-__global__ void buildBBoxesCG(int leafCount, BVHNode<HighP>* nodes, BVH<HighP>::ReadyFlagType* ready) {
+template<typename Scalar>
+__global__ void buildBBoxesCG(int leafCount, BVHNode<Scalar>* nodes, BVH<Scalar>::ReadyFlagType* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
     cg::grid_group grid = cg::this_grid();
 
     if (ind >= leafCount - 1)return;
     bool done = false;
     while (!done) {
-        BVHNode<HighP> node = nodes[ind];
+        BVHNode<Scalar> node = nodes[ind];
         if (ready[ind] != 0) {}
         else if (ready[node.leftIndex] != 0 && ready[node.rightIndex] != 0)
         {
@@ -64,12 +64,12 @@ __global__ void buildBBoxesCG(int leafCount, BVHNode<HighP>* nodes, BVH<HighP>::
     }
 }
 
-template<typename HighP>
-__global__ void buildBBoxesAtomic(int leafCount, BVHNode<HighP>* nodes, BVH<HighP>::ReadyFlagType* ready) {
+template<typename Scalar>
+__global__ void buildBBoxesAtomic(int leafCount, BVHNode<Scalar>* nodes, BVH<Scalar>::ReadyFlagType* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (ind >= leafCount - 1) return;
-    BVHNode<HighP> node = nodes[ind];
+    BVHNode<Scalar> node = nodes[ind];
 
     while (true) {
         auto leftReady = atomicCAS(&ready[node.leftIndex], 0, 0);
@@ -84,15 +84,15 @@ __global__ void buildBBoxesAtomic(int leafCount, BVHNode<HighP>* nodes, BVH<High
     }
 }
 
-template<typename HighP>
-void BVH<HighP>::Init(int _numTets, int _numVerts, int maxThreads)
+template<typename Scalar>
+void BVH<Scalar>::Init(int _numTets, int _numVerts, int maxThreads)
 {
     numTets = _numTets;
     int numVerts = _numVerts;
     int numNodes = numTets * 2 - 1;
-    cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode<HighP>));
-    cudaMalloc((void**)&dev_tI, numVerts * sizeof(HighP));
-    cudaMemset(dev_tI, 0, numVerts * sizeof(HighP));
+    cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode<Scalar>));
+    cudaMalloc((void**)&dev_tI, numVerts * sizeof(Scalar));
+    cudaMemset(dev_tI, 0, numVerts * sizeof(Scalar));
     cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
     cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
     cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
@@ -103,7 +103,7 @@ void BVH<HighP>::Init(int _numTets, int _numVerts, int maxThreads)
     cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
     int minGridSize;
 
-    cudaOccupancyMaxPotentialBlockSize(&minGridSize, &suggestedBlocksize, buildBBoxesCG<HighP>, 0, 0);
+    cudaOccupancyMaxPotentialBlockSize(&minGridSize, &suggestedBlocksize, buildBBoxesCG<Scalar>, 0, 0);
 
     if (numTets < maxThreads) {
         std::cout << "Using cooperative group." << std::endl;
@@ -117,33 +117,33 @@ void BVH<HighP>::Init(int _numTets, int _numVerts, int maxThreads)
     suggestedCGNumblocks = (numTets + suggestedBlocksize - 1) / suggestedBlocksize;
 }
 
-template<typename HighP>
-void BVH<HighP>::BuildBBoxes(BuildType buildType) {
+template<typename Scalar>
+void BVH<Scalar>::BuildBBoxes(BuildType buildType) {
     if (buildType == BuildType::Cooperative && isBuildBBCG) {
         void* args[] = { &numTets, &dev_BVHNodes, &dev_ready };
-        cudaError_t error = cudaLaunchCooperativeKernel((void*)buildBBoxesCG<HighP>, suggestedCGNumblocks, suggestedBlocksize, args);
+        cudaError_t error = cudaLaunchCooperativeKernel((void*)buildBBoxesCG<Scalar>, suggestedCGNumblocks, suggestedBlocksize, args);
         if (error != cudaSuccess) {
             std::cerr << "cudaLaunchCooperativeKernel failed: " << cudaGetErrorString(error) << std::endl;
         }
     }
     else if (buildType == BuildType::Atomic) {
-        buildBBoxesAtomic<HighP> << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+        buildBBoxesAtomic<Scalar> << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
     }
     else if (buildType == BuildType::Serial) {
         ReadyFlagType treeBuild = 0;
         while (treeBuild == 0) {
-            buildBBoxesSerial<HighP> << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+            buildBBoxesSerial<Scalar> << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
             cudaMemcpy(&treeBuild, dev_ready, sizeof(ReadyFlagType), cudaMemcpyDeviceToHost);
         }
     }
 }
 
-template<typename HighP>
-BVH<HighP>::BVH<HighP>(const int _threadsPerBlock) :
+template<typename Scalar>
+BVH<Scalar>::BVH<Scalar>(const int _threadsPerBlock) :
     threadsPerBlock(_threadsPerBlock) {}
 
-template<typename HighP>
-BVH<HighP>::~BVH<HighP>()
+template<typename Scalar>
+BVH<Scalar>::~BVH<Scalar>()
 {
     cudaFree(dev_BVHNodes);
     cudaFree(dev_tI);
@@ -153,8 +153,8 @@ BVH<HighP>::~BVH<HighP>()
     cudaFree(dev_mortonCodes);
 }
 
-template<typename HighP>
-void BVH<HighP>::PrepareRenderData()
+template<typename Scalar>
+void BVH<Scalar>::PrepareRenderData()
 {
     glm::vec3* pos;
     Wireframe::MapDevicePosPtr(&pos);
@@ -164,16 +164,16 @@ void BVH<HighP>::PrepareRenderData()
     Wireframe::UnMapDevicePtr();
 }
 
-template<typename HighP>
-const BVHNode<HighP>* BVH<HighP>::GetBVHNodes() const
+template<typename Scalar>
+const BVHNode<Scalar>* BVH<Scalar>::GetBVHNodes() const
 {
     return dev_BVHNodes;
 }
 
-template<typename HighP>
-void CollisionDetection<HighP>::DetectCollision(HighP* tI, glm::vec3* nors)
+template<typename Scalar>
+void CollisionDetection<Scalar>::DetectCollision(Scalar* tI, glm::vec3* nors)
 {
-    thrust::device_ptr<HighP> dev_ptr(tI);
+    thrust::device_ptr<Scalar> dev_ptr(tI);
     thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
     if (BroadPhase()) {
         PrepareRenderData();
@@ -181,14 +181,14 @@ void CollisionDetection<HighP>::DetectCollision(HighP* tI, glm::vec3* nors)
     }
 }
 
-template<typename HighP>
-void CollisionDetection<HighP>::SetBuildType(typename BVH<HighP>::BuildType _buildType)
+template<typename Scalar>
+void CollisionDetection<Scalar>::SetBuildType(typename BVH<Scalar>::BuildType _buildType)
 {
     buildType = _buildType;
 }
 
-template<typename HighP>
-typename BVH<HighP>::BuildType CollisionDetection<HighP>::GetBuildType()
+template<typename Scalar>
+typename BVH<Scalar>::BuildType CollisionDetection<Scalar>::GetBuildType()
 {
     return buildType;
 }

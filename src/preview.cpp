@@ -6,7 +6,7 @@
 #include <imgui_impl_opengl3.h>
 #include <ctime>
 
-template<typename HighP>
+template<typename Scalar>
 class BVH;
 GLFWwindow* window;
 GuiDataContainer* imguiData = nullptr;

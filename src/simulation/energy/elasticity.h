@@ -1,12 +1,12 @@
 #pragma once
 #include <energy/energy.h>
 
-template <typename HighP>
-class ElasticEnergy : public Energy<HighP> {
+template <typename Scalar>
+class ElasticEnergy : public Energy<Scalar> {
 public:
     ElasticEnergy(int& hessianIdxOffset);
     virtual ~ElasticEnergy() = default;
-    virtual HighP Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData) const = 0;
-    virtual void Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef) const = 0;
-    virtual void Hessian(const SolverData<HighP>& solverData, HighP coef) const = 0;
+    virtual Scalar Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData) const = 0;
+    virtual void Gradient(Scalar* grad, const SolverData<Scalar>& solverData, Scalar coef) const = 0;
+    virtual void Hessian(const SolverData<Scalar>& solverData, Scalar coef) const = 0;
 };

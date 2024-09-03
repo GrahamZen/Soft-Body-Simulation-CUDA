@@ -7,7 +7,7 @@
 
 class SoftBodyAttribute;
 class SoftBody;
-template<typename HighP>
+template<typename Scalar>
 class DataLoader {
     friend class SimulationCUDAContext;
     struct Impl;
@@ -18,10 +18,10 @@ public:
         const glm::vec3& rot, bool centralize, int startIndex, SoftBodyAttribute* attrib);
     void CollectData(const char* mshFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
         bool centralize, int startIndex, SoftBodyAttribute* attrib);
-    void AllocData(std::vector<int>& startIndices, SolverData<HighP>& solverData, std::vector<SoftBody*>& softbodies);
+    void AllocData(std::vector<int>& startIndices, SolverData<Scalar>& solverData, std::vector<SoftBody*>& softbodies);
 private:
     static std::vector<indexType> loadEleFile(const std::string& EleFilename, int startIndex, int& numTets);
-    static std::vector<glm::tvec3<HighP>> loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts);
+    static std::vector<glm::tvec3<Scalar>> loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts);
     static std::vector<indexType> loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris);
     void CollectEdges(const std::vector<indexType>& triIdx);
     std::unique_ptr<Impl> m_impl;

@@ -59,21 +59,21 @@ struct EqualQuery {
     }
 };
 
-template<typename HighP>
-__global__ void detectCollisionNarrow(int numQueries, Query* queries, const glm::tvec3<HighP>* Xs, const glm::tvec3<HighP>* XTildes)
+template<typename Scalar>
+__global__ void detectCollisionNarrow(int numQueries, Query* queries, const glm::tvec3<Scalar>* Xs, const glm::tvec3<Scalar>* XTildes)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numQueries)
     {
-        glm::tvec3<HighP> normal;
+        glm::tvec3<Scalar> normal;
         Query& q = queries[index];
         q.toi = ccdCollisionTest(q, Xs, XTildes, normal);
         q.normal = normal;
     }
 }
 
-template<typename HighP>
-__global__ void storeTi(int numQueries, Query* queries, HighP* tI, glm::vec3* nors)
+template<typename Scalar>
+__global__ void storeTi(int numQueries, Query* queries, Scalar* tI, glm::vec3* nors)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numQueries)
@@ -169,8 +169,8 @@ __global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::ve
     }
 }
 
-template<typename HighP>
-void CollisionDetection<HighP>::NarrowPhase(HighP*& tI, glm::vec3*& nors)
+template<typename Scalar>
+void CollisionDetection<Scalar>::NarrowPhase(Scalar*& tI, glm::vec3*& nors)
 {
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
     detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, mpSolverData->X, mpSolverData->XTilde);

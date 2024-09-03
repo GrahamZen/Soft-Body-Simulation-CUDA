@@ -53,21 +53,21 @@ bool compareDevVSDev(const T1* dev_ptr, const T2* dev_ptr2, int size) {
     return utilityCore::compareHostVSHost(host_ptr.data(), reinterpret_cast<T1*>(host_ptr2.data()), size);
 }
 
-template<typename HighP>
-__global__ void TransformVertices(glm::tvec3<HighP>* X, glm::mat4 transform, int numVerts)
+template<typename Scalar>
+__global__ void TransformVertices(glm::tvec3<Scalar>* X, glm::mat4 transform, int numVerts)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
     if (index < numVerts)
     {
-        X[index] = glm::tvec3<HighP>(transform * glm::tvec4<HighP>(X[index], 1.f));
+        X[index] = glm::tvec3<Scalar>(transform * glm::tvec4<Scalar>(X[index], 1.f));
     }
 }
 template __global__ void TransformVertices(glm::tvec3<float>* X, glm::mat4 transform, int numVerts);
 template __global__ void TransformVertices(glm::tvec3<double>* X, glm::mat4 transform, int numVerts);
 
-template<typename HighP>
-__global__ void PopulatePos(glm::vec3* vertices, glm::tvec3<HighP>* X, indexType* Tet, int numTets)
+template<typename Scalar>
+__global__ void PopulatePos(glm::vec3* vertices, glm::tvec3<Scalar>* X, indexType* Tet, int numTets)
 {
     int tet = (blockIdx.x * blockDim.x) + threadIdx.x;
 
@@ -91,8 +91,8 @@ __global__ void PopulatePos(glm::vec3* vertices, glm::tvec3<HighP>* X, indexType
 template __global__ void PopulatePos(glm::vec3* vertices, glm::tvec3<float>* X, indexType* Tet, int numTets);
 template __global__ void PopulatePos(glm::vec3* vertices, glm::tvec3<double>* X, indexType* Tet, int numTets);
 
-template<typename HighP>
-__global__ void PopulateTriPos(glm::vec3* vertices, glm::tvec3<HighP>* X, indexType* Tet, int numTris)
+template<typename Scalar>
+__global__ void PopulateTriPos(glm::vec3* vertices, glm::tvec3<Scalar>* X, indexType* Tet, int numTris)
 {
     int tri = (blockIdx.x * blockDim.x) + threadIdx.x;
 
@@ -114,19 +114,19 @@ void inspectMortonCodes(const int* dev_mortonCodes, int numTets) {
     utilityCore::inspectHostMorton(hstMorton.data(), numTets);
 }
 
-template<typename HighP>
-void inspectBVHNode(const BVHNode<HighP>* dev_BVHNodes, int numTets)
+template<typename Scalar>
+void inspectBVHNode(const BVHNode<Scalar>* dev_BVHNodes, int numTets)
 {
-    std::vector<BVHNode<HighP>> hstBVHNodes(2 * numTets - 1);
-    cudaMemcpy(hstBVHNodes.data(), dev_BVHNodes, sizeof(BVHNode<HighP>) * (2 * numTets - 1), cudaMemcpyDeviceToHost);
+    std::vector<BVHNode<Scalar>> hstBVHNodes(2 * numTets - 1);
+    cudaMemcpy(hstBVHNodes.data(), dev_BVHNodes, sizeof(BVHNode<Scalar>) * (2 * numTets - 1), cudaMemcpyDeviceToHost);
     utilityCore::inspectHost(hstBVHNodes.data(), 2 * numTets - 1);
 }
 
-template<typename HighP>
-void inspectBVH(const AABB<HighP>* dev_aabbs, int size)
+template<typename Scalar>
+void inspectBVH(const AABB<Scalar>* dev_aabbs, int size)
 {
-    std::vector<AABB<HighP>> hstAABB(size);
-    cudaMemcpy(hstAABB.data(), dev_aabbs, sizeof(AABB<HighP>) * size, cudaMemcpyDeviceToHost);
+    std::vector<AABB<Scalar>> hstAABB(size);
+    cudaMemcpy(hstAABB.data(), dev_aabbs, sizeof(AABB<Scalar>) * size, cudaMemcpyDeviceToHost);
     utilityCore::inspectHost(hstAABB.data(), size);
 }
 
@@ -159,11 +159,11 @@ __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int nu
     }
 }
 
-template<typename HighP>
-__global__ void populateBVHNodeAABBPos(BVHNode<HighP>* nodes, glm::vec3* pos, int numNodes) {
+template<typename Scalar>
+__global__ void populateBVHNodeAABBPos(BVHNode<Scalar>* nodes, glm::vec3* pos, int numNodes) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx >= numNodes) return;
-    const AABB<HighP>& aabb = nodes[idx].bbox;
+    const AABB<Scalar>& aabb = nodes[idx].bbox;
     pos[idx * 8 + 0] = glm::vec3(aabb.min.x, aabb.min.y, aabb.max.z);
     pos[idx * 8 + 1] = glm::vec3(aabb.max.x, aabb.min.y, aabb.max.z);
     pos[idx * 8 + 2] = glm::vec3(aabb.max.x, aabb.max.y, aabb.max.z);

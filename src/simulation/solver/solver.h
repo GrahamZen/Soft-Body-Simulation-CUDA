@@ -11,7 +11,7 @@ struct SoftBodyAttribute {
     bool jump = false;
 };
 
-template<typename HighP>
+template<typename Scalar>
 class CollisionDetection;
 
 struct SoftBodyData {
@@ -21,7 +21,7 @@ struct SoftBodyData {
     int numTets = 0;
 };
 
-template<typename HighP>
+template<typename Scalar>
 struct SolverParams {
     struct ExternalForce {
         glm::vec3 jump = glm::vec3(0.f, 400.f, 0.f);
@@ -34,29 +34,29 @@ struct SolverParams {
     float gravity = 9.8f;
     int numIterations = 1;
     bool handleCollision = true;
-    CollisionDetection<HighP>* pCollisionDetection = nullptr;
+    CollisionDetection<Scalar>* pCollisionDetection = nullptr;
 };
 
-template<typename HighP>
+template<typename Scalar>
 class Solver {
 public:
     Solver(int threadsPerBlock);
     virtual ~Solver();
 
-    virtual void Update(SolverData<HighP>& solverData, SolverParams<HighP>& solverParams) = 0;
+    virtual void Update(SolverData<Scalar>& solverData, SolverParams<Scalar>& solverParams) = 0;
 protected:
-    virtual void SolverPrepare(SolverData<HighP>& solverData, SolverParams<HighP>& solverParams) = 0;
-    virtual void SolverStep(SolverData<HighP>& solverData, SolverParams<HighP>& solverParams) = 0;
+    virtual void SolverPrepare(SolverData<Scalar>& solverData, SolverParams<Scalar>& solverParams) = 0;
+    virtual void SolverStep(SolverData<Scalar>& solverData, SolverParams<Scalar>& solverParams) = 0;
     int threadsPerBlock;
 
     bool solverReady = false;
 };
 
-template<typename HighP>
-Solver<HighP>::Solver(int threadsPerBlock) : threadsPerBlock(threadsPerBlock)
+template<typename Scalar>
+Solver<Scalar>::Solver(int threadsPerBlock) : threadsPerBlock(threadsPerBlock)
 {
 }
 
-template<typename HighP>
-Solver<HighP>::~Solver() {
+template<typename Scalar>
+Solver<Scalar>::~Solver() {
 }

@@ -16,23 +16,23 @@
 #include <set>
 
 namespace fs = std::filesystem;
-template<typename HighP>
-struct DataLoader<HighP>::Impl {
-    std::vector<std::tuple<SolverData<HighP>, SoftBodyData, SoftBodyAttribute>> m_softBodyData;
+template<typename Scalar>
+struct DataLoader<Scalar>::Impl {
+    std::vector<std::tuple<SolverData<Scalar>, SoftBodyData, SoftBodyAttribute>> m_softBodyData;
     std::vector<std::vector<indexType>> m_edges;
 };
 
-template<typename HighP>
-DataLoader<HighP>::DataLoader(int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock), m_impl(new Impl)
+template<typename Scalar>
+DataLoader<Scalar>::DataLoader(int _threadsPerBlock) :threadsPerBlock(_threadsPerBlock), m_impl(new Impl)
 {
 }
 
 
-template<typename HighP>
-DataLoader<HighP>::~DataLoader() = default;
+template<typename Scalar>
+DataLoader<Scalar>::~DataLoader() = default;
 
-template<typename HighP>
-std::vector<indexType> DataLoader<HighP>::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
+template<typename Scalar>
+std::vector<indexType> DataLoader<Scalar>::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
 {
     std::string line;
     std::ifstream file(EleFilename);
@@ -63,8 +63,8 @@ std::vector<indexType> DataLoader<HighP>::loadEleFile(const std::string& EleFile
     return Tet;
 }
 
-template<typename HighP>
-std::vector<indexType> DataLoader<HighP>::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
+template<typename Scalar>
+std::vector<indexType> DataLoader<Scalar>::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
 {
     std::string line;
     std::ifstream file(faceFilename);
@@ -95,8 +95,8 @@ std::vector<indexType> DataLoader<HighP>::loadFaceFile(const std::string& faceFi
 }
 
 
-template<typename HighP>
-std::vector<glm::tvec3<HighP>> DataLoader<HighP>::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
+template<typename Scalar>
+std::vector<glm::tvec3<Scalar>> DataLoader<Scalar>::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
 {
     std::ifstream file(nodeFilename);
     if (!file.is_open()) {
@@ -109,8 +109,8 @@ std::vector<glm::tvec3<HighP>> DataLoader<HighP>::loadNodeFile(const std::string
     std::getline(file, line);
     std::istringstream iss(line);
     iss >> numVerts;
-    std::vector<glm::tvec3<HighP>> X(numVerts);
-    glm::tvec3<HighP> center(0.0f);
+    std::vector<glm::tvec3<Scalar>> X(numVerts);
+    glm::tvec3<Scalar> center(0.0f);
 
     for (int i = 0; i < numVerts && std::getline(file, line); ++i) {
         std::istringstream lineStream(line);
@@ -139,8 +139,8 @@ std::vector<glm::tvec3<HighP>> DataLoader<HighP>::loadNodeFile(const std::string
     return X;
 }
 
-template<typename HighP>
-void DataLoader<HighP>::CollectEdges(const std::vector<indexType>& triIdx) {
+template<typename Scalar>
+void DataLoader<Scalar>::CollectEdges(const std::vector<indexType>& triIdx) {
     std::set<std::pair<indexType, indexType>> uniqueEdges;
     std::vector<indexType> edges;
 
@@ -167,16 +167,16 @@ void DataLoader<HighP>::CollectEdges(const std::vector<indexType>& triIdx) {
     totalNumEdges += edges.size() / 2;
 }
 
-template<typename HighP>
-void DataLoader<HighP>::CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
+template<typename Scalar>
+void DataLoader<Scalar>::CollectData(const char* nodeFileName, const char* eleFileName, const char* faceFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
     bool centralize, int startIndex, SoftBodyAttribute* attrib)
 {
     totalNumDBC += attrib->numDBC;
-    SolverData<HighP> solverData;
+    SolverData<Scalar> solverData;
     SoftBodyData softBodyData;
     auto vertices = loadNodeFile(nodeFileName, centralize, solverData.numVerts);
-    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<HighP>) * solverData.numVerts);
-    cudaMemcpy(solverData.X, vertices.data(), sizeof(glm::tvec3<HighP>) * solverData.numVerts, cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<Scalar>) * solverData.numVerts);
+    cudaMemcpy(solverData.X, vertices.data(), sizeof(glm::tvec3<Scalar>) * solverData.numVerts, cudaMemcpyHostToDevice);
 
     // transform
     glm::mat4 model = glm::mat4(1.0f);
@@ -207,12 +207,12 @@ void DataLoader<HighP>::CollectData(const char* nodeFileName, const char* eleFil
     m_impl->m_softBodyData.push_back({ solverData,softBodyData, *attrib });
 }
 
-template<typename HighP>
-void DataLoader<HighP>::CollectData(const char* mshFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
+template<typename Scalar>
+void DataLoader<Scalar>::CollectData(const char* mshFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
     bool centralize, int startIndex, SoftBodyAttribute* attrib)
 {
     totalNumDBC += attrib->numDBC;
-    SolverData<HighP> solverData;
+    SolverData<Scalar> solverData;
     SoftBodyData softBodyData;
     igl::MshLoader _loader(mshFileName);
     auto nodes = _loader.get_nodes();
@@ -221,8 +221,8 @@ void DataLoader<HighP>::CollectData(const char* mshFileName, const glm::vec3& po
     std::transform(nodes.begin(), nodes.end(), vertices.begin(), [](igl::MshLoader::Float f) {
         return static_cast<float>(f);
         });
-    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<HighP>) * solverData.numVerts);
-    cudaMemcpy(solverData.X, vertices.data(), sizeof(glm::tvec3<HighP>) * solverData.numVerts, cudaMemcpyHostToDevice);
+    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<Scalar>) * solverData.numVerts);
+    cudaMemcpy(solverData.X, vertices.data(), sizeof(glm::tvec3<Scalar>) * solverData.numVerts, cudaMemcpyHostToDevice);
 
     // transform
     glm::mat4 model = glm::mat4(1.0f);
@@ -258,27 +258,27 @@ void DataLoader<HighP>::CollectData(const char* mshFileName, const glm::vec3& po
     m_impl->m_softBodyData.push_back({ solverData,softBodyData, *attrib });
 }
 
-template<typename HighP>
-void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, SolverData<HighP>& solverData, std::vector<SoftBody*>& softbodies)
+template<typename Scalar>
+void DataLoader<Scalar>::AllocData(std::vector<int>& startIndices, SolverData<Scalar>& solverData, std::vector<SoftBody*>& softbodies)
 {
     solverData.numVerts = totalNumVerts;
     solverData.numTets = totalNumTets;
     solverData.numDBC = totalNumDBC;
-    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&solverData.X0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&solverData.XTilde, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&solverData.V, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMemset(solverData.V, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
-    cudaMemset(solverData.ExtForce, 0, sizeof(glm::tvec3<HighP>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.X, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.X0, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.XTilde, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.V, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
+    cudaMemset(solverData.V, 0, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
+    cudaMemset(solverData.ExtForce, 0, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
     cudaMalloc((void**)&solverData.Tet, sizeof(indexType) * totalNumTets * 4);
     if (totalNumDBC > 0) {
         cudaMalloc((void**)&solverData.DBC, sizeof(indexType) * totalNumDBC);
     }
-    cudaMalloc((void**)&solverData.contact_area, sizeof(HighP) * totalNumVerts);
-    cudaMalloc((void**)&solverData.mass, sizeof(HighP) * totalNumVerts);
-    cudaMalloc((void**)&solverData.mu, sizeof(HighP) * totalNumTets);
-    cudaMalloc((void**)&solverData.lambda, sizeof(HighP) * totalNumTets);
+    cudaMalloc((void**)&solverData.contact_area, sizeof(Scalar) * totalNumVerts);
+    cudaMalloc((void**)&solverData.mass, sizeof(Scalar) * totalNumVerts);
+    cudaMalloc((void**)&solverData.mu, sizeof(Scalar) * totalNumTets);
+    cudaMalloc((void**)&solverData.lambda, sizeof(Scalar) * totalNumTets);
     cudaMalloc((void**)&solverData.dev_Edges, sizeof(indexType) * totalNumEdges * 2);
     cudaMalloc((void**)&solverData.dev_TetFathers, sizeof(indexType) * totalNumTets);
     int vertOffset = 0, tetOffset = 0, edgeOffset = 0, dbcOffset = 0;
@@ -286,10 +286,10 @@ void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, SolverData<Hig
     {
         auto& softBody = m_impl->m_softBodyData[i];
         startIndices.push_back(vertOffset);
-        SolverData<HighP>& softBodySolverData = std::get<0>(softBody);
+        SolverData<Scalar>& softBodySolverData = std::get<0>(softBody);
         SoftBodyData& softBodyData = std::get<1>(softBody);
         const SoftBodyAttribute& softBodyAttr = std::get<2>(softBody);
-        cudaMemcpy(solverData.X + vertOffset, softBodySolverData.X, sizeof(glm::tvec3<HighP>) * softBodySolverData.numVerts, cudaMemcpyDeviceToDevice);
+        cudaMemcpy(solverData.X + vertOffset, softBodySolverData.X, sizeof(glm::tvec3<Scalar>) * softBodySolverData.numVerts, cudaMemcpyDeviceToDevice);
         if (totalNumDBC > 0 && softBodyAttr.numDBC > 0) {
             thrust::host_vector<indexType> hDBC(softBodyAttr.DBC, softBodyAttr.DBC + softBodyAttr.numDBC);
             thrust::device_vector<indexType> dDBC(softBodyAttr.numDBC);
@@ -327,8 +327,8 @@ void DataLoader<HighP>::AllocData(std::vector<int>& startIndices, SolverData<Hig
         delete[] softBodyAttr.DBC;
         softbodies.push_back(new SoftBody(&softBodyData, softBodyAttr, threadsPerBlock));
     }
-    cudaMemcpy(solverData.X0, solverData.X, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);
-    cudaMemcpy(solverData.XTilde, solverData.X, sizeof(glm::tvec3<HighP>) * totalNumVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(solverData.X0, solverData.X, sizeof(glm::tvec3<Scalar>) * totalNumVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(solverData.XTilde, solverData.X, sizeof(glm::tvec3<Scalar>) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
 
 template class DataLoader<double>;

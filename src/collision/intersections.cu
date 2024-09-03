@@ -21,15 +21,15 @@ __host__ __device__ inline unsigned int utilhash(unsigned int a) {
     return a;
 }
 
-template<typename HighP>
-__host__ __device__ HighP stp(const glm::tvec3<HighP>& u, const glm::tvec3<HighP>& v, const glm::tvec3<HighP>& w) { return glm::dot(u, glm::cross(v, w)); }
+template<typename Scalar>
+__host__ __device__ Scalar stp(const glm::tvec3<Scalar>& u, const glm::tvec3<Scalar>& v, const glm::tvec3<Scalar>& w) { return glm::dot(u, glm::cross(v, w)); }
 
 /**
  * Multiplies a mat4 and a vec4 and returns a vec3 clipped from the vec4.
  */
-template<typename HighP>
-__host__ __device__ glm::tvec3<HighP> multiplyMV(glm::tmat4x4<HighP> m, glm::tvec4<HighP> v) {
-    return glm::tvec3<HighP>(m * v);
+template<typename Scalar>
+__host__ __device__ glm::tvec3<Scalar> multiplyMV(glm::tmat4x4<Scalar> m, glm::tvec4<Scalar> v) {
+    return glm::tvec3<Scalar>(m * v);
 }
 
 template<typename T>
@@ -102,16 +102,16 @@ __host__ __device__ T newtonsMethod(T a, T b, T c, T d, T x0, int init_dir) {
     }
     return x0;
 }
-template<typename HighP>
-__host__ __device__ HighP signed_vf_distance(const glm::tvec3<HighP>& x,
-    const glm::tvec3<HighP>& y0, const glm::tvec3<HighP>& y1, const glm::tvec3<HighP>& y2,
-    glm::tvec3<HighP>* n, glm::tvec4<HighP>& w) {
+template<typename Scalar>
+__host__ __device__ Scalar signed_vf_distance(const glm::tvec3<Scalar>& x,
+    const glm::tvec3<Scalar>& y0, const glm::tvec3<Scalar>& y1, const glm::tvec3<Scalar>& y2,
+    glm::tvec3<Scalar>* n, glm::tvec4<Scalar>& w) {
     *n = cross(normalize(y1 - y0), normalize(y2 - y0));
     if (length2(*n) < 1e-6)
         return FLT_MAX;
     *n = normalize(*n);
-    HighP h = dot(x - y0, *n);
-    HighP b0 = stp(y1 - x, y2 - x, *n),
+    Scalar h = dot(x - y0, *n);
+    Scalar b0 = stp(y1 - x, y2 - x, *n),
         b1 = stp(y2 - x, y0 - x, *n),
         b2 = stp(y0 - x, y1 - x, *n);
     w[0] = 1;
@@ -121,11 +121,11 @@ __host__ __device__ HighP signed_vf_distance(const glm::tvec3<HighP>& x,
     return h;
 }
 
-template<typename HighP>
-__host__ __device__ HighP signed_ve_distance(const glm::tvec3<HighP>& x, const glm::tvec3<HighP>& y0, const glm::tvec3<HighP>& y1,
-    glm::tvec3<HighP>* n, HighP* w) {
-    glm::tvec3<HighP> e = y1 - y0;
-    HighP d = dot(x - y0, e) / length2(e);
+template<typename Scalar>
+__host__ __device__ Scalar signed_ve_distance(const glm::tvec3<Scalar>& x, const glm::tvec3<Scalar>& y0, const glm::tvec3<Scalar>& y1,
+    glm::tvec3<Scalar>* n, Scalar* w) {
+    glm::tvec3<Scalar> e = y1 - y0;
+    Scalar d = dot(x - y0, e) / length2(e);
     if (d < 0 || d > 1.0)
         return FLT_MAX;
     if (w) {
@@ -134,22 +134,22 @@ __host__ __device__ HighP signed_ve_distance(const glm::tvec3<HighP>& x, const g
         w[2] = -d;
         w[3] = 0;
     }
-    glm::tvec3<HighP> dist = x - (y0 + d * e);
-    HighP l = length(dist);
+    glm::tvec3<Scalar> dist = x - (y0 + d * e);
+    Scalar l = length(dist);
     if (n && fabs(l) > 1e-16) *n = dist / l;
     return l;
 }
 
-template<typename HighP>
-__host__ __device__ HighP signed_ee_distance(const glm::tvec3<HighP>& x0, const glm::tvec3<HighP>& x1,
-    const glm::tvec3<HighP>& y0, const glm::tvec3<HighP>& y1,
-    glm::tvec3<HighP>* n, glm::tvec4<HighP>& w) {
+template<typename Scalar>
+__host__ __device__ Scalar signed_ee_distance(const glm::tvec3<Scalar>& x0, const glm::tvec3<Scalar>& x1,
+    const glm::tvec3<Scalar>& y0, const glm::tvec3<Scalar>& y1,
+    glm::tvec3<Scalar>* n, glm::tvec4<Scalar>& w) {
     *n = cross(normalize(x1 - x0), normalize(y1 - y0));
     if (length2(*n) < 1e-6)
         return FLT_MAX;
     *n = normalize(*n);
-    HighP h = dot(x0 - y0, *n);
-    HighP a0 = stp(y1 - x1, y0 - x1, *n), a1 = stp(y0 - x0, y1 - x0, *n),
+    Scalar h = dot(x0 - y0, *n);
+    Scalar a0 = stp(y1 - x1, y0 - x1, *n), a1 = stp(y0 - x0, y1 - x0, *n),
         b0 = stp(x0 - y1, x1 - y1, *n), b1 = stp(x1 - y0, x0 - y0, *n);
     w[0] = a0 / (a0 + a1);
     w[1] = a1 / (a0 + a1);
@@ -159,21 +159,21 @@ __host__ __device__ HighP signed_ee_distance(const glm::tvec3<HighP>& x0, const 
 }
 
 
-template<typename HighP>
-__host__ __device__ bool edgeBboxIntersectionTest(const glm::tvec3<HighP>& X0, const glm::tvec3<HighP>& XTilde, const AABB<HighP>& bbox) {
-    const HighP eps = glm::epsilon<HighP>();
-    glm::tvec3<HighP> d = XTilde - X0;
-    glm::tvec3<HighP> ood = (HighP)1.0 / d;
-    HighP tmin = 0.0;
-    HighP tmax = 1.0;
+template<typename Scalar>
+__host__ __device__ bool edgeBboxIntersectionTest(const glm::tvec3<Scalar>& X0, const glm::tvec3<Scalar>& XTilde, const AABB<Scalar>& bbox) {
+    const Scalar eps = glm::epsilon<Scalar>();
+    glm::tvec3<Scalar> d = XTilde - X0;
+    glm::tvec3<Scalar> ood = (Scalar)1.0 / d;
+    Scalar tmin = 0.0;
+    Scalar tmax = 1.0;
 #pragma unroll
     for (int i = 0; i < 3; i++) {
-        if (glm::abs<HighP>(d[i]) < eps) {
+        if (glm::abs<Scalar>(d[i]) < eps) {
             if (X0[i] < bbox.min[i] || X0[i] > bbox.max[i]) return false;
         }
         else {
-            HighP t1 = (bbox.min[i] - X0[i]) * ood[i];
-            HighP t2 = (bbox.max[i] - X0[i]) * ood[i];
+            Scalar t1 = (bbox.min[i] - X0[i]) * ood[i];
+            Scalar t2 = (bbox.max[i] - X0[i]) * ood[i];
             if (t1 > t2) swap(t1, t2);
 
             tmin = glm::max(tmin, t1);
@@ -185,22 +185,22 @@ __host__ __device__ bool edgeBboxIntersectionTest(const glm::tvec3<HighP>& X0, c
     return true;
 }
 
-template<typename HighP>
-__host__ __device__ bool edgeBboxIntersectionTest(const glm::tvec3<HighP>& X0, const glm::tvec3<HighP>& XTilde, const AABB<HighP>& bbox, HighP& tmin, HighP& tmax) {
-    const HighP eps = glm::epsilon<HighP>();
-    glm::tvec3<HighP> d = XTilde - X0;
-    glm::tvec3<HighP> ood = (HighP)1.0 / d;
+template<typename Scalar>
+__host__ __device__ bool edgeBboxIntersectionTest(const glm::tvec3<Scalar>& X0, const glm::tvec3<Scalar>& XTilde, const AABB<Scalar>& bbox, Scalar& tmin, Scalar& tmax) {
+    const Scalar eps = glm::epsilon<Scalar>();
+    glm::tvec3<Scalar> d = XTilde - X0;
+    glm::tvec3<Scalar> ood = (Scalar)1.0 / d;
     tmin = 0.0;
     tmax = 1.0;
 
 #pragma unroll
     for (int i = 0; i < 3; i++) {
-        if (glm::abs<HighP>(d[i]) < eps) {
+        if (glm::abs<Scalar>(d[i]) < eps) {
             if (X0[i] < bbox.min[i] || X0[i] > bbox.max[i]) return false;
         }
         else {
-            HighP t1 = (bbox.min[i] - X0[i]) * ood[i];
-            HighP t2 = (bbox.max[i] - X0[i]) * ood[i];
+            Scalar t1 = (bbox.min[i] - X0[i]) * ood[i];
+            Scalar t2 = (bbox.max[i] - X0[i]) * ood[i];
 
             if (t1 > t2) swap(t1, t2);
 
@@ -213,8 +213,8 @@ __host__ __device__ bool edgeBboxIntersectionTest(const glm::tvec3<HighP>& X0, c
     return true;
 }
 
-template<typename HighP>
-__host__ __device__ bool bboxIntersectionTest(const AABB<HighP>& box1, const AABB<HighP>& box2) {
+template<typename Scalar>
+__host__ __device__ bool bboxIntersectionTest(const AABB<Scalar>& box1, const AABB<Scalar>& box2) {
     if (box1.max.x < box2.min.x || box1.min.x > box2.max.x) return false;
     if (box1.max.y < box2.min.y || box1.min.y > box2.max.y) return false;
     if (box1.max.z < box2.min.z || box1.min.z > box2.max.z) return false;
@@ -237,32 +237,32 @@ __host__ __device__ T solveCubicRange01(T a, T b, T c, T d, T* x) {
     return j;
 }
 
-template<typename HighP>
-__host__ __device__ HighP ccdTriangleIntersectionTest(const glm::tvec3<HighP>& x0, const glm::tvec3<HighP>& v0,
-    const glm::tvec3<HighP>& x1, const glm::tvec3<HighP>& x2, const glm::tvec3<HighP>& x3, const glm::tvec3<HighP>& v1, const glm::tvec3<HighP>& v2, const glm::tvec3<HighP>& v3,
-    const glm::tvec3<HighP>& xTilde0, const glm::tvec3<HighP>& xTilde1, const glm::tvec3<HighP>& xTilde2, const glm::tvec3<HighP>& xTilde3, glm::tvec3<HighP>& n) {
-    glm::tvec3<HighP> x01 = x1 - x0;
-    glm::tvec3<HighP> x02 = x2 - x0;
-    glm::tvec3<HighP> x03 = x3 - x0;
-    glm::tvec3<HighP> v01 = v1 - v0;
-    glm::tvec3<HighP> v02 = v2 - v0;
-    glm::tvec3<HighP> v03 = v3 - v0;
-    HighP a0 = stp(x01, x02, x03);
-    HighP a1 = stp(v01, x02, x03) + stp(x01, v02, x03) + stp(x01, x02, v03);
-    HighP a2 = stp(x01, v02, v03) + stp(v01, x02, v03) + stp(v01, v02, x03);
-    HighP a3 = stp(v01, v02, v03);
+template<typename Scalar>
+__host__ __device__ Scalar ccdTriangleIntersectionTest(const glm::tvec3<Scalar>& x0, const glm::tvec3<Scalar>& v0,
+    const glm::tvec3<Scalar>& x1, const glm::tvec3<Scalar>& x2, const glm::tvec3<Scalar>& x3, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2, const glm::tvec3<Scalar>& v3,
+    const glm::tvec3<Scalar>& xTilde0, const glm::tvec3<Scalar>& xTilde1, const glm::tvec3<Scalar>& xTilde2, const glm::tvec3<Scalar>& xTilde3, glm::tvec3<Scalar>& n) {
+    glm::tvec3<Scalar> x01 = x1 - x0;
+    glm::tvec3<Scalar> x02 = x2 - x0;
+    glm::tvec3<Scalar> x03 = x3 - x0;
+    glm::tvec3<Scalar> v01 = v1 - v0;
+    glm::tvec3<Scalar> v02 = v2 - v0;
+    glm::tvec3<Scalar> v03 = v3 - v0;
+    Scalar a0 = stp(x01, x02, x03);
+    Scalar a1 = stp(v01, x02, x03) + stp(x01, v02, x03) + stp(x01, x02, v03);
+    Scalar a2 = stp(x01, v02, v03) + stp(v01, x02, v03) + stp(v01, v02, x03);
+    Scalar a3 = stp(v01, v02, v03);
     if (abs(a0) < 1e-6 * length(x01) * length(x02) * length(x03))
         return 0.1; // initially coplanar
-    HighP t[3];
-    HighP minRoot = FLT_MAX;
-    int nsol = solveCubic<HighP>(a3, a2, a1, a0, t);
+    Scalar t[3];
+    Scalar minRoot = FLT_MAX;
+    int nsol = solveCubic<Scalar>(a3, a2, a1, a0, t);
     for (int i = 0; i < nsol; i++) {
         if (t[i] < -1e-3 || t[i] > 1)
             continue;
-        glm::tvec3<HighP> xt0 = x0 + t[i] * v0, xt1 = x1 + t[i] * v1,
+        glm::tvec3<Scalar> xt0 = x0 + t[i] * v0, xt1 = x1 + t[i] * v1,
             xt2 = x2 + t[i] * v2, xt3 = x3 + t[i] * v3;
-        glm::tvec4<HighP> w;
-        HighP d;
+        glm::tvec4<Scalar> w;
+        Scalar d;
         bool inside;
         d = signed_vf_distance(xt0, xt1, xt2, xt3, &n, w);
         inside = (glm::min(-w[1], glm::min(-w[2], -w[3])) >= -1e-3);
@@ -274,38 +274,38 @@ __host__ __device__ HighP ccdTriangleIntersectionTest(const glm::tvec3<HighP>& x
     return 1.0;
 }
 
-template<typename HighP>
-__host__ __device__ HighP ccdCollisionTest(const Query& query, const glm::tvec3<HighP>* Xs, const glm::tvec3<HighP>* XTildes, glm::tvec3<HighP>& n) {
-    const glm::tvec3<HighP> x0 = Xs[query.v0];
-    const glm::tvec3<HighP> x1 = Xs[query.v1];
-    const glm::tvec3<HighP> x2 = Xs[query.v2];
-    const glm::tvec3<HighP> x3 = Xs[query.v3];
-    const glm::tvec3<HighP> v0 = glm::tvec3<HighP>{ XTildes[query.v0] } - x0;
-    const glm::tvec3<HighP> v1 = glm::tvec3<HighP>{ XTildes[query.v1] } - x1;
-    const glm::tvec3<HighP> v2 = glm::tvec3<HighP>{ XTildes[query.v2] } - x2;
-    const glm::tvec3<HighP> v3 = glm::tvec3<HighP>{ XTildes[query.v3] } - x3;
-    const glm::tvec3<HighP> x01 = x1 - x0;
-    const glm::tvec3<HighP> x02 = x2 - x0;
-    const glm::tvec3<HighP> x03 = x3 - x0;
-    const glm::tvec3<HighP> v01 = v1 - v0;
-    const glm::tvec3<HighP> v02 = v2 - v0;
-    const glm::tvec3<HighP> v03 = v3 - v0;
-    const HighP a0 = stp(x01, x02, x03);
-    const HighP a1 = stp(v01, x02, x03) + stp(x01, v02, x03) + stp(x01, x02, v03);
-    const HighP a2 = stp(x01, v02, v03) + stp(v01, x02, v03) + stp(v01, v02, x03);
-    const HighP a3 = stp(v01, v02, v03);
+template<typename Scalar>
+__host__ __device__ Scalar ccdCollisionTest(const Query& query, const glm::tvec3<Scalar>* Xs, const glm::tvec3<Scalar>* XTildes, glm::tvec3<Scalar>& n) {
+    const glm::tvec3<Scalar> x0 = Xs[query.v0];
+    const glm::tvec3<Scalar> x1 = Xs[query.v1];
+    const glm::tvec3<Scalar> x2 = Xs[query.v2];
+    const glm::tvec3<Scalar> x3 = Xs[query.v3];
+    const glm::tvec3<Scalar> v0 = glm::tvec3<Scalar>{ XTildes[query.v0] } - x0;
+    const glm::tvec3<Scalar> v1 = glm::tvec3<Scalar>{ XTildes[query.v1] } - x1;
+    const glm::tvec3<Scalar> v2 = glm::tvec3<Scalar>{ XTildes[query.v2] } - x2;
+    const glm::tvec3<Scalar> v3 = glm::tvec3<Scalar>{ XTildes[query.v3] } - x3;
+    const glm::tvec3<Scalar> x01 = x1 - x0;
+    const glm::tvec3<Scalar> x02 = x2 - x0;
+    const glm::tvec3<Scalar> x03 = x3 - x0;
+    const glm::tvec3<Scalar> v01 = v1 - v0;
+    const glm::tvec3<Scalar> v02 = v2 - v0;
+    const glm::tvec3<Scalar> v03 = v3 - v0;
+    const Scalar a0 = stp(x01, x02, x03);
+    const Scalar a1 = stp(v01, x02, x03) + stp(x01, v02, x03) + stp(x01, x02, v03);
+    const Scalar a2 = stp(x01, v02, v03) + stp(v01, x02, v03) + stp(v01, v02, x03);
+    const Scalar a3 = stp(v01, v02, v03);
     if (abs(a0) < 1e-6 * length(x01) * length(x02) * length(x03))
         return 1.0; // initially coplanar
-    HighP t[3];
-    HighP minRoot = FLT_MAX;
-    int nsol = solveCubic<HighP>(a3, a2, a1, a0, t);
+    Scalar t[3];
+    Scalar minRoot = FLT_MAX;
+    int nsol = solveCubic<Scalar>(a3, a2, a1, a0, t);
     for (int i = 0; i < nsol; i++) {
         if (t[i] < -1e-3 || t[i] > 1)
             continue;
-        glm::tvec3<HighP> xt0 = x0 + t[i] * v0, xt1 = x1 + t[i] * v1,
+        glm::tvec3<Scalar> xt0 = x0 + t[i] * v0, xt1 = x1 + t[i] * v1,
             xt2 = x2 + t[i] * v2, xt3 = x3 + t[i] * v3;
-        glm::tvec4<HighP> w;
-        HighP d;
+        glm::tvec4<Scalar> w;
+        Scalar d;
         bool inside;
         if (query.type == QueryType::VF)
         {

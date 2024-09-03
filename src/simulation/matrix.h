@@ -2,26 +2,26 @@
 #include <vector.h>
 #include <iostream>
 
-template<typename HighP, size_t Rows, size_t Cols>
+template<typename Scalar, size_t Rows, size_t Cols>
 struct Matrix {
 public:
-    Vector<HighP, Cols> value[Rows];
+    Vector<Scalar, Cols> value[Rows];
 
     __host__ __device__ Matrix() {
         for (int i = 0; i < Rows; ++i) {
-            value[i] = Vector<HighP, Cols>();
+            value[i] = Vector<Scalar, Cols>();
         }
     }
 
-    __host__ __device__ Matrix(const HighP& val) {
+    __host__ __device__ Matrix(const Scalar& val) {
         for (int i = 0; i < Rows; ++i) {
             for (int j = 0; j < Cols; ++j) {
-                value[i][j] = (i == j) ? val : HighP(0);
+                value[i][j] = (i == j) ? val : Scalar(0);
             }
         }
     }
 
-    __host__ __device__ Matrix(const Vector<HighP, Rows>& lhs, const Vector<HighP, Cols>& rhs) {
+    __host__ __device__ Matrix(const Vector<Scalar, Rows>& lhs, const Vector<Scalar, Cols>& rhs) {
         for (int i = 0; i < Rows; ++i) {
             for (int j = 0; j < Cols; ++j) {
                 value[i][j] = lhs[i] * rhs[j];
@@ -29,18 +29,18 @@ public:
         }
     }
 
-    __host__ __device__ Vector<HighP, Cols>& operator[](int index) {
+    __host__ __device__ Vector<Scalar, Cols>& operator[](int index) {
         return value[index];
     }
 
-    __host__ __device__ const Vector<HighP, Cols>& operator[](int index) const {
+    __host__ __device__ const Vector<Scalar, Cols>& operator[](int index) const {
         return value[index];
     }
 
     template<size_t M = Cols>
-    __host__ __device__ Vector<HighP, Rows> operator*(const Vector<HighP, M>& vec) const {
+    __host__ __device__ Vector<Scalar, Rows> operator*(const Vector<Scalar, M>& vec) const {
         static_assert(M == Cols, "Matrix and vector dimensions do not match for multiplication");
-        Vector<HighP, Rows> result;
+        Vector<Scalar, Rows> result;
         for (int i = 0; i < Rows; ++i) {
             for (int j = 0; j < Cols; ++j) {
                 result[i] += value[i][j] * vec[j];
@@ -50,8 +50,8 @@ public:
     }
 
     template<size_t N>
-    __host__ __device__ Matrix<HighP, Rows, N> operator*(const Matrix<HighP, Cols, N>& mat) const {
-        Matrix<HighP, Rows, N> result;
+    __host__ __device__ Matrix<Scalar, Rows, N> operator*(const Matrix<Scalar, Cols, N>& mat) const {
+        Matrix<Scalar, Rows, N> result;
         for (int i = 0; i < Rows; ++i) {
             for (int j = 0; j < N; ++j) {
                 for (int k = 0; k < Cols; ++k) {
@@ -62,8 +62,8 @@ public:
         return result;
     }
 
-    __host__ __device__ Matrix<HighP, Cols, Rows> transpose() const {
-        Matrix<HighP, Cols, Rows> result;
+    __host__ __device__ Matrix<Scalar, Cols, Rows> transpose() const {
+        Matrix<Scalar, Cols, Rows> result;
         for (int i = 0; i < Rows; ++i) {
             for (int j = 0; j < Cols; ++j) {
                 result[j][i] = value[i][j];
@@ -73,14 +73,14 @@ public:
     }
 
 
-    __host__ __device__ Matrix operator*(const HighP& val) const {
+    __host__ __device__ Matrix operator*(const Scalar& val) const {
         Matrix result;
         for (int i = 0; i < Rows; ++i) {
             result[i] = value[i] * val;
         }
     }
 
-    __host__ __device__ friend Matrix operator*(const HighP& val, const Matrix& mat) {
+    __host__ __device__ friend Matrix operator*(const Scalar& val, const Matrix& mat) {
         Matrix result;
         for (int i = 0; i < Rows; ++i) {
             result[i] = mat[i] * val;
@@ -104,7 +104,7 @@ public:
         return result;
     }
 
-    __host__ __device__ Matrix operator/(const HighP& val) const {
+    __host__ __device__ Matrix operator/(const Scalar& val) const {
         Matrix result;
         for (int i = 0; i < Rows; ++i) {
             result[i] = value[i] / val;
@@ -126,14 +126,14 @@ public:
         return *this;
     }
 
-    __host__ __device__ Matrix operator*=(const HighP& val) {
+    __host__ __device__ Matrix operator*=(const Scalar& val) {
         for (int i = 0; i < Rows; ++i) {
             value[i] = value[i] * val;
         }
         return *this;
     }
 
-    __host__ __device__ Matrix operator/=(const HighP& val) {
+    __host__ __device__ Matrix operator/=(const Scalar& val) {
         for (int i = 0; i < Rows; ++i) {
             value[i] = value[i] / val;
         }
@@ -141,7 +141,7 @@ public:
     }
 
     template<size_t N>
-    __host__ __device__ Matrix operator*=(const Matrix<HighP, Cols, N>& mat) {
+    __host__ __device__ Matrix operator*=(const Matrix<Scalar, Cols, N>& mat) {
         Matrix result;
         for (int i = 0; i < Rows; ++i) {
             for (int j = 0; j < N; ++j) {
@@ -160,9 +160,9 @@ public:
         return *this;
     }
 
-    __host__ __device__ Matrix operator=(const HighP& val) {
+    __host__ __device__ Matrix operator=(const Scalar& val) {
         for (int i = 0; i < Rows; ++i) {
-            value[i] = Vector<HighP, N>(val);
+            value[i] = Vector<Scalar, N>(val);
         }
         return *this;
     }
@@ -183,13 +183,13 @@ public:
     }
 };
 
-template<typename HighP>
-using Matrix9 = Matrix<HighP, 9, 9>;
-template<typename HighP>
-using Matrix12 = Matrix<HighP, 12, 12>;
+template<typename Scalar>
+using Matrix9 = Matrix<Scalar, 9, 9>;
+template<typename Scalar>
+using Matrix12 = Matrix<Scalar, 12, 12>;
 
-template<typename HighP>
-using Matrix9x12 = Matrix<HighP, 9, 12>;
+template<typename Scalar>
+using Matrix9x12 = Matrix<Scalar, 9, 12>;
 
-template<typename HighP>
-using Matrix12x9 = Matrix<HighP, 12, 9>;
+template<typename Scalar>
+using Matrix12x9 = Matrix<Scalar, 12, 9>;

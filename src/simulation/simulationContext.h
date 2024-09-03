@@ -10,7 +10,7 @@ class SoftBody;
 class SurfaceShader;
 
 class SimulationCUDAContext {
-    template<typename HighP>
+    template<typename Scalar>
     friend class CollisionDetection;
 public:
     SimulationCUDAContext(Context* ctx, const std::string& _name, nlohmann::json& json,
@@ -33,8 +33,6 @@ private:
     void PrepareRenderData();
     int threadsPerBlock = 64;
     SolverData<solverPrecision> mSolverData;
-    indexType* dev_TetFathers;
-    indexType* dev_Edges;
     std::vector<const char*> namesSoftBodies;
     std::vector<SoftBody*> softBodies;
     std::vector<FixedBody*> fixedBodies;

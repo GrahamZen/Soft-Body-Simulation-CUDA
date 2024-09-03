@@ -5,12 +5,12 @@
 #include <thrust/device_vector.h>
 #include <vector>
 
-template<typename HighP>
-__device__ AABB<HighP> computeTetTrajBBox(const glm::tvec3<HighP>& v0, const glm::tvec3<HighP>& v1, const glm::tvec3<HighP>& v2, const glm::tvec3<HighP>& v3,
-    const glm::tvec3<HighP>& v4, const glm::tvec3<HighP>& v5, const glm::tvec3<HighP>& v6, const glm::tvec3<HighP>& v7);
+template<typename Scalar>
+__device__ AABB<Scalar> computeTetTrajBBox(const glm::tvec3<Scalar>& v0, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2, const glm::tvec3<Scalar>& v3,
+    const glm::tvec3<Scalar>& v4, const glm::tvec3<Scalar>& v5, const glm::tvec3<Scalar>& v6, const glm::tvec3<Scalar>& v7);
 
-template<typename HighP>
-__device__ unsigned int genMortonCode(AABB<HighP> bbox, glm::tvec3<HighP> geoMin, glm::tvec3<HighP> geoMax);
+template<typename Scalar>
+__device__ unsigned int genMortonCode(AABB<Scalar> bbox, glm::tvec3<Scalar> geoMin, glm::tvec3<Scalar> geoMax);
 
 __inline__ __device__ unsigned int expandBits(unsigned int v)
 {
@@ -30,5 +30,5 @@ __inline__ __device__ int getSign(int tmp)
         return -1;
     //return (tmp > 0) - (tmp < 0);
 }
-template<typename HighP>
-__global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNode<HighP>* nodes);
+template<typename Scalar>
+__global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNode<Scalar>* nodes);

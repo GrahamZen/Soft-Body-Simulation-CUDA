@@ -8,7 +8,7 @@ class Camera;
 class SimulationCUDAContext;
 class SurfaceShader;
 
-using solverPrecision = float;
+using solverPrecision = double;
 
 class GuiDataContainer
 {

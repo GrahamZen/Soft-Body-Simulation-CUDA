@@ -3,36 +3,36 @@
 #include <thrust/transform_reduce.h>
 
 namespace Gravity {
-    template <typename HighP>
-    __global__ void GradientKernel(HighP* grad, const HighP* mass, int numVerts, HighP g, HighP coef) {
+    template <typename Scalar>
+    __global__ void GradientKernel(Scalar* grad, const Scalar* mass, int numVerts, Scalar g, Scalar coef) {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= numVerts) return;
         grad[idx * 3 + 1] += coef * g * mass[idx];
     }
 }
 
-template<typename HighP>
-inline int GravityEnergy<HighP>::NNZ(const SolverData<HighP>& solverData) const
+template<typename Scalar>
+inline int GravityEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const
 {
     return 0;
 }
 
-template<typename HighP>
-inline HighP GravityEnergy<HighP>::Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData) const
+template<typename Scalar>
+inline Scalar GravityEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData) const
 {
-    HighP sum = thrust::transform_reduce(
+    Scalar sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(solverData.numVerts),
         [=] __host__ __device__(indexType vertIdx) {
         return Xs[vertIdx].y * solverData.mass[vertIdx];
     },
         0.0,
-        thrust::plus<HighP>());
+        thrust::plus<Scalar>());
     return g * sum;
 }
 
-template<typename HighP>
-inline void GravityEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef) const
+template<typename Scalar>
+inline void GravityEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, Scalar coef) const
 {
     int blockSize = 256;
     int numBlocks = (solverData.numVerts + blockSize - 1) / blockSize;

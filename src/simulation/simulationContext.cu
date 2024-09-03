@@ -163,7 +163,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(solverPrecision));
     }
     mSolverData.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
-    mSolver = new PdSolver{ threadsPerBlock, mSolverData};
+    mSolver = new IPCSolver{ threadsPerBlock, mSolverData, 5e-2 };
 }
 
 SimulationCUDAContext::~SimulationCUDAContext()
@@ -182,8 +182,8 @@ SimulationCUDAContext::~SimulationCUDAContext()
     cudaFree(mSolverData.mass);
     cudaFree(mSolverData.mu);
     cudaFree(mSolverData.lambda);
-    cudaFree(dev_Edges);
-    cudaFree(dev_TetFathers);
+    cudaFree(mSolverData.dev_Edges);
+    cudaFree(mSolverData.dev_TetFathers);
 
     for (auto softbody : softBodies) {
         delete softbody;

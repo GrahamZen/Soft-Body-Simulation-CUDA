@@ -174,8 +174,8 @@ template void utilityCore::inspectHost<int>(const int*, int, const char* str);
 template void utilityCore::inspectHost<float>(const float*, int, const char* str);
 template void utilityCore::inspectHost<double>(const double*, int, const char* str);
 
-template<typename HighP>
-void utilityCore::inspectHost(const BVHNode<HighP>* hstBVHNodes, int size) {
+template<typename Scalar>
+void utilityCore::inspectHost(const BVHNode<Scalar>* hstBVHNodes, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size; i++)
     {
@@ -186,8 +186,8 @@ void utilityCore::inspectHost(const BVHNode<HighP>* hstBVHNodes, int size) {
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
-template<typename HighP>
-void utilityCore::inspectHost(const AABB<HighP>* aabb, int size) {
+template<typename Scalar>
+void utilityCore::inspectHost(const AABB<Scalar>* aabb, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size; i++)
     {

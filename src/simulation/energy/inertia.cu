@@ -4,8 +4,8 @@
 #include <thrust/iterator/counting_iterator.h>
 
 namespace Inertia {
-    template <typename HighP>
-    __global__ void hessianKern(const HighP* dev_mass, HighP* hessianVal, int* hessianRowIdx, int* hessianColIdx, int numVerts) {
+    template <typename Scalar>
+    __global__ void hessianKern(const Scalar* dev_mass, Scalar* hessianVal, int* hessianRowIdx, int* hessianColIdx, int numVerts) {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= numVerts) {
             return;
@@ -22,47 +22,47 @@ namespace Inertia {
         hessianColIdx[offset + 2] = offset + 2;
     }
 
-    template <typename HighP>
-    __global__ void gradientKern(const glm::tvec3<HighP>* X, const glm::tvec3<HighP>* XTilde, const HighP* dev_mass, HighP* gradient, int numVerts) {
+    template <typename Scalar>
+    __global__ void gradientKern(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const Scalar* dev_mass, Scalar* gradient, int numVerts) {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= numVerts) {
             return;
         }
-        glm::tvec3<HighP> diff = dev_mass[idx] * (X[idx] - XTilde[idx]);
+        glm::tvec3<Scalar> diff = dev_mass[idx] * (X[idx] - XTilde[idx]);
         gradient[idx * 3] += diff.x;
         gradient[idx * 3 + 1] += diff.y;
         gradient[idx * 3 + 2] += diff.z;
     }
 }
 
-template <typename HighP>
-int InertiaEnergy<HighP>::NNZ(const SolverData<HighP>& solverData) const { return solverData.numVerts * 3; }
+template <typename Scalar>
+int InertiaEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const { return solverData.numVerts * 3; }
 
-template <typename HighP>
-InertiaEnergy<HighP>::InertiaEnergy(const SolverData<HighP>& solverData, int& hessianIdxOffset, int numVerts, const HighP* dev_mass) :
-    Energy<HighP>(hessianIdxOffset)
+template <typename Scalar>
+InertiaEnergy<Scalar>::InertiaEnergy(const SolverData<Scalar>& solverData, int& hessianIdxOffset, int numVerts, const Scalar* dev_mass) :
+    Energy<Scalar>(hessianIdxOffset)
 {
     hessianIdxOffset += NNZ(solverData);
 }
 
-template <typename HighP>
-HighP InertiaEnergy<HighP>::Val(const glm::tvec3<HighP>* Xs, const SolverData<HighP>& solverData) const {
+template <typename Scalar>
+Scalar InertiaEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData) const {
     // ||(x - x_tilde)||m^2 * 0.5.
-    HighP sum = thrust::transform_reduce(
+    Scalar sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(solverData.numVerts),
         [=]__host__ __device__(indexType vertIdx) {
-        glm::tvec3<HighP> diff = Xs[vertIdx] - solverData.XTilde[vertIdx];
-        HighP mass = solverData.mass[vertIdx];
+        glm::tvec3<Scalar> diff = Xs[vertIdx] - solverData.XTilde[vertIdx];
+        Scalar mass = solverData.mass[vertIdx];
         return mass * glm::dot(diff, diff);
     },
         0.0,
-        thrust::plus<HighP>());
+        thrust::plus<Scalar>());
     return sum * 0.5;
 }
 
-template<typename HighP>
-void InertiaEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>& solverData, HighP coef) const
+template<typename Scalar>
+void InertiaEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, Scalar coef) const
 {
     // m(x - x_tilde).
     int threadsPerBlock = 256;
@@ -70,8 +70,8 @@ void InertiaEnergy<HighP>::Gradient(HighP* grad, const SolverData<HighP>& solver
     Inertia::gradientKern << <numBlocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.mass, grad, solverData.numVerts);
 }
 
-template <typename HighP>
-void InertiaEnergy<HighP>::Hessian(const SolverData<HighP>& solverData, HighP coef) const
+template <typename Scalar>
+void InertiaEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, Scalar coef) const
 {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;

@@ -4,8 +4,8 @@
 #include <simulation/solver/solverUtil.cuh>
 
 namespace PdUtil {
-    template<typename HighP>
-    __global__ void CCDKernel(glm::tvec3<HighP>* X, glm::tvec3<HighP>* XTilde, glm::tvec3<HighP>* V, HighP* tI, glm::tvec3<HighP>* normal, float muT, float muN, int numVerts);
+    template<typename Scalar>
+    __global__ void CCDKernel(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* XTilde, glm::tvec3<Scalar>* V, Scalar* tI, glm::tvec3<Scalar>* normal, float muT, float muN, int numVerts);
 
     __inline__ __device__ void setRowColVal(int index, int* idx, float* val, int r, int c, float v, int rowLen)
     {

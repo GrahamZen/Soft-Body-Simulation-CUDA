@@ -12,7 +12,7 @@ void checkCUDAErrorFn(const char* msg, const char* file, int line);
 #define _cstar 0.923879532 // cos(pi/8)
 #define _sstar 0.3826834323 // sin(p/8)
 
-template<typename HighP>
+template<typename Scalar>
 class BVHNode;
 class Query;
 class Sphere;
@@ -30,10 +30,10 @@ template <typename T>
 void inspectSparseMatrix(T* dev_val, int* dev_rowIdx, int* dev_colIdx, int nnz, int size);
 void inspectMortonCodes(const int* dev_mortonCodes, int numTets);
 
-template<typename HighP>
-void inspectBVHNode(const BVHNode<HighP>* dev_BVHNodes, int numTets);
-template<typename HighP>
-void inspectBVH(const AABB<HighP>* dev_aabbs, int size);
+template<typename Scalar>
+void inspectBVHNode(const BVHNode<Scalar>* dev_BVHNodes, int numTets);
+template<typename Scalar>
+void inspectBVH(const AABB<Scalar>* dev_aabbs, int size);
 void inspectQuerys(const Query* dev_query, int size);
 void inspectSphere(const Sphere* dev_spheres, int size);
 
@@ -42,15 +42,15 @@ bool compareDevVSHost(const T1* dev_ptr, const T2* host_ptr2, int size);
 template <typename T1, typename T2>
 bool compareDevVSDev(const T1* dev_ptr, const T2* dev_ptr2, int size);
 
-template<typename HighP>
-__global__ void TransformVertices(glm::tvec3<HighP>* X, glm::mat4 transform, int numVerts);
+template<typename Scalar>
+__global__ void TransformVertices(glm::tvec3<Scalar>* X, glm::mat4 transform, int numVerts);
 
-template<typename HighP>
-__global__ void PopulatePos(glm::vec3* vertices, glm::tvec3<HighP>* X, indexType* Tet, int numTets);
+template<typename Scalar>
+__global__ void PopulatePos(glm::vec3* vertices, glm::tvec3<Scalar>* X, indexType* Tet, int numTets);
 
-template<typename HighP>
-__global__ void PopulateTriPos(glm::vec3* vertices, glm::tvec3<HighP>* X, indexType* Tet, int numTris);
+template<typename Scalar>
+__global__ void PopulateTriPos(glm::vec3* vertices, glm::tvec3<Scalar>* X, indexType* Tet, int numTris);
 
 __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* X, int numVerts);
-template<typename HighP>
-__global__ void populateBVHNodeAABBPos(BVHNode<HighP>* nodes, glm::vec3* pos, int numNodes);
+template<typename Scalar>
+__global__ void populateBVHNodeAABBPos(BVHNode<Scalar>* nodes, glm::vec3* pos, int numNodes);

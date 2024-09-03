@@ -8,7 +8,7 @@ class Plane;
 class Cylinder;
 
 class FixedBodyData {
-    template<typename HighP>
+    template<typename Scalar>
     friend class BarrierEnergy;
 public:
     FixedBodyData();
@@ -17,8 +17,8 @@ public:
     FixedBodyData& operator=(const FixedBodyData&) = delete;
     FixedBodyData(FixedBodyData&&) = default;
     FixedBodyData& operator=(FixedBodyData&&) = default;
-    template<typename HighP>
-    void HandleCollisions(glm::tvec3<HighP>* X, glm::tvec3<HighP>* V, int numVerts, HighP muT, HighP muN);
+    template<typename Scalar>
+    void HandleCollisions(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* V, int numVerts, Scalar muT, Scalar muN);
     ~FixedBodyData();
 private:
     Sphere* dev_spheres = nullptr;

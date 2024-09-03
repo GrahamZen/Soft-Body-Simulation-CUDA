@@ -5,25 +5,25 @@ using indexType = unsigned int;
 
 class FixedBodyData;
 
-template<typename HighP>
+template<typename Scalar>
 struct SolverData {
     indexType* Tet = nullptr;
-    glm::tvec3<HighP>* Force = nullptr;
-    glm::tvec3<HighP>* V = nullptr;
-    glm::tvec3<HighP>* X = nullptr;
-    glm::tvec3<HighP>* X0 = nullptr;
-    glm::tvec3<HighP>* XTilde = nullptr;
+    glm::tvec3<Scalar>* Force = nullptr;
+    glm::tvec3<Scalar>* V = nullptr;
+    glm::tvec3<Scalar>* X = nullptr;
+    glm::tvec3<Scalar>* X0 = nullptr;
+    glm::tvec3<Scalar>* XTilde = nullptr;
     indexType* DBC = nullptr;
-    HighP* mass = nullptr;
-    HighP* mu = nullptr;
-    HighP* lambda = nullptr;
-    HighP* contact_area = nullptr;
-    glm::tvec3<HighP>* ExtForce = nullptr;
-    glm::tmat3x3<HighP>* DmInv = nullptr;
-    HighP* dev_tIs = nullptr;
+    Scalar* mass = nullptr;
+    Scalar* mu = nullptr;
+    Scalar* lambda = nullptr;
+    Scalar* contact_area = nullptr;
+    glm::tvec3<Scalar>* ExtForce = nullptr;
+    glm::tmat3x3<Scalar>* DmInv = nullptr;
+    Scalar* dev_tIs = nullptr;
     glm::vec3* dev_Normals = nullptr;
     FixedBodyData* pFixedBodies = nullptr;
-    HighP* V0 = nullptr;
+    Scalar* V0 = nullptr;
     indexType* dev_TetFathers;
     indexType* dev_Edges; 
     int numDBC = 0;

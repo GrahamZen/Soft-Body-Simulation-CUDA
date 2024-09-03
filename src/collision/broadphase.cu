@@ -12,15 +12,15 @@
 
 //input the aabb box of a Tetrahedron
 //generate a 30-bit morton code
-template<typename HighP>
-__device__ unsigned int genMortonCode(AABB<HighP> bbox, glm::tvec3<HighP> geoMin, glm::tvec3<HighP> geoMax)
+template<typename Scalar>
+__device__ unsigned int genMortonCode(AABB<Scalar> bbox, glm::tvec3<Scalar> geoMin, glm::tvec3<Scalar> geoMax)
 {
-    HighP x = (bbox.min.x + bbox.max.x) * 0.5f;
-    HighP y = (bbox.min.y + bbox.max.y) * 0.5f;
-    HighP z = (bbox.min.y + bbox.max.y) * 0.5f;
-    HighP normalizedX = (x - geoMin.x) / (geoMax.x - geoMin.x);
-    HighP normalizedY = (y - geoMin.y) / (geoMax.y - geoMin.y);
-    HighP normalizedZ = (z - geoMin.z) / (geoMax.z - geoMin.z);
+    Scalar x = (bbox.min.x + bbox.max.x) * 0.5f;
+    Scalar y = (bbox.min.y + bbox.max.y) * 0.5f;
+    Scalar z = (bbox.min.y + bbox.max.y) * 0.5f;
+    Scalar normalizedX = (x - geoMin.x) / (geoMax.x - geoMin.x);
+    Scalar normalizedY = (y - geoMin.y) / (geoMax.y - geoMin.y);
+    Scalar normalizedZ = (z - geoMin.z) / (geoMax.z - geoMin.z);
 
     normalizedX = glm::min(glm::max(normalizedX * 1024.0, 0.0), 1023.0);
     normalizedY = glm::min(glm::max(normalizedY * 1024.0, 0.0), 1023.0);
@@ -69,8 +69,8 @@ __device__ int getSplit(unsigned int* mortonCodes, unsigned int currIndex, int n
 //codeCount is the size of the unique morton code
 //splitList is 30 x N list
 // the size of unique morton is less than 2^30 : [1, 2^30]
-template<typename HighP>
-__global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNode<HighP>* nodes)
+template<typename Scalar>
+__global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNode<Scalar>* nodes)
 {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
     if (ind < codeCount - 1)
@@ -140,9 +140,9 @@ __global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNod
 }
 
 // build the bounding box and morton code for each SoftBody
-template<typename HighP>
-__global__ void buildLeafMorton(int startIndex, int numTri, HighP minX, HighP minY, HighP minZ,
-    HighP maxX, HighP maxY, HighP maxZ, const indexType* tet, const glm::tvec3<HighP>* X, const glm::tvec3<HighP>* XTilde, BVHNode<HighP>* leafNodes,
+template<typename Scalar>
+__global__ void buildLeafMorton(int startIndex, int numTri, Scalar minX, Scalar minY, Scalar minZ,
+    Scalar maxX, Scalar maxY, Scalar maxZ, const indexType* tet, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, BVHNode<Scalar>* leafNodes,
     unsigned int* mortonCodes)
 {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
@@ -155,14 +155,14 @@ __global__ void buildLeafMorton(int startIndex, int numTri, HighP minX, HighP mi
         leafNodes[leafPos].leftIndex = -1;
         leafNodes[leafPos].rightIndex = -1;
         leafNodes[leafPos].TetrahedronIndex = ind;
-        mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glm::tvec3<HighP>(minX, minY, minZ), glm::tvec3<HighP>(maxX, maxY, maxZ));
+        mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glm::tvec3<Scalar>(minX, minY, minZ), glm::tvec3<Scalar>(maxX, maxY, maxZ));
     }
 }
 
-template<typename HighP>
-void BVH<HighP>::BuildBVHTree(BuildType buildType, const AABB<HighP>& ctxAABB, int numTets, const glm::tvec3<HighP>* X, glm::tvec3<HighP>* XTilde, const indexType* tets)
+template<typename Scalar>
+void BVH<Scalar>::BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTets, const glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* XTilde, const indexType* tets)
 {
-    cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode<HighP>));
+    cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode<Scalar>));
 
     buildLeafMorton << <numblocksTets, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
         tets, X, XTilde, dev_BVHNodes, dev_mortonCodes);
@@ -297,15 +297,15 @@ __device__ void fillQuery(Query* query, int tetId, int tet2Id, const indexType* 
 }
 
 
-template<typename HighP>
-__global__ void traverseTree(int numTets, const BVHNode<HighP>* nodes, const indexType* tets, const indexType* tetFathers, Query* queries, size_t* queryCount, size_t maxNumQueries, bool* overflowFlag)
+template<typename Scalar>
+__global__ void traverseTree(int numTets, const BVHNode<Scalar>* nodes, const indexType* tets, const indexType* tetFathers, Query* queries, size_t* queryCount, size_t maxNumQueries, bool* overflowFlag)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index >= numTets) return;
     int leafIdx = index + numTets - 1;
-    const BVHNode<HighP> myNode = nodes[leafIdx];
+    const BVHNode<Scalar> myNode = nodes[leafIdx];
     // record the closest intersection
-    HighP closest = 1;
+    Scalar closest = 1;
     int bvhStart = 0;
     int stack[64];
     int stackPtr = 0;
@@ -315,10 +315,10 @@ __global__ void traverseTree(int numTets, const BVHNode<HighP>* nodes, const ind
     while (stackPtr)
     {
         bvhPtr = stack[--stackPtr];
-        BVHNode<HighP> currentNode = nodes[bvhPtr];
+        BVHNode<Scalar> currentNode = nodes[bvhPtr];
         // all the left and right indexes are 0
-        BVHNode<HighP> leftChild = nodes[currentNode.leftIndex + bvhStart];
-        BVHNode<HighP> rightChild = nodes[currentNode.rightIndex + bvhStart];
+        BVHNode<Scalar> leftChild = nodes[currentNode.leftIndex + bvhStart];
+        BVHNode<Scalar> rightChild = nodes[currentNode.rightIndex + bvhStart];
 
         bool hitLeft = bboxIntersectionTest(myNode.bbox, leftChild.bbox);
         bool hitRight = bboxIntersectionTest(myNode.bbox, rightChild.bbox);
@@ -372,8 +372,8 @@ __global__ void traverseTree(int numTets, const BVHNode<HighP>* nodes, const ind
     }
 }
 
-template<typename HighP>
-bool CollisionDetection<HighP>::DetectCollisionCandidates(const BVHNode<HighP>* dev_BVHNodes) {
+template<typename Scalar>
+bool CollisionDetection<Scalar>::DetectCollisionCandidates(const BVHNode<Scalar>* dev_BVHNodes) {
     bool overflowHappened = false;
     bool overflow;
     dim3 numblocksTets = (mpSolverData->numTets + threadsPerBlock - 1) / threadsPerBlock;
@@ -403,8 +403,8 @@ bool CollisionDetection<HighP>::DetectCollisionCandidates(const BVHNode<HighP>* 
     return numQueries > 0;
 }
 
-template<typename HighP>
-void CollisionDetection<HighP>::Init(int numTets, int numVerts, int maxThreads)
+template<typename Scalar>
+void CollisionDetection<Scalar>::Init(int numTets, int numVerts, int maxThreads)
 {
     createQueries(numVerts);
     m_bvh.Init(numTets, numVerts, maxThreads);
@@ -450,32 +450,32 @@ void removeDuplicates(Query* dev_queries, size_t& dev_numQueries) {
     dev_numQueries = new_end_unique - dev_ptr;
 }
 
-template<typename HighP>
+template<typename Scalar>
 struct MinOp {
     __host__ __device__
-        glm::tvec3<HighP> operator()(const glm::tvec3<HighP>& a, const glm::tvec3<HighP>& b) const {
+        glm::tvec3<Scalar> operator()(const glm::tvec3<Scalar>& a, const glm::tvec3<Scalar>& b) const {
         return glm::min(a, b);
     }
 };
 
-template<typename HighP>
+template<typename Scalar>
 struct MaxOp {
     __host__ __device__
-        glm::tvec3<HighP> operator()(const glm::tvec3<HighP>& a, const glm::tvec3<HighP>& b) const {
+        glm::tvec3<Scalar> operator()(const glm::tvec3<Scalar>& a, const glm::tvec3<Scalar>& b) const {
         return glm::max(a, b);
     }
 };
 
-template<typename HighP>
-AABB<HighP> computeBoundingBox(const thrust::device_ptr<glm::tvec3<HighP>>& begin, const thrust::device_ptr<glm::tvec3<HighP>>& end) {
-    glm::tvec3<HighP> min = thrust::reduce(begin, end, glm::tvec3<HighP>(FLT_MAX), MinOp<HighP>());
-    glm::tvec3<HighP> max = thrust::reduce(begin, end, glm::tvec3<HighP>(-FLT_MAX), MaxOp<HighP>());
+template<typename Scalar>
+AABB<Scalar> computeBoundingBox(const thrust::device_ptr<glm::tvec3<Scalar>>& begin, const thrust::device_ptr<glm::tvec3<Scalar>>& end) {
+    glm::tvec3<Scalar> min = thrust::reduce(begin, end, glm::tvec3<Scalar>(FLT_MAX), MinOp<Scalar>());
+    glm::tvec3<Scalar> max = thrust::reduce(begin, end, glm::tvec3<Scalar>(-FLT_MAX), MaxOp<Scalar>());
 
-    return AABB<HighP>{ min, max };
+    return AABB<Scalar>{ min, max };
 }
 
-template<typename HighP>
-AABB<HighP> CollisionDetection<HighP>::GetAABB() const
+template<typename Scalar>
+AABB<Scalar> CollisionDetection<Scalar>::GetAABB() const
 {
     using XType = typename std::decay<decltype(*mpSolverData->X)>::type;
     thrust::device_ptr<XType> dev_ptr(mpSolverData->X);
@@ -483,10 +483,10 @@ AABB<HighP> CollisionDetection<HighP>::GetAABB() const
     return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTildes, dev_ptrTildes + numVerts));
 }
 
-template<typename HighP>
-bool CollisionDetection<HighP>::BroadPhase()
+template<typename Scalar>
+bool CollisionDetection<Scalar>::BroadPhase()
 {
-    const std::string buildTypeStr = buildType == BVH<HighP>::BuildType::Cooperative ? "Cooperative" : buildType == BVH<HighP>::BuildType::Atomic ? "Atomic" : "Serial";
+    const std::string buildTypeStr = buildType == BVH<Scalar>::BuildType::Cooperative ? "Cooperative" : buildType == BVH<Scalar>::BuildType::Atomic ? "Atomic" : "Serial";
     m_bvh.BuildBVHTree(buildType, GetAABB(), mpSolverData->numTets, mpSolverData->X, mpSolverData->XTilde, mpSolverData->Tet);
 
     if (!DetectCollisionCandidates(m_bvh.GetBVHNodes())) {

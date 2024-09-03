@@ -64,77 +64,77 @@ FixedBodyData::~FixedBodyData() {
 }
 
 
-template<typename HighP>
-__global__ void handleFloorCollision(glm::tvec3<HighP>* X, glm::tvec3<HighP>* V, int numVerts, Plane* planes, int numPlanes, HighP muT, HighP muN) {
+template<typename Scalar>
+__global__ void handleFloorCollision(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* V, int numVerts, Plane* planes, int numPlanes, Scalar muT, Scalar muN) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numVerts) return;
     for (int j = 0; j < numPlanes; j++)
     {
-        glm::tvec3<HighP> floorPos = glm::tvec3<HighP>(planes[j].m_model[3]);
-        glm::tvec3<HighP> floorUp = planes[j].m_floorUp;
-        HighP signedDis = glm::dot(X[i] - floorPos, floorUp);
+        glm::tvec3<Scalar> floorPos = glm::tvec3<Scalar>(planes[j].m_model[3]);
+        glm::tvec3<Scalar> floorUp = planes[j].m_floorUp;
+        Scalar signedDis = glm::dot(X[i] - floorPos, floorUp);
         if (signedDis < 0 && glm::dot(V[i], floorUp) < 0) {
             X[i] -= signedDis * floorUp;
-            glm::tvec3<HighP> vN = glm::dot(V[i], floorUp) * floorUp;
-            glm::tvec3<HighP> vT = V[i] - vN;
-            HighP mag_vT = glm::length(vT);
-            HighP a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, (HighP)0);
+            glm::tvec3<Scalar> vN = glm::dot(V[i], floorUp) * floorUp;
+            glm::tvec3<Scalar> vT = V[i] - vN;
+            Scalar mag_vT = glm::length(vT);
+            Scalar a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, (Scalar)0);
             V[i] = -muN * vN + a * vT;
         }
     }
 }
 
 
-template<typename HighP>
-__global__ void handleSphereCollision(glm::tvec3<HighP>* X, glm::tvec3<HighP>* V, int numVerts, Sphere* spheres, int numSpheres, HighP muT, HighP muN) {
+template<typename Scalar>
+__global__ void handleSphereCollision(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* V, int numVerts, Sphere* spheres, int numSpheres, Scalar muT, Scalar muN) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numVerts) return;
 
     for (int j = 0; j < numSpheres; j++) {
-        glm::tvec3<HighP> sphereCenter = glm::tvec3<HighP>(spheres[j].m_model[3]);
-        HighP sphereRadius = spheres[j].m_radius;
-        glm::tvec3<HighP> toCenter = X[i] - sphereCenter;
-        HighP d = glm::length(toCenter);
+        glm::tvec3<Scalar> sphereCenter = glm::tvec3<Scalar>(spheres[j].m_model[3]);
+        Scalar sphereRadius = spheres[j].m_radius;
+        glm::tvec3<Scalar> toCenter = X[i] - sphereCenter;
+        Scalar d = glm::length(toCenter);
         if (d < sphereRadius) {
-            glm::tvec3<HighP> normal = glm::normalize(toCenter);
+            glm::tvec3<Scalar> normal = glm::normalize(toCenter);
             X[i] += d * normal;
-            glm::tvec3<HighP> vN = glm::dot(V[i], normal) * normal;
-            glm::tvec3<HighP> vT = V[i] - vN;
-            HighP mag_vT = glm::length(vT);
-            HighP a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, (HighP)0);
+            glm::tvec3<Scalar> vN = glm::dot(V[i], normal) * normal;
+            glm::tvec3<Scalar> vT = V[i] - vN;
+            Scalar mag_vT = glm::length(vT);
+            Scalar a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, (Scalar)0);
             V[i] = -muN * vN + a * vT;
         }
     }
 }
 
-template<typename HighP>
-__global__ void handleCylinderCollision(glm::tvec3<HighP>* X, glm::tvec3<HighP>* V, int numVerts, Cylinder* cylinders, int numCylinders, HighP muT, HighP muN) {
+template<typename Scalar>
+__global__ void handleCylinderCollision(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* V, int numVerts, Cylinder* cylinders, int numCylinders, Scalar muT, Scalar muN) {
     int i = blockIdx.x * blockDim.x + threadIdx.x;
     if (i >= numVerts) return;
 
     for (int j = 0; j < numCylinders; j++) {
         const Cylinder cy = cylinders[j];
-        glm::tvec3<HighP> axis = glm::tvec3<HighP>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
-        glm::tmat3x3<HighP> nnT =glm::tmat3x3<HighP>(1.f) - glm::outerProduct(axis, axis);
-        glm::tvec3<HighP> cylinderCenter = glm::tvec3<HighP>(cy.m_model[3]);
-        HighP cylinderRadius = cy.m_radius;
-        glm::tvec3<HighP> n = nnT * (X[i] - cylinderCenter);
-        HighP d = glm::length(n);
+        glm::tvec3<Scalar> axis = glm::tvec3<Scalar>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
+        glm::tmat3x3<Scalar> nnT =glm::tmat3x3<Scalar>(1.f) - glm::outerProduct(axis, axis);
+        glm::tvec3<Scalar> cylinderCenter = glm::tvec3<Scalar>(cy.m_model[3]);
+        Scalar cylinderRadius = cy.m_radius;
+        glm::tvec3<Scalar> n = nnT * (X[i] - cylinderCenter);
+        Scalar d = glm::length(n);
 
         if (d < cylinderRadius) {
-            glm::tvec3<HighP> normal = glm::normalize(n);
+            glm::tvec3<Scalar> normal = glm::normalize(n);
             X[i] += (cylinderRadius - d) * normal;
-            glm::tvec3<HighP> vN = glm::dot(V[i], normal) * normal;
-            glm::tvec3<HighP> vT = V[i] - vN;
-            HighP mag_vT = glm::length(vT);
-            HighP a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, (HighP)0);
+            glm::tvec3<Scalar> vN = glm::dot(V[i], normal) * normal;
+            glm::tvec3<Scalar> vT = V[i] - vN;
+            Scalar mag_vT = glm::length(vT);
+            Scalar a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, (Scalar)0);
             V[i] = -muN * vN + a * vT;
         }
     }
 }
 
-template<typename HighP>
-void FixedBodyData::HandleCollisions<HighP>(glm::tvec3<HighP>* X, glm::tvec3<HighP>* V, int numVerts, HighP muT, HighP muN) {
+template<typename Scalar>
+void FixedBodyData::HandleCollisions<Scalar>(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* V, int numVerts, Scalar muT, Scalar muN) {
     int numBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     if (numSpheres > 0) {
         handleSphereCollision << <numBlocks, threadsPerBlock >> > (X, V, numVerts, dev_spheres, numSpheres, muT, muN);

@@ -2,18 +2,18 @@
 
 #include <def.h>
 
-template<typename HighP>
+template<typename Scalar>
 class AABB {
 public:
-    glm::tvec3<HighP> min = glm::tvec3<HighP>{ FLT_MAX };
-    glm::tvec3<HighP> max = glm::tvec3<HighP>{ -FLT_MAX };
-    AABB<HighP> expand(const AABB<HighP>& aabb)const;
+    glm::tvec3<Scalar> min = glm::tvec3<Scalar>{ FLT_MAX };
+    glm::tvec3<Scalar> max = glm::tvec3<Scalar>{ -FLT_MAX };
+    AABB<Scalar> expand(const AABB<Scalar>& aabb)const;
 };
 
-template<typename HighP>
+template<typename Scalar>
 class BVHNode {
 public:
-    AABB<HighP> bbox;
+    AABB<Scalar> bbox;
     int isLeaf;
     int leftIndex;
     int rightIndex;
