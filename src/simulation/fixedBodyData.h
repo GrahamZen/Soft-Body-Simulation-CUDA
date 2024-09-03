@@ -8,6 +8,8 @@ class Plane;
 class Cylinder;
 
 class FixedBodyData {
+    template<typename Scalar>
+    friend class BarrierEnergy;
 public:
     FixedBodyData();
     FixedBodyData(int threadsPerBlock, const std::vector<FixedBody*>&);
@@ -15,7 +17,8 @@ public:
     FixedBodyData& operator=(const FixedBodyData&) = delete;
     FixedBodyData(FixedBodyData&&) = default;
     FixedBodyData& operator=(FixedBodyData&&) = default;
-    void HandleCollisions(glm::vec3* X, glm::vec3* V, int numVerts, float muT, float muN);
+    template<typename Scalar>
+    void HandleCollisions(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* V, int numVerts, Scalar muT, Scalar muN);
     ~FixedBodyData();
 private:
     Sphere* dev_spheres = nullptr;

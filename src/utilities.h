@@ -1,7 +1,7 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <string>
+#include <def.h>
+#include <iostream>
 #include <vector>
 
 #define PI 3.1415926535897932384626422832795028841971f
@@ -9,7 +9,9 @@
 #define SQRT_OF_ONE_THIRD 0.5773502691896257645091487805019574556476f
 #define EPSILON 0.00001f
 
+template<typename Scalar>
 class BVHNode;
+template<typename Scalar>
 class AABB;
 class Query;
 class Sphere;
@@ -26,13 +28,17 @@ namespace utilityCore
     extern std::istream& safeGetline(std::istream& is, std::string& t); // Thanks to http://stackoverflow.com/a/6089413
     glm::mat4 modelMatrix(const glm::vec3& translation, const glm::vec3& rotation, const glm::vec3& scale);
     template <typename T>
-    void inspectHost(const T*, int);
+    void inspectHost(const T*, int, const char* str = "");
     void inspectHost(const unsigned int*, int);
     void inspectHostMorton(const unsigned int* host_ptr, int size);
-    void inspectHost(const BVHNode* hstBVHNodes, int size);
-    void inspectHost(const AABB*, int);
+    template<typename Scalar>
+    void inspectHost(const BVHNode<Scalar>* hstBVHNodes, int size);
+    template<typename Scalar>
+    void inspectHost(const AABB<Scalar>*, int);
     void inspectHost(const Query* query, int size);
     void inspectHost(const Sphere* spheres, int size);
+    template <typename T>
+    void inspectHost(const std::vector<T>& val, const std::vector<int>& rowIdx, const std::vector<int>& colIdx, int size);
 
     template <typename T>
     bool compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int size);

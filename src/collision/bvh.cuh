@@ -1,15 +1,16 @@
 #pragma once
+
+#include <def.h>
 #include <cuda_runtime_api.h>
 #include <thrust/device_vector.h>
-#include <glm/glm.hpp>
 #include <vector>
-#include <GL/glew.h>
-#include <bvh.h>
 
-AABB computeBoundingBox(const thrust::device_ptr<glm::vec3>& begin, const thrust::device_ptr<glm::vec3>& end);
+template<typename Scalar>
+__device__ AABB<Scalar> computeTetTrajBBox(const glm::tvec3<Scalar>& v0, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2, const glm::tvec3<Scalar>& v3,
+    const glm::tvec3<Scalar>& v4, const glm::tvec3<Scalar>& v5, const glm::tvec3<Scalar>& v6, const glm::tvec3<Scalar>& v7);
 
-__device__ AABB computeTetTrajBBox(const glmVec3& v0, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
-    const glmVec3& v4, const glmVec3& v5, const glmVec3& v6, const glmVec3& v7);
+template<typename Scalar>
+__device__ unsigned int genMortonCode(AABB<Scalar> bbox, glm::tvec3<Scalar> geoMin, glm::tvec3<Scalar> geoMax);
 
 __inline__ __device__ unsigned int expandBits(unsigned int v)
 {
@@ -29,3 +30,5 @@ __inline__ __device__ int getSign(int tmp)
         return -1;
     //return (tmp > 0) - (tmp < 0);
 }
+template<typename Scalar>
+__global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNode<Scalar>* nodes);

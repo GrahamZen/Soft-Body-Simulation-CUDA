@@ -1,8 +1,7 @@
 #include <fixedBodyData.h>
 #include <sphere.h>
 #include <plane.h>
-#include <cylinder.h>
-#include <utilities.cuh>
+#include <collision/rigid/cylinder.h>
 
 FixedBodyData::FixedBodyData() {}
 
@@ -64,7 +63,78 @@ FixedBodyData::~FixedBodyData() {
     cudaFree(dev_cylinders);
 }
 
-void FixedBodyData::HandleCollisions(glm::vec3* X, glm::vec3* V, int numVerts, float muT, float muN) {
+
+template<typename Scalar>
+__global__ void handleFloorCollision(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* V, int numVerts, Plane* planes, int numPlanes, Scalar muT, Scalar muN) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= numVerts) return;
+    for (int j = 0; j < numPlanes; j++)
+    {
+        glm::tvec3<Scalar> floorPos = glm::tvec3<Scalar>(planes[j].m_model[3]);
+        glm::tvec3<Scalar> floorUp = planes[j].m_floorUp;
+        Scalar signedDis = glm::dot(X[i] - floorPos, floorUp);
+        if (signedDis < 0 && glm::dot(V[i], floorUp) < 0) {
+            X[i] -= signedDis * floorUp;
+            glm::tvec3<Scalar> vN = glm::dot(V[i], floorUp) * floorUp;
+            glm::tvec3<Scalar> vT = V[i] - vN;
+            Scalar mag_vT = glm::length(vT);
+            Scalar a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, (Scalar)0);
+            V[i] = -muN * vN + a * vT;
+        }
+    }
+}
+
+
+template<typename Scalar>
+__global__ void handleSphereCollision(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* V, int numVerts, Sphere* spheres, int numSpheres, Scalar muT, Scalar muN) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= numVerts) return;
+
+    for (int j = 0; j < numSpheres; j++) {
+        glm::tvec3<Scalar> sphereCenter = glm::tvec3<Scalar>(spheres[j].m_model[3]);
+        Scalar sphereRadius = spheres[j].m_radius;
+        glm::tvec3<Scalar> toCenter = X[i] - sphereCenter;
+        Scalar d = glm::length(toCenter);
+        if (d < sphereRadius) {
+            glm::tvec3<Scalar> normal = glm::normalize(toCenter);
+            X[i] += d * normal;
+            glm::tvec3<Scalar> vN = glm::dot(V[i], normal) * normal;
+            glm::tvec3<Scalar> vT = V[i] - vN;
+            Scalar mag_vT = glm::length(vT);
+            Scalar a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, (Scalar)0);
+            V[i] = -muN * vN + a * vT;
+        }
+    }
+}
+
+template<typename Scalar>
+__global__ void handleCylinderCollision(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* V, int numVerts, Cylinder* cylinders, int numCylinders, Scalar muT, Scalar muN) {
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= numVerts) return;
+
+    for (int j = 0; j < numCylinders; j++) {
+        const Cylinder cy = cylinders[j];
+        glm::tvec3<Scalar> axis = glm::tvec3<Scalar>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
+        glm::tmat3x3<Scalar> nnT =glm::tmat3x3<Scalar>(1.f) - glm::outerProduct(axis, axis);
+        glm::tvec3<Scalar> cylinderCenter = glm::tvec3<Scalar>(cy.m_model[3]);
+        Scalar cylinderRadius = cy.m_radius;
+        glm::tvec3<Scalar> n = nnT * (X[i] - cylinderCenter);
+        Scalar d = glm::length(n);
+
+        if (d < cylinderRadius) {
+            glm::tvec3<Scalar> normal = glm::normalize(n);
+            X[i] += (cylinderRadius - d) * normal;
+            glm::tvec3<Scalar> vN = glm::dot(V[i], normal) * normal;
+            glm::tvec3<Scalar> vT = V[i] - vN;
+            Scalar mag_vT = glm::length(vT);
+            Scalar a = mag_vT == 0 ? 0 : glm::max(1 - muT * (1 + muN) * glm::length(vN) / mag_vT, (Scalar)0);
+            V[i] = -muN * vN + a * vT;
+        }
+    }
+}
+
+template<typename Scalar>
+void FixedBodyData::HandleCollisions<Scalar>(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* V, int numVerts, Scalar muT, Scalar muN) {
     int numBlocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     if (numSpheres > 0) {
         handleSphereCollision << <numBlocks, threadsPerBlock >> > (X, V, numVerts, dev_spheres, numSpheres, muT, muN);
@@ -76,3 +146,6 @@ void FixedBodyData::HandleCollisions(glm::vec3* X, glm::vec3* V, int numVerts, f
         handleCylinderCollision << <numBlocks, threadsPerBlock >> > (X, V, numVerts, dev_cylinders, numCylinders, muT, muN);
     }
 }
+
+template void FixedBodyData::HandleCollisions<float>(glm::vec3*, glm::vec3*, int, float, float);
+template void FixedBodyData::HandleCollisions<double>(glm::tvec3<double>*, glm::tvec3<double>*, int, double, double);

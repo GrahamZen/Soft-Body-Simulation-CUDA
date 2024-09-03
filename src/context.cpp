@@ -1,14 +1,14 @@
-#include <context.h>
 #include <sceneStructs.h>
 #include <surfaceshader.h>
-#include <simulationContext.h>
-#include <iostream>
-#include <fstream>
-#include <sphere.h>
-#include <cylinder.h>
-#include <plane.h>
+#include <context.h>
+#include <simulation/simulationContext.h>
+#include <collision/rigid/sphere.h>
+#include <collision/rigid/cylinder.h>
+#include <collision/rigid/plane.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <fstream>
+#include <sstream>
 
 std::string getCurrentTimeStamp() {
     auto now = std::chrono::system_clock::now();
@@ -86,10 +86,6 @@ width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera
     phi = glm::acos(glm::dot(glm::normalize(viewXZ), glm::vec3(0, 0, -1)));
     theta = glm::acos(glm::dot(glm::normalize(viewZY), glm::vec3(0, 1, 0)));
     zoom = glm::length(mpCamera->position - ogLookAt);
-    std::string filename = "logs/log_" + getCurrentTimeStamp() + ".txt";
-    auto logger = spdlog::basic_logger_mt("basic_logger", filename);
-    spdlog::set_default_logger(logger);
-    spdlog::set_level(spdlog::level::debug);
 }
 
 Context::~Context()
@@ -121,13 +117,13 @@ int Context::GetMaxCGThreads()
 void Context::PollEvents() {
     auto& attrs = guiData->softBodyAttr;
     if (attrs.currSoftBodyId == -1) return;
-    bool result = attrs.stiffness_0.second || attrs.stiffness_1.second || attrs.damp.second || attrs.muN.second || attrs.muT.second || attrs.getJumpDirty();
+    bool result = attrs.mu.second || attrs.lambda.second || attrs.damp.second || attrs.muN.second || attrs.muT.second || attrs.getJumpDirty();
     if (result)
         mcrpSimContext->UpdateSingleSBAttr(guiData->softBodyAttr.currSoftBodyId, guiData->softBodyAttr);
     else
         return;
-    attrs.stiffness_0.second = false;
-    attrs.stiffness_1.second = false;
+    attrs.mu.second = false;
+    attrs.lambda.second = false;
     attrs.damp.second = false;
     attrs.muN.second = false;
     attrs.muT.second = false;
@@ -291,13 +287,22 @@ SimulationCUDAContext* Context::LoadSimContext() {
         return nullptr;
     }
     int maxThreads = GetMaxCGThreads();
-    SimulationCUDAContext::ExternalForce extForce;
+    SolverParams<solverPrecision>::ExternalForce extForce;
     nlohmann::json json;
     fileStream >> json;
     fileStream.close();
     int threadsPerBlock = 128, threadsPerBlockBVH = threadsPerBlock;
     if (json.contains("pause")) {
         pause = json["pause"].get<bool>();
+    }
+    if (json.contains("enable log")) {
+        logEnabled = json["enable log"].get<bool>();
+    }
+    std::string filename = "logs/log_" + getCurrentTimeStamp() + ".txt";
+    if (logEnabled) {
+        auto logger = spdlog::basic_logger_mt("basic_logger", filename);
+        spdlog::set_default_logger(logger);
+        spdlog::set_level(spdlog::level::debug);
     }
     int numIterations = 10;
     if (json.contains("num of iterations")) {
@@ -341,10 +346,11 @@ SimulationCUDAContext* Context::LoadSimContext() {
             if (contextJson.contains("fixedBodies")) {
                 fixBodies = ReadFixedBodies(contextJson["fixedBodies"], fixedBodyDefs);
             }
-            mpSimContexts.push_back(new SimulationCUDAContext(this, baseName, extForce, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
+            mpSimContexts.push_back(new SimulationCUDAContext(this, baseName, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
-            spdlog::info("{} #dof: {}, #ele: {}", "[" + baseName + "]", DOFs.back(), Eles.back());
+            if (logEnabled)
+                spdlog::info("{} #dof: {}, #ele: {}", "[" + baseName + "]", DOFs.back(), Eles.back());
         }
         mcrpSimContext = mpSimContexts[0];
     }
@@ -356,9 +362,9 @@ void Context::InitDataContainer() {
     guiData->theta = theta;
     guiData->cameraLookAt = ogLookAt;
     guiData->zoom = zoom;
-    guiData->Dt = mcrpSimContext->GetDt();
+    guiData->Dt = mcrpSimContext->GetSolverParams().dt;
     guiData->Pause = false;
-    guiData->UseEigen = mcrpSimContext->IsEigenGlobalSolver();
+    guiData->UseEigen = false;
     guiData->softBodyAttr.currSoftBodyId = 0;
     guiData->currSimContextId = 0;
 }
@@ -376,9 +382,14 @@ void Context::Draw() {
     mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
 }
 
-void Context::SetBVHBuildType(BVH::BuildType buildType)
+void Context::SetBVHBuildType(BVH<solverPrecision>::BuildType buildType)
 {
     mcrpSimContext->SetBVHBuildType(buildType);
+}
+
+int& Context::GetBVHBuildType()
+{
+    return bvhBuildType;
 }
 
 void Context::Update() {

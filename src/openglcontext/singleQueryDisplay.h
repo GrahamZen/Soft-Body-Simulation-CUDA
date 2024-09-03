@@ -1,7 +1,6 @@
 #pragma once
 
 #include <drawable.h>
-#include <string>
 #include <glm/glm.hpp>
 
 class Query;
@@ -25,7 +24,7 @@ public:
     bool bindTriPos();
     bool bindTriIdx();
     void MapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec3** bufVertPosDevPtr, glm::vec3** bufTriPosDevPtr);
-    void UnMapDevicePtr();
+    void UnMapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec3** bufVertPosDevPtr, glm::vec3** bufTriPosDevPtr);
     bool IsLine() const { return isLine; }
     void SetIsLine(bool isLine) { this->isLine = isLine; }
     void SetCount(int count);

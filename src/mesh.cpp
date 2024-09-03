@@ -1,8 +1,6 @@
-#include <iostream>
+#include <mesh.h>
 #include <fstream>
 #include <sstream>
-#include <mesh.h>
-#include <bvh.h>
 #include <cuda_gl_interop.h>
 
 Mesh::Mesh()
@@ -199,7 +197,7 @@ void Mesh::createMesh()
     cudaGraphicsGLRegisterBuffer(&cuda_bufNor_resource, bufNor, cudaGraphicsMapFlagsWriteDiscard);
 }
 
-void Mesh::mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr)
+void Mesh::MapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr)
 {
     size_t size;
     cudaGraphicsMapResources(1, &cuda_bufPos_resource, 0);
@@ -209,7 +207,7 @@ void Mesh::mapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr)
     cudaGraphicsResourceGetMappedPointer((void**)bufNorDevPtr, &size, cuda_bufNor_resource);
 }
 
-void Mesh::unMapDevicePtr()
+void Mesh::UnMapDevicePtr()
 {
     cudaGraphicsUnmapResources(1, &cuda_bufPos_resource, 0);
     cudaGraphicsUnmapResources(1, &cuda_bufNor_resource, 0);

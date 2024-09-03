@@ -1,9 +1,8 @@
 #pragma once
 
+#include <def.h>
 #include <drawable.h>
 #include <texture.h>
-#include <string>
-#include <glm/glm.hpp>
 #include <cuda_gl_interop.h>
 
 enum class BodyType {
@@ -23,4 +22,5 @@ public:
     const glm::mat4 m_model;
     const glm::mat4 m_inverseModel;
     const glm::mat4 m_inverseTransposeModel;
+    const float kappa = 1e2;
 };

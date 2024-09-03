@@ -1,71 +1,20 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <bvh.cuh>
-#include <cuda_runtime.h>
+#include <collision/bvh.h>
+#include <utilities.cuh>
+#include <collision/bvh.cuh>
+#include <simulation/simulationContext.h>
 #include <cooperative_groups.h>
 #include <thrust/sort.h>
 #include <thrust/execution_policy.h>
 #include <thrust/device_vector.h>
 #include <thrust/reduce.h>
-#include <utilities.cuh>
 
-//input the aabb box of a Tetrahedron
-//generate a 30-bit morton code
-__device__ unsigned int genMortonCode(AABB bbox, glmVec3 geoMin, glmVec3 geoMax)
+template<typename Scalar>
+__device__ void buildBBox(BVHNode<Scalar>& curr, const BVHNode<Scalar>& left, const BVHNode<Scalar>& right)
 {
-    dataType x = (bbox.min.x + bbox.max.x) * 0.5f;
-    dataType y = (bbox.min.y + bbox.max.y) * 0.5f;
-    dataType z = (bbox.min.y + bbox.max.y) * 0.5f;
-    dataType normalizedX = (x - geoMin.x) / (geoMax.x - geoMin.x);
-    dataType normalizedY = (y - geoMin.y) / (geoMax.y - geoMin.y);
-    dataType normalizedZ = (z - geoMin.z) / (geoMax.z - geoMin.z);
-
-    normalizedX = glm::min(glm::max(normalizedX * 1024.0, 0.0), 1023.0);
-    normalizedY = glm::min(glm::max(normalizedY * 1024.0, 0.0), 1023.0);
-    normalizedZ = glm::min(glm::max(normalizedZ * 1024.0, 0.0), 1023.0);
-
-    unsigned int xx = expandBits((unsigned int)normalizedX);
-    unsigned int yy = expandBits((unsigned int)normalizedY);
-    unsigned int zz = expandBits((unsigned int)normalizedZ);
-
-    return xx * 4 + yy * 2 + zz;
-}
-
-
-__device__ unsigned long long expandMorton(int index, unsigned int mortonCode)
-{
-    unsigned long long exMortonCode = mortonCode;
-    exMortonCode <<= 32;
-    exMortonCode += index;
-    return exMortonCode;
-}
-
-/**
-* please sort the morton code first then get split pairs
-thrust::stable_sort_by_key(mortonCodes, mortonCodes + TetrahedronCount, TetrahedronIndex);*/
-
-//total input is a 30 x N matrix
-//currentIndex is between 0 - N-1
-//the input morton codes should be in the reduced form, no same elements are expected to appear twice!
-__device__ int getSplit(unsigned int* mortonCodes, unsigned int currIndex, int nextIndex, unsigned int bound)
-{
-    if (nextIndex < 0 || nextIndex >= bound)
-        return -1;
-    //NOTE: if use small size model, this step can be skipped
-    // just to ensure the morton codes are unique!
-    //unsigned int mask = mortonCodes[currIndex] ^ mortonCodes[nextIndex];
-    unsigned long long mask = expandMorton(currIndex, mortonCodes[currIndex]) ^ expandMorton(nextIndex, mortonCodes[nextIndex]);
-    // __clzll gives the number of consecutive zero bits in that number
-    // this gives us the index of the most significant bit between the two numbers
-    int commonPrefix = __clzll(mask);
-    return commonPrefix;
-}
-
-__device__ void buildBBox(BVHNode& curr, const BVHNode& left, const BVHNode& right)
-{
-    glmVec3 newMin;
-    glmVec3 newMax;
+    glm::tvec3<Scalar> newMin;
+    glm::tvec3<Scalar> newMax;
     newMin.x = glm::min(left.bbox.min.x, right.bbox.min.x);
     newMax.x = glm::max(left.bbox.max.x, right.bbox.max.x);
     newMin.y = glm::min(left.bbox.min.y, right.bbox.min.y);
@@ -73,108 +22,16 @@ __device__ void buildBBox(BVHNode& curr, const BVHNode& left, const BVHNode& rig
     newMin.z = glm::min(left.bbox.min.z, right.bbox.min.z);
     newMax.z = glm::max(left.bbox.max.z, right.bbox.max.z);
 
-    curr.bbox = AABB{ newMin, newMax };
+    curr.bbox = AABB<Scalar>{ newMin, newMax };
     curr.isLeaf = 0;
 }
 
-// build the bounding box and morton code for each SoftBody
-__global__ void buildLeafMorton(int startIndex, int numTri, dataType minX, dataType minY, dataType minZ,
-    dataType maxX, dataType maxY, dataType maxZ, const GLuint* tet, const glm::vec3* X, const glm::vec3* XTilt, BVHNode* leafNodes,
-    unsigned int* mortonCodes)
-{
-    int ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (ind < numTri)
-    {
-        int leafPos = ind + numTri - 1;
-        leafNodes[leafPos].bbox = computeTetTrajBBox(X[tet[ind * 4]], X[tet[ind * 4 + 1]], X[tet[ind * 4 + 2]], X[tet[ind * 4 + 3]],
-            XTilt[tet[ind * 4]], XTilt[tet[ind * 4 + 1]], XTilt[tet[ind * 4 + 2]], XTilt[tet[ind * 4 + 3]]);
-        leafNodes[leafPos].isLeaf = 1;
-        leafNodes[leafPos].leftIndex = -1;
-        leafNodes[leafPos].rightIndex = -1;
-        leafNodes[leafPos].TetrahedronIndex = ind;
-        mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glmVec3(minX, minY, minZ), glmVec3(maxX, maxY, maxZ));
-    }
-}
-
-
-//input the unique morton code
-//codeCount is the size of the unique morton code
-//splitList is 30 x N list
-// the size of unique morton is less than 2^30 : [1, 2^30]
-__global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNode* nodes)
-{
-    int ind = blockIdx.x * blockDim.x + threadIdx.x;
-    if (ind < codeCount - 1)
-    {
-        int sign = getSign(getSplit(uniqueMorton, ind, ind + 1, codeCount) - getSplit(uniqueMorton, ind, ind - 1, codeCount));
-        int dMin = getSplit(uniqueMorton, ind, ind - sign, codeCount);
-        int lenMax = 2;
-        int k = getSplit(uniqueMorton, ind, ind + lenMax * sign, codeCount);
-        while (k > dMin)
-        {
-            lenMax *= 2;
-            k = getSplit(uniqueMorton, ind, ind + lenMax * sign, codeCount);
-        }
-
-        int len = 0;
-        int last = lenMax >> 1;
-        while (last > 0)
-        {
-            int tmp = ind + (len + last) * sign;
-            int diff = getSplit(uniqueMorton, ind, tmp, codeCount);
-            if (diff > dMin)
-            {
-                len = len + last;
-            }
-            last >>= 1;
-        }
-        //last in range
-        int j = ind + len * sign;
-
-        int currRange = getSplit(uniqueMorton, ind, j, codeCount);
-        int split = 0;
-        do {
-            len = (len + 1) >> 1;
-            if (getSplit(uniqueMorton, ind, ind + (split + len) * sign, codeCount) > currRange)
-            {
-                split += len;
-            }
-        } while (len > 1);
-
-        int tmp = ind + split * sign + glm::min(sign, 0);
-
-        if (glm::min(ind, j) == tmp)
-        {
-            //leaf node
-            // the number of internal nodes is N - 1
-            nodes[ind].leftIndex = tmp + codeCount - 1;
-            nodes[tmp + codeCount - 1].parent = ind;
-        }
-        else
-        {
-            // internal node
-            nodes[ind].leftIndex = tmp;
-            nodes[tmp].parent = ind;
-        }
-        if (glm::max(ind, j) == tmp + 1)
-        {
-            nodes[ind].rightIndex = tmp + codeCount;
-            nodes[tmp + codeCount].parent = ind;
-        }
-        else
-        {
-            nodes[ind].rightIndex = tmp + 1;
-            nodes[tmp + 1].parent = ind;
-        }
-    }
-
-}
-
-__global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, BVH::ReadyFlagType* ready) {
+template<typename Scalar>
+__global__ void buildBBoxesSerial(int leafCount, BVHNode<Scalar>* nodes, BVH<Scalar>::ReadyFlagType* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (ind >= leafCount - 1)return;
-    BVHNode node = nodes[ind];
+    BVHNode<Scalar> node = nodes[ind];
     if (ready[ind] != 0)
         return;
     if (ready[node.leftIndex] != 0 && ready[node.rightIndex] != 0)
@@ -186,14 +43,15 @@ __global__ void buildBBoxesSerial(int leafCount, BVHNode* nodes, BVH::ReadyFlagT
 
 namespace cg = cooperative_groups;
 
-__global__ void buildBBoxesCG(int leafCount, BVHNode* nodes, BVH::ReadyFlagType* ready) {
+template<typename Scalar>
+__global__ void buildBBoxesCG(int leafCount, BVHNode<Scalar>* nodes, BVH<Scalar>::ReadyFlagType* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
     cg::grid_group grid = cg::this_grid();
 
     if (ind >= leafCount - 1)return;
     bool done = false;
     while (!done) {
-        BVHNode node = nodes[ind];
+        BVHNode<Scalar> node = nodes[ind];
         if (ready[ind] != 0) {}
         else if (ready[node.leftIndex] != 0 && ready[node.rightIndex] != 0)
         {
@@ -206,11 +64,12 @@ __global__ void buildBBoxesCG(int leafCount, BVHNode* nodes, BVH::ReadyFlagType*
     }
 }
 
-__global__ void buildBBoxesAtomic(int leafCount, BVHNode* nodes, BVH::ReadyFlagType* ready) {
+template<typename Scalar>
+__global__ void buildBBoxesAtomic(int leafCount, BVHNode<Scalar>* nodes, BVH<Scalar>::ReadyFlagType* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (ind >= leafCount - 1) return;
-    BVHNode node = nodes[ind];
+    BVHNode<Scalar> node = nodes[ind];
 
     while (true) {
         auto leftReady = atomicCAS(&ready[node.leftIndex], 0, 0);
@@ -225,27 +84,26 @@ __global__ void buildBBoxesAtomic(int leafCount, BVHNode* nodes, BVH::ReadyFlagT
     }
 }
 
-
-void BVH::Init(int _numTets, int _numVerts, int maxThreads)
+template<typename Scalar>
+void BVH<Scalar>::Init(int _numTets, int _numVerts, int maxThreads)
 {
     numTets = _numTets;
-    numVerts = _numVerts;
-    numNodes = numTets * 2 - 1;
-    cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode));
-    cudaMalloc((void**)&dev_tI, numVerts * sizeof(dataType));
-    cudaMemset(dev_tI, 0, numVerts * sizeof(dataType));
+    int numVerts = _numVerts;
+    int numNodes = numTets * 2 - 1;
+    cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode<Scalar>));
+    cudaMalloc((void**)&dev_tI, numVerts * sizeof(Scalar));
+    cudaMemset(dev_tI, 0, numVerts * sizeof(Scalar));
     cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
     cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
     cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
     cudaMalloc(&dev_ready, numNodes * sizeof(ReadyFlagType));
     createBVH(numNodes);
-    collisionDetection.createQueries(numVerts);
     cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
     cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(ReadyFlagType));
     cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
     int minGridSize;
 
-    cudaOccupancyMaxPotentialBlockSize(&minGridSize, &suggestedBlocksize, buildBBoxesCG, 0, 0);
+    cudaOccupancyMaxPotentialBlockSize(&minGridSize, &suggestedBlocksize, buildBBoxesCG<Scalar>, 0, 0);
 
     if (numTets < maxThreads) {
         std::cout << "Using cooperative group." << std::endl;
@@ -259,48 +117,33 @@ void BVH::Init(int _numTets, int _numVerts, int maxThreads)
     suggestedCGNumblocks = (numTets + suggestedBlocksize - 1) / suggestedBlocksize;
 }
 
-void BVH::BuildBBoxes() {
+template<typename Scalar>
+void BVH<Scalar>::BuildBBoxes(BuildType buildType) {
     if (buildType == BuildType::Cooperative && isBuildBBCG) {
         void* args[] = { &numTets, &dev_BVHNodes, &dev_ready };
-        cudaError_t error = cudaLaunchCooperativeKernel((void*)buildBBoxesCG, suggestedCGNumblocks, suggestedBlocksize, args);
+        cudaError_t error = cudaLaunchCooperativeKernel((void*)buildBBoxesCG<Scalar>, suggestedCGNumblocks, suggestedBlocksize, args);
         if (error != cudaSuccess) {
             std::cerr << "cudaLaunchCooperativeKernel failed: " << cudaGetErrorString(error) << std::endl;
         }
     }
     else if (buildType == BuildType::Atomic) {
-        buildBBoxesAtomic << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+        buildBBoxesAtomic<Scalar> << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
     }
     else if (buildType == BuildType::Serial) {
         ReadyFlagType treeBuild = 0;
         while (treeBuild == 0) {
-            buildBBoxesSerial << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+            buildBBoxesSerial<Scalar> << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
             cudaMemcpy(&treeBuild, dev_ready, sizeof(ReadyFlagType), cudaMemcpyDeviceToHost);
         }
     }
 }
 
-void BVH::BuildBVHTree(const AABB& ctxAABB, int numTets, const glm::vec3* X, const glm::vec3* XTilt, const GLuint* tets)
-{
-    cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode));
+template<typename Scalar>
+BVH<Scalar>::BVH<Scalar>(const int _threadsPerBlock) :
+    threadsPerBlock(_threadsPerBlock) {}
 
-    buildLeafMorton << <numblocksTets, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
-        tets, X, XTilt, dev_BVHNodes, dev_mortonCodes);
-
-    thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTets, dev_BVHNodes + numTets - 1);
-
-    buildSplitList << <numblocksTets, threadsPerBlock >> > (numTets, dev_mortonCodes, dev_BVHNodes);
-
-    BuildBBoxes();
-
-    cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
-    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(ReadyFlagType));
-    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
-}
-
-BVH::BVH(const SimulationCUDAContext* simContext, const int _threadsPerBlock, size_t _maxQueries) :
-    threadsPerBlock(_threadsPerBlock), collisionDetection(simContext, _threadsPerBlock, _maxQueries), buildType(BuildType::Serial) {}
-
-BVH::~BVH()
+template<typename Scalar>
+BVH<Scalar>::~BVH<Scalar>()
 {
     cudaFree(dev_BVHNodes);
     cudaFree(dev_tI);
@@ -310,42 +153,48 @@ BVH::~BVH()
     cudaFree(dev_mortonCodes);
 }
 
-void BVH::PrepareRenderData()
+template<typename Scalar>
+void BVH<Scalar>::PrepareRenderData()
 {
     glm::vec3* pos;
     Wireframe::MapDevicePosPtr(&pos);
+    int numNodes = numTets * 2 - 1;
     dim3 numThreadsPerBlock(numNodes / threadsPerBlock + 1);
     populateBVHNodeAABBPos << <numThreadsPerBlock, threadsPerBlock >> > (dev_BVHNodes, pos, numNodes);
-    Wireframe::unMapDevicePtr();
+    Wireframe::UnMapDevicePtr();
 }
 
-void BVH::DetectCollision(const GLuint* tets, const GLuint* tetFathers, const glm::vec3* Xs, const glm::vec3* XTilts, dataType* tI, glm::vec3* nors, const glm::vec3* X0)
+template<typename Scalar>
+const BVHNode<Scalar>* BVH<Scalar>::GetBVHNodes() const
 {
-    thrust::device_ptr<dataType> dev_ptr(tI);
+    return dev_BVHNodes;
+}
+
+template<typename Scalar>
+void CollisionDetection<Scalar>::DetectCollision(Scalar* tI, glm::vec3* nors)
+{
+    thrust::device_ptr<Scalar> dev_ptr(tI);
     thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
-    collisionDetection.DetectCollision(numTets, dev_BVHNodes, tets, tetFathers, Xs, XTilts, tI, nors);
+    if (BroadPhase()) {
+        PrepareRenderData();
+        NarrowPhase(tI, nors);
+    }
 }
 
-Drawable& BVH::GetQueryDrawable()
-{
-    return collisionDetection;
-}
-
-SingleQueryDisplay& BVH::GetSingleQueryDrawable(int i, const glm::vec3* Xs, Query* guiQuery)
-{
-    return collisionDetection.GetSQDisplay(i, Xs, guiQuery);
-}
-
-int BVH::GetNumQueries() const {
-    return collisionDetection.GetNumQueries();
-}
-
-void BVH::SetBuildType(BuildType _buildType)
+template<typename Scalar>
+void CollisionDetection<Scalar>::SetBuildType(typename BVH<Scalar>::BuildType _buildType)
 {
     buildType = _buildType;
 }
 
-BVH::BuildType BVH::GetBuildType()
+template<typename Scalar>
+typename BVH<Scalar>::BuildType CollisionDetection<Scalar>::GetBuildType()
 {
     return buildType;
 }
+
+template class BVH<float>;
+template class BVH<double>;
+
+template class CollisionDetection<float>;
+template class CollisionDetection<double>;

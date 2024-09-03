@@ -1,12 +1,14 @@
 #pragma once
 #include <utilities.h>
+#include <collision/bvh.h>
 #include <vector>
-#include <bvh.h>
 
 class SoftBody;
 class Camera;
 class SimulationCUDAContext;
 class SurfaceShader;
+
+using solverPrecision = double;
 
 class GuiDataContainer
 {
@@ -37,8 +39,8 @@ public:
     struct SoftBodyAttr
     {
         int currSoftBodyId = -1;
-        std::pair<float, bool> stiffness_0;
-        std::pair<float, bool> stiffness_1;
+        std::pair<float, bool> mu;
+        std::pair<float, bool> lambda;
         std::pair<float, bool> damp;
         std::pair<float, bool> muN;
         std::pair<float, bool> muT;
@@ -66,7 +68,8 @@ public:
     void Update();
     void ResetCamera();
     void Draw();
-    void SetBVHBuildType(BVH::BuildType buildType);
+    void SetBVHBuildType(BVH<solverPrecision>::BuildType buildType);
+    int& GetBVHBuildType();
     int GetNumQueries() const;
     int GetIteration() const { return iteration; }
     const std::vector<int>& GetDOFs() const { return DOFs; }
@@ -78,7 +81,7 @@ public:
     const int height = 1024;
     bool panelModified = false;
     bool camchanged = false;
-
+    int bvhBuildType = 1;
     float zoom, theta, phi;
     glm::vec3 cameraPosition;
     GuiDataContainer* guiData;
@@ -95,6 +98,7 @@ private:
     SurfaceShader* mpProgFlat;
     int iteration = 0;
     bool pause = false;
+    bool logEnabled = false;
     std::vector<const char*> namesContexts;
     std::vector<int> DOFs;
     std::vector<int> Eles;

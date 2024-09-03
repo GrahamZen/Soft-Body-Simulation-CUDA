@@ -2,10 +2,10 @@
 
 #include <drawable.h>
 #include <texture.h>
-#include <string>
 #include <glm/glm.hpp>
 #include <cuda_gl_interop.h>
 
+template<typename Scalar>
 class BVHNode;
 
 class Wireframe : public Drawable
@@ -18,7 +18,7 @@ public:
 
     void createBVH(int numNodes);
     void MapDevicePosPtr(glm::vec3** bufPosDevPtr);
-    void unMapDevicePtr();
+    void UnMapDevicePtr();
 protected:
     cudaGraphicsResource* cuda_bufPos_resource = nullptr;
 };

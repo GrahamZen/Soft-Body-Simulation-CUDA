@@ -1,9 +1,6 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <sceneStructs.h>
-#include <bvh.h>
-#include <cuda_runtime.h>
+#include <collision/aabb.h>
 
 /**
  * Handy-dandy hash function that provides seeds for random number generation.
@@ -12,7 +9,8 @@ __host__ __device__ inline unsigned int utilhash(unsigned int a);
 /**
  * Multiplies a mat4 and a vec4 and returns a vec3 clipped from the vec4.
  */
-__host__ __device__ glmVec3 multiplyMV(glmMat4 m, glmVec4 v);
+template<typename Scalar>
+__host__ __device__ glm::tvec3<Scalar> multiplyMV(glm::tmat4x4<Scalar> m, glm::tvec4<Scalar> v);
 
 template<typename T>
 inline __host__ __device__ void swap(T& lhs, T& rhs) {
@@ -32,23 +30,16 @@ __host__ __device__ void sortThree(T& a, T& b, T& c);
 template<typename T>
 __host__ __device__ void sortFour(T& a, T& b, T& c, T& d);
 
-__host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilt, const AABB& bbox);
-__host__ __device__ bool edgeBboxIntersectionTest(const glmVec3& X0, const glmVec3& XTilt, const AABB& bbox, dataType& tmin, dataType& tmax);
-__host__ __device__ bool bboxIntersectionTest(const AABB& box1, const AABB& box2);
-template<typename T>
-__host__ __device__ int solveQuadratic(T a, T b, T c, T* x);
-template<typename T>
-__host__ __device__ int solveCubic(T a, T b, T c, T d, T* x);
-template<typename T>
-__host__ __device__ T solveCubicRange01(T a, T b, T c, T d, T* x);
-__host__ __device__ dataType stp(const glmVec3& u, const glmVec3& v, const glmVec3& w);
+template<typename Scalar>
+__host__ __device__ bool edgeBboxIntersectionTest(const glm::tvec3<Scalar>& X0, const glm::tvec3<Scalar>& XTilde, const AABB<Scalar>& bbox);
+template<typename Scalar>
+__host__ __device__ bool edgeBboxIntersectionTest(const glm::tvec3<Scalar>& X0, const glm::tvec3<Scalar>& XTilde, const AABB<Scalar>& bbox, Scalar& tmin, Scalar& tmax);
+template<typename Scalar>
+__host__ __device__ bool bboxIntersectionTest(const AABB<Scalar>& box1, const AABB<Scalar>& box2);
+template<typename Scalar>
+__host__ __device__ Scalar ccdCollisionTest(const Query& query, const glm::tvec3<Scalar>* Xs, const glm::tvec3<Scalar>* XTildes, glm::tvec3<Scalar>& n);
 
-__host__ __device__ dataType ccdCollisionTest(const Query& query, const glm::vec3* Xs, const glm::vec3* XTilts, glmVec3& n);
-
-__host__ __device__ dataType ccdTriangleIntersectionTest(const glmVec3& x0, const glmVec3& v0,
-    const glmVec3& x1, const glmVec3& x2, const glmVec3& x3, const glmVec3& v1, const glmVec3& v2, const glmVec3& v3,
-    const glmVec3& xTilt0, const glmVec3& xTilt1, const glmVec3& xTilt2, const glmVec3& xTilt3, glmVec3& n);
-__host__ __device__ dataType ccdTetrahedronIntersectionTest(const glmVec3& X0, const glmVec3& XTilt,
-    const glmVec3& x0, const glmVec3& x1, const glmVec3& x2, const glmVec3& x3,
-    const glmVec3 xTilt0, const glmVec3 xTilt1, const glmVec3 xTilt2, const glmVec3 xTilt3, glm::vec3& nor);
-__host__ __device__ dataType tetrahedronTrajIntersectionTest(const GLuint* tets, const glmVec3& X0, const glmVec3& XTilt, const glm::vec3* Xs, const glm::vec3* XTilts, GLuint tetId, glm::vec3& nor);
+template<typename Scalar>
+__host__ __device__ Scalar ccdTriangleIntersectionTest(const glm::tvec3<Scalar>& x0, const glm::tvec3<Scalar>& v0,
+    const glm::tvec3<Scalar>& x1, const glm::tvec3<Scalar>& x2, const glm::tvec3<Scalar>& x3, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2, const glm::tvec3<Scalar>& v3,
+    const glm::tvec3<Scalar>& xTilde0, const glm::tvec3<Scalar>& xTilde1, const glm::tvec3<Scalar>& xTilde2, const glm::tvec3<Scalar>& xTilde3, glm::tvec3<Scalar>& n);

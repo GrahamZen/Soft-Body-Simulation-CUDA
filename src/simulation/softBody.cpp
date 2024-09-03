@@ -1,17 +1,35 @@
-#include <softBody.h>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <glm/glm.hpp>
-#include <bvh.cuh>
-#include <simulationContext.h>
+#include <simulation/softBody.h>
+#include <simulation/simulationContext.h>
 
-void SoftBody::setAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)
+SoftBody::SoftBody(const SoftBodyData* dataPtr, const SoftBodyAttribute _attrib, int threadsPerBlock) :softBodyData(*dataPtr), attrib(_attrib), threadsPerBlock(threadsPerBlock)
 {
-    softBodyAttr.setJumpClean(jump);
-    if (softBodyAttr.stiffness_0.second)
-        attrib.stiffness_0 = softBodyAttr.stiffness_0.first;
-    if (softBodyAttr.stiffness_1.second)
-        attrib.stiffness_1 = softBodyAttr.stiffness_1.first;
+    Mesh::numTets = softBodyData.numTets;
+    Mesh::numTris = softBodyData.numTris;
+    if (numTris == 0)
+        createTetrahedron();
+    else
+        createMesh();
+}
+
+int SoftBody::GetNumTets() const
+{
+    return softBodyData.numTets;
+}
+
+int SoftBody::GetNumTris() const
+{
+    return numTris;
+}
+const SoftBodyData& SoftBody::GetSoftBodyData()const
+{
+    return softBodyData;
+}
+
+void SoftBody::SetAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)
+{
+    softBodyAttr.setJumpClean(attrib.jump);
+    if (softBodyAttr.mu.second)
+        attrib.mu = softBodyAttr.mu.first;
+    if (softBodyAttr.lambda.second)
+        attrib.lambda = softBodyAttr.lambda.first;
 }
