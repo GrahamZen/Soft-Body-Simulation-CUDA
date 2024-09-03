@@ -182,17 +182,17 @@ TEST_CASE("CG Test", "[CG]") {
 }
 
 TEST_CASE("vector 9", "[tensor]") {
-    glmMat3 U(-0.6208, 0.7763, -0.1091, -0.2820, -0.3509, -0.8929, -0.7315, -0.5236, 0.4368);
+    glm::mat3 U(-0.6208, 0.7763, -0.1091, -0.2820, -0.3509, -0.8929, -0.7315, -0.5236, 0.4368);
     U = glm::transpose(U);
-    glmMat3 V(-0.6501, 0.3252, 0.6867, -0.6324, 0.2694, -0.7263, -0.4212, -0.9064, 0.0305);
+    glm::mat3 V(-0.6501, 0.3252, 0.6867, -0.6324, 0.2694, -0.7263, -0.4212, -0.9064, 0.0305);
     V = glm::transpose(V);
-    glmMat3 S(2.0818, 0, 0, 0, 0.5707, 0, 0, 0, 0.2592);
-    glmMat3 T0(0, -1, 0, 1, 0, 0, 0, 0, 0);
-    glmMat3 T1(0, 0, 0, 0, 0, 1, 0, -1, 0);
-    glmMat3 T2(0, 0, 1, 0, 0, 0, -1, 0, 0);
-    T0 = 1 / sqrt(2) * U * T0 * glm::transpose(V);
-    T1 = 1 / sqrt(2) * U * T1 * glm::transpose(V);
-    T2 = 1 / sqrt(2) * U * T2 * glm::transpose(V);
+    glm::mat3 S(2.0818, 0, 0, 0, 0.5707, 0, 0, 0, 0.2592);
+    glm::mat3 T0(0, -1, 0, 1, 0, 0, 0, 0, 0);
+    glm::mat3 T1(0, 0, 0, 0, 0, 1, 0, -1, 0);
+    glm::mat3 T2(0, 0, 1, 0, 0, 0, -1, 0, 0);
+    T0 = 1 / (float)sqrt(2) * U * T0 * glm::transpose(V);
+    T1 = 1 / (float)sqrt(2) * U * T1 * glm::transpose(V);
+    T2 = 1 / (float)sqrt(2) * U * T2 * glm::transpose(V);
     Vector9<double> t0(T0);
     Vector9<double> t1(T1);
     Vector9<double> t2(T2);
