@@ -218,6 +218,8 @@ __host__ __device__ void sortThree(T& a, T& b, T& c) {
     if (a > b) swap(a, b);
 }
 
+template __host__ __device__ void sortThree<indexType>(indexType& a, indexType& b, indexType& c);
+
 template<typename T>
 __host__ __device__ void sortFour(T& a, T& b, T& c, T& d) {
     if (a > b) swap(a, b);

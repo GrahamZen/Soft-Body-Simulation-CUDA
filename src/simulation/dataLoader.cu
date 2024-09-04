@@ -15,6 +15,9 @@
 #include <filesystem>
 #include <set>
 
+template<typename T>
+__host__ __device__ void sortThree(T& a, T& b, T& c);
+
 namespace fs = std::filesystem;
 template<typename Scalar>
 struct DataLoader<Scalar>::Impl {
@@ -32,7 +35,7 @@ template<typename Scalar>
 DataLoader<Scalar>::~DataLoader() = default;
 
 template<typename Scalar>
-std::vector<indexType> DataLoader<Scalar>::loadEleFile(const std::string& EleFilename, int startIndex, int& numTets)
+std::pair<std::vector<indexType>, std::vector<indexType>> DataLoader<Scalar>::loadEleFaceFile(const std::string& EleFilename, int startIndex, int& numTets, int& numTris, std::string faceFilename)
 {
     std::string line;
     std::ifstream file(EleFilename);
@@ -45,7 +48,6 @@ std::vector<indexType> DataLoader<Scalar>::loadEleFile(const std::string& EleFil
     std::getline(file, line);
     std::istringstream iss(line);
     iss >> numTets;
-
     std::vector<indexType> Tet(numTets * 4);
 
     int a, b, c, d, e;
@@ -58,42 +60,70 @@ std::vector<indexType> DataLoader<Scalar>::loadEleFile(const std::string& EleFil
         Tet[tet * 4 + 2] = d - startIndex;
         Tet[tet * 4 + 3] = e - startIndex;
     }
-
     file.close();
-    return Tet;
-}
 
-template<typename Scalar>
-std::vector<indexType> DataLoader<Scalar>::loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris)
-{
-    std::string line;
-    std::ifstream file(faceFilename);
+    std::vector<indexType> Triangle;
+    if (!faceFilename.empty()) {
+        std::string line;
+        std::ifstream file(faceFilename);
 
-    if (!file.is_open()) {
-        // std::cerr << "Unable to open face file" << std::endl;
-        return std::vector<indexType>();
+        if (file.is_open()) {
+            std::getline(file, line);
+            std::istringstream iss(line);
+            iss >> numTris;
+            Triangle.resize(numTris * 3);
+
+            int a, b, c, d, e;
+            for (int tet = 0; tet < numTris && std::getline(file, line); ++tet) {
+                std::istringstream iss(line);
+                iss >> a >> b >> c >> d >> e;
+
+                Triangle[tet * 3 + 0] = b - startIndex;
+                Triangle[tet * 3 + 1] = c - startIndex;
+                Triangle[tet * 3 + 2] = d - startIndex;
+            }
+
+            file.close();
+        }
     }
-
-    std::getline(file, line);
-    std::istringstream iss(line);
-    iss >> numTris;
-
-    std::vector<indexType> Triangle(numTris * 3);
-
-    int a, b, c, d, e;
-    for (int tet = 0; tet < numTris && std::getline(file, line); ++tet) {
-        std::istringstream iss(line);
-        iss >> a >> b >> c >> d >> e;
-
-        Triangle[tet * 3 + 0] = b - startIndex;
-        Triangle[tet * 3 + 1] = c - startIndex;
-        Triangle[tet * 3 + 2] = d - startIndex;
+    if (numTris == 0) {
+        std::map<std::tuple<indexType, indexType, indexType>, std::tuple<indexType, indexType, indexType>> faceMap;
+        std::set<std::tuple<indexType, indexType, indexType>> uniqueFaces;
+        std::vector<std::tuple<indexType, indexType, indexType>> faces(4);
+        for (size_t i = 0; i < Tet.size(); i += 4) {
+            indexType v0 = Tet[i];
+            indexType v1 = Tet[i + 1];
+            indexType v2 = Tet[i + 2];
+            indexType v3 = Tet[i + 3];
+            faces[0] = std::make_tuple(v0, v1, v2);
+            faces[1] = std::make_tuple(v0, v2, v3);
+            faces[2] = std::make_tuple(v0, v3, v1);
+            faces[3] = std::make_tuple(v1, v3, v2);
+            auto tmpFaces = faces;
+            // store the correct order of vertices for each face
+            for (int j = 0; j < 4; ++j) {
+                sortThree(std::get<0>(tmpFaces[j]), std::get<1>(tmpFaces[j]), std::get<2>(tmpFaces[j]));
+                faceMap[tmpFaces[j]] = faces[j];
+            }
+            for (const auto& face : tmpFaces) {
+                if (uniqueFaces.find(face) == uniqueFaces.end())
+                    uniqueFaces.insert(face);
+                else
+                    uniqueFaces.erase(face);
+            }
+        }
+        numTris = uniqueFaces.size();
+        Triangle.resize(numTris * 3);
+        int i = 0;
+        for (const auto& face : uniqueFaces) {
+            std::tuple<indexType, indexType, indexType> orderedFace = faceMap[face];
+            Triangle[i++] = std::get<0>(orderedFace);
+            Triangle[i++] = std::get<1>(orderedFace);
+            Triangle[i++] = std::get<2>(orderedFace);
+        }
     }
-
-    file.close();
-    return Triangle;
+    return { Tet, Triangle };
 }
-
 
 template<typename Scalar>
 std::vector<glm::tvec3<Scalar>> DataLoader<Scalar>::loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts)
@@ -188,10 +218,9 @@ void DataLoader<Scalar>::CollectData(const char* nodeFileName, const char* eleFi
     int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     TransformVertices << < blocks, threadsPerBlock >> > (solverData.X, model, solverData.numVerts);
 
-    auto tetIdx = loadEleFile(eleFileName, startIndex, solverData.numTets);
+    auto [tetIdx, triIdx] = loadEleFaceFile(eleFileName, startIndex, solverData.numTets, softBodyData.numTris, faceFileName);
     cudaMalloc((void**)&solverData.Tet, sizeof(indexType) * tetIdx.size());
     cudaMemcpy(solverData.Tet, tetIdx.data(), sizeof(indexType) * tetIdx.size(), cudaMemcpyHostToDevice);
-    auto triIdx = loadFaceFile(faceFileName, startIndex, softBodyData.numTris);
     if (!triIdx.empty()) {
         cudaMalloc((void**)&softBodyData.Tri, sizeof(indexType) * triIdx.size());
         cudaMemcpy(softBodyData.Tri, triIdx.data(), sizeof(indexType) * triIdx.size(), cudaMemcpyHostToDevice);
