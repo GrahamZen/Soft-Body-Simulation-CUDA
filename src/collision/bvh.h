@@ -21,7 +21,7 @@ public:
     void Init(int numTris, int numVerts, int maxThreads);
     void PrepareRenderData();
     const BVHNode<Scalar>* GetBVHNodes() const;
-    void BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* XTilde, const indexType* tets);
+    void BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* tets);
 private:
     void BuildBBoxes(BuildType buildType);
     BVHNode<Scalar>* dev_BVHNodes = nullptr;
@@ -42,9 +42,9 @@ private:
 template<typename Scalar>
 class CollisionDetection : public QueryDisplay {
 public:
-    CollisionDetection<Scalar>(const SolverData<Scalar>* solverData, const Context* context, const int threadsPerBlock, size_t maxNumQueries);
+    CollisionDetection<Scalar>(const Context* context, const int threadsPerBlock, size_t maxNumQueries);
     ~CollisionDetection<Scalar>();
-    void DetectCollision(Scalar* tI, glm::vec3* nors, bool ignoreSelfCollision = false);
+    void DetectCollision(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers, Scalar* tI, glm::vec3* nors, bool ignoreSelfCollision = false);
     void Init(int numTris, int numVerts, int maxThreads);
     void PrepareRenderData();
     void Draw(SurfaceShader*);
@@ -55,10 +55,10 @@ public:
     int GetBuildType();
 private:
     SingleQueryDisplay& GetSQDisplay(int i, const glm::tvec3<Scalar>* Xs, Query* guiQuery);
-    AABB<Scalar> GetAABB() const;
-    bool BroadPhase();
-    void NarrowPhase(Scalar*& tI, glm::vec3*& nors);
-    bool DetectCollisionCandidates(const BVHNode<Scalar>* dev_BVHNodes);
+    AABB<Scalar> GetAABB(int numVerts, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde) const;
+    bool BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers);
+    void NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, Scalar*& tI, glm::vec3*& nors);
+    bool DetectCollisionCandidates(const BVHNode<Scalar>* dev_BVHNodes, int numTris, const indexType* Tri, const indexType* TriFathers);
     Query* dev_queries;
     SingleQueryDisplay mSqDisplay;
     size_t* dev_numQueries;
@@ -67,8 +67,8 @@ private:
     bool* dev_overflowFlag;
     bool ignoreSelfCollision = false;
     const int threadsPerBlock;
-    const SolverData<Scalar>* mpSolverData;
     const Context* mpContext;
+    const glm::tvec3<Scalar>* mpX;
     BVH<Scalar> m_bvh;
     typename BVH<Scalar>::BuildType buildType = BVH<Scalar>::BuildType::Atomic;
 };

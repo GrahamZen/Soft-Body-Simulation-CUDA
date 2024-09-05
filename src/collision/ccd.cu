@@ -64,8 +64,8 @@ template AABB<float> AABB<float>::expand(const AABB<float>& aabb)const;
 template AABB<double> AABB<double>::expand(const AABB<double>& aabb)const;
 
 template<typename Scalar>
-CollisionDetection<Scalar>::CollisionDetection(const SolverData<Scalar>* solverData, const Context* context, const int _threadsPerBlock, size_t _maxNumQueries) :
-    mpSolverData(solverData), mpContext(context), threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxNumQueries), m_bvh(_threadsPerBlock)
+CollisionDetection<Scalar>::CollisionDetection(const Context* context, const int _threadsPerBlock, size_t _maxNumQueries) :
+    mpContext(context), threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxNumQueries), m_bvh(_threadsPerBlock)
 {
     cudaMalloc(&dev_queries, maxNumQueries * sizeof(Query));
 
@@ -101,7 +101,7 @@ void CollisionDetection<Scalar>::PrepareRenderData()
         glm::vec3* pos;
         glm::vec4* col;
         MapDevicePosPtr(&pos, &col);
-        thrust::device_ptr<const glm::tvec3<Scalar>> dvec3_ptr(mpSolverData->X);
+        thrust::device_ptr<const glm::tvec3<Scalar>> dvec3_ptr(mpX);
         thrust::device_ptr<glm::vec3> vec3_ptr(pos);
 
         thrust::transform(dvec3_ptr, dvec3_ptr + numVerts, vec3_ptr,
@@ -127,7 +127,7 @@ void CollisionDetection<Scalar>::Draw(SurfaceShader* flatShaderProgram)
         flatShaderProgram->drawPoints(*this);
     if (mpContext->guiData->QueryDebugMode) {
         glLineWidth(mpContext->guiData->LineWidth);
-        flatShaderProgram->drawSingleQuery(GetSQDisplay(mpContext->guiData->CurrQueryId, mpSolverData->X,
+        flatShaderProgram->drawSingleQuery(GetSQDisplay(mpContext->guiData->CurrQueryId, mpX,
             mpContext->guiData->QueryDirty ? mpContext->guiData->mPQuery : nullptr));
         mpContext->guiData->QueryDirty = false;
     }

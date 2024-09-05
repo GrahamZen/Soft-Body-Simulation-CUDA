@@ -169,17 +169,17 @@ __global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::ve
 }
 
 template<typename Scalar>
-void CollisionDetection<Scalar>::NarrowPhase(Scalar*& tI, glm::vec3*& nors)
+void CollisionDetection<Scalar>::NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, Scalar*& tI, glm::vec3*& nors)
 {
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, mpSolverData->X, mpSolverData->XTilde);
+    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, X, XTilde);
     thrust::device_ptr<Query> dev_queriesPtr(dev_queries);
 
     thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());
     auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
     int numQueries = new_end - dev_queriesPtr;
     numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    //computeNewVel << <numBlocksQuery, threadsPerBlock >> > (numQueries, Xs, XTildes, dev_queries, mpSolverData->V);
+    //computeNewVel << <numBlocksQuery, threadsPerBlock >> > (numQueries, Xs, XTildes, dev_queries, V);
     storeTi << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, tI, nors);
     cudaDeviceSynchronize();
 }

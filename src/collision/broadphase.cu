@@ -160,7 +160,7 @@ __global__ void buildLeafMorton(int startIndex, int numTri, Scalar minX, Scalar 
 }
 
 template<typename Scalar>
-void BVH<Scalar>::BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* XTilde, const indexType* tris)
+void BVH<Scalar>::BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* tris)
 {
     cudaMemset(dev_BVHNodes, 0, (numTris * 2 - 1) * sizeof(BVHNode<Scalar>));
 
@@ -345,16 +345,16 @@ __global__ void traverseTree(int numTris, const BVHNode<Scalar>* nodes, const in
 }
 
 template<typename Scalar>
-bool CollisionDetection<Scalar>::DetectCollisionCandidates(const BVHNode<Scalar>* dev_BVHNodes) {
+bool CollisionDetection<Scalar>::DetectCollisionCandidates(const BVHNode<Scalar>* dev_BVHNodes, int numTris, const indexType* Tri, const indexType* TriFathers) {
     bool overflowHappened = false;
     bool overflow;
-    dim3 numblocksTets = (mpSolverData->numTris + threadsPerBlock - 1) / threadsPerBlock;
+    dim3 numblocksTets = (numTris + threadsPerBlock - 1) / threadsPerBlock;
 
     cudaMemset(dev_numQueries, 0, sizeof(size_t));
     do {
         overflow = false;
         cudaMemset(dev_overflowFlag, 0, sizeof(bool));
-        traverseTree << <numblocksTets, threadsPerBlock >> > (mpSolverData->numTris, dev_BVHNodes, mpSolverData->Tri, mpSolverData->dev_TriFathers, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag, ignoreSelfCollision);
+        traverseTree << <numblocksTets, threadsPerBlock >> > (numTris, dev_BVHNodes, Tri, TriFathers, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag, ignoreSelfCollision);
         cudaMemcpy(&overflow, dev_overflowFlag, sizeof(bool), cudaMemcpyDeviceToHost);
         if (overflow) {
             overflowHappened = true;
@@ -439,7 +439,7 @@ struct MaxOp {
 };
 
 template<typename Scalar>
-AABB<Scalar> computeBoundingBox(const thrust::device_ptr<glm::tvec3<Scalar>>& begin, const thrust::device_ptr<glm::tvec3<Scalar>>& end) {
+AABB<Scalar> computeBoundingBox(const thrust::device_ptr<const glm::tvec3<Scalar>>& begin, const thrust::device_ptr<const glm::tvec3<Scalar>>& end) {
     glm::tvec3<Scalar> min = thrust::reduce(begin, end, glm::tvec3<Scalar>(FLT_MAX), MinOp<Scalar>());
     glm::tvec3<Scalar> max = thrust::reduce(begin, end, glm::tvec3<Scalar>(-FLT_MAX), MaxOp<Scalar>());
 
@@ -447,21 +447,20 @@ AABB<Scalar> computeBoundingBox(const thrust::device_ptr<glm::tvec3<Scalar>>& be
 }
 
 template<typename Scalar>
-AABB<Scalar> CollisionDetection<Scalar>::GetAABB() const
+AABB<Scalar> CollisionDetection<Scalar>::GetAABB(int numVerts, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde) const
 {
-    using XType = typename std::decay<decltype(*mpSolverData->X)>::type;
-    thrust::device_ptr<XType> dev_ptr(mpSolverData->X);
-    thrust::device_ptr<XType> dev_ptrTildes(mpSolverData->XTilde);
+    thrust::device_ptr<const glm::tvec3<Scalar>> dev_ptr(X);
+    thrust::device_ptr<const glm::tvec3<Scalar>> dev_ptrTildes(XTilde);
     return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTildes, dev_ptrTildes + numVerts));
 }
 
 template<typename Scalar>
-bool CollisionDetection<Scalar>::BroadPhase()
+bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers)
 {
     const std::string buildTypeStr = buildType == BVH<Scalar>::BuildType::Cooperative ? "Cooperative" : buildType == BVH<Scalar>::BuildType::Atomic ? "Atomic" : "Serial";
-    m_bvh.BuildBVHTree(buildType, GetAABB(), mpSolverData->numTris, mpSolverData->X, mpSolverData->XTilde, mpSolverData->Tri);
+    m_bvh.BuildBVHTree(buildType, GetAABB(numVerts, X, XTilde), numTris, X, XTilde, Tri);
 
-    if (!DetectCollisionCandidates(m_bvh.GetBVHNodes())) {
+    if (!DetectCollisionCandidates(m_bvh.GetBVHNodes(), numTris, Tri, TriFathers)) {
         count = 0;
         return false;
     }

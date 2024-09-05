@@ -28,7 +28,7 @@ void IPCSolver::Update(SolverData<double>& solverData, SolverParams<double>& sol
     if (solverParams.handleCollision) {
         cudaMemcpy(solverData.XTilde, solverData.X, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
         cudaMemcpy(solverData.X, x_n, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
-        solverParams.pCollisionDetection->DetectCollision(solverData.dev_tIs, solverData.dev_Normals);
+        solverParams.pCollisionDetection->DetectCollision(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.XTilde, solverData.dev_TriFathers, solverData.dev_tIs, solverData.dev_Normals);
         int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
         IPCCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts);
     }

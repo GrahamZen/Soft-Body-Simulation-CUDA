@@ -24,7 +24,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     :context(ctx), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
 {
     DataLoader<solverPrecision> dataLoader(threadsPerBlock);
-    mSolverParams.pCollisionDetection = new CollisionDetection<solverPrecision>{ &mSolverData, ctx, _threadsPerBlockBVH, 1 << 16 };
+    mSolverParams.pCollisionDetection = new CollisionDetection<solverPrecision>{ ctx, _threadsPerBlockBVH, 1 << 16 };
     if (json.contains("dt")) {
         mSolverParams.dt = json["dt"].get<float>();
     }
