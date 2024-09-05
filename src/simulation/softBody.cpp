@@ -1,5 +1,6 @@
 #include <simulation/softBody.h>
 #include <simulation/simulationContext.h>
+#include <context.h>
 
 SoftBody::SoftBody(const SoftBodyData* dataPtr, const SoftBodyAttribute _attrib, int threadsPerBlock) :softBodyData(*dataPtr), attrib(_attrib), threadsPerBlock(threadsPerBlock)
 {

@@ -1,6 +1,5 @@
 #include <energy/ip.h>
 #include <energy/corotated.h>
-#include <cuda_runtime.h>
 
 IPEnergy::IPEnergy(const SolverData<double>& solverData, double dHat) : inertia(solverData, nnz, solverData.numVerts, solverData.mass),
 elastic(new CorotatedEnergy<double>(solverData, nnz)), barrier(solverData, nnz, dHat)

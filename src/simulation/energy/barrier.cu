@@ -4,7 +4,6 @@
 #include <plane.h>
 #include <cylinder.h>
 #include <sphere.h>
-#include <glm/glm.hpp>
 #include <thrust/transform_reduce.h>
 #include <thrust/iterator/counting_iterator.h>
 

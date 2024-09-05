@@ -2,13 +2,10 @@
 
 #include <collision/bvh.h>
 #include <utilities.cuh>
-#include <collision/bvh.cuh>
-#include <simulation/simulationContext.h>
 #include <cooperative_groups.h>
 #include <thrust/sort.h>
-#include <thrust/execution_policy.h>
-#include <thrust/device_vector.h>
 #include <thrust/reduce.h>
+#include <thrust/device_ptr.h>
 
 template<typename Scalar>
 __device__ void buildBBox(BVHNode<Scalar>& curr, const BVHNode<Scalar>& left, const BVHNode<Scalar>& right)
@@ -182,15 +179,15 @@ void CollisionDetection<Scalar>::DetectCollision(Scalar* tI, glm::vec3* nors)
 }
 
 template<typename Scalar>
-void CollisionDetection<Scalar>::SetBuildType(typename BVH<Scalar>::BuildType _buildType)
+void CollisionDetection<Scalar>::SetBuildType(int _buildType)
 {
-    buildType = _buildType;
+    buildType = static_cast<typename BVH<Scalar>::BuildType>(_buildType);
 }
 
 template<typename Scalar>
-typename BVH<Scalar>::BuildType CollisionDetection<Scalar>::GetBuildType()
+int CollisionDetection<Scalar>::GetBuildType()
 {
-    return buildType;
+    return static_cast<int>(buildType);
 }
 
 template class BVH<float>;

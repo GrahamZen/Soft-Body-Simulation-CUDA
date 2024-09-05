@@ -1,10 +1,9 @@
 
 #include <softBody.h>
 #include <simulation/dataLoader.h>
-#include <utilities.cuh>
 #include <glm/gtc/matrix_transform.hpp>
 #include <simulation/MshLoader.h>
-#include <thrust/device_ptr.h>
+#include <utilities.cuh>
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <thrust/transform.h>

@@ -3,10 +3,8 @@
 #include <collision/aabb.h>
 #include <collision/intersections.h>
 #include <glm/glm.hpp>
-#include <glm/gtx/intersect.hpp>
 #include <glm/gtc/constants.hpp>
 #include <glm/gtx/norm.hpp>
-#include <cuda_runtime.h>
 
 /**
  * Handy-dandy hash function that provides seeds for random number generation.

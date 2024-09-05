@@ -1,13 +1,14 @@
 #pragma once
 
-#include <collision/bvh.h>
 #include <fixedBodyData.h>
 #include <simulation/solver/solver.h>
-#include <context.h>
 #include <json.hpp>
 
 class SoftBody;
 class SurfaceShader;
+class Context;
+class SoftBodyAttr;
+using solverPrecision = float;
 
 class SimulationCUDAContext {
     template<typename Scalar>
@@ -21,7 +22,7 @@ public:
     const std::vector<const char*>& GetNamesSoftBodies() const { return namesSoftBodies; }
     void UpdateSingleSBAttr(int index, SoftBodyAttr* pSoftBodyAttr);
     void SetDt(float dt) { mSolverParams.dt = dt; }
-    void SetBVHBuildType(BVH<solverPrecision>::BuildType);
+    void SetBVHBuildType(int);
     void SetGlobalSolver(bool useEigen);
     void Draw(SurfaceShader*, SurfaceShader*);
     const SolverParams<solverPrecision>& GetSolverParams() const;

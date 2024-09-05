@@ -2,10 +2,9 @@
 
 #include <collision/bvh.h>
 #include <collision/intersections.h>
-#include <simulation/simulationContext.h>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
-#include <thrust/device_vector.h>
+#include <thrust/device_ptr.h>
 
 struct CompareQuery {
     __host__ __device__

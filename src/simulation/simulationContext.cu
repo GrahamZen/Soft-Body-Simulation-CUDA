@@ -1,10 +1,11 @@
 #include <utilities.cuh>
+#include <collision/bvh.h>
 #include <simulation/solver/IPC/ipc.h>
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/softBody.h>
 #include <simulation/dataLoader.h>
 #include <simulation/simulationContext.h>
-
+#include <context.h>
 
 #define ERRORCHECK 1
 

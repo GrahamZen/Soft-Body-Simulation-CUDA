@@ -1,9 +1,9 @@
 #pragma once
 
+#include <collision/bvh.h>
 #include <utilities.cuh>
 #include <surfaceshader.h>
-#include <collision/bvh.h>
-#include <simulation/simulationContext.h>
+#include <context.h>
 #include <thrust/device_vector.h>
 #include <thrust/fill.h>
 

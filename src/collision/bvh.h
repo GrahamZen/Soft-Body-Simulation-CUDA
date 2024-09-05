@@ -51,8 +51,8 @@ public:
     int GetNumQueries() const {
         return numQueries;
     }
-    void SetBuildType(typename BVH<Scalar>::BuildType);
-    typename BVH<Scalar>::BuildType GetBuildType();
+    void SetBuildType(int);
+    int GetBuildType();
 private:
     SingleQueryDisplay& GetSQDisplay(int i, const glm::tvec3<Scalar>* Xs, Query* guiQuery);
     AABB<Scalar> GetAABB() const;

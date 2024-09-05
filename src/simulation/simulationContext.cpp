@@ -3,6 +3,8 @@
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/simulationContext.h>
 #include <simulation/softBody.h>
+#include <collision/bvh.h>
+#include <context.h>
 #include <spdlog/spdlog.h>
 #include <map>
 #include <chrono>
@@ -45,7 +47,7 @@ void SimulationCUDAContext::UpdateSingleSBAttr(int index, SoftBodyAttr* pSoftBod
     softBodies[index]->SetAttributes(pSoftBodyAttr);
 }
 
-void SimulationCUDAContext::SetBVHBuildType(BVH<solverPrecision>::BuildType buildType)
+void SimulationCUDAContext::SetBVHBuildType(int buildType)
 {
     mSolverParams.pCollisionDetection->SetBuildType(buildType);
 }

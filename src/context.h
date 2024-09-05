@@ -1,14 +1,11 @@
 #pragma once
 #include <utilities.h>
-#include <collision/bvh.h>
 #include <vector>
 
 class SoftBody;
 class Camera;
 class SimulationCUDAContext;
 class SurfaceShader;
-
-using solverPrecision = float;
 
 struct SoftBodyAttr
 {
@@ -70,7 +67,7 @@ public:
     void Update();
     void ResetCamera();
     void Draw();
-    void SetBVHBuildType(BVH<solverPrecision>::BuildType buildType);
+    void SetBVHBuildType(int buildType);
     int& GetBVHBuildType();
     int GetNumQueries() const;
     int GetIteration() const { return iteration; }

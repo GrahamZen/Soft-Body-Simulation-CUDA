@@ -8,7 +8,7 @@
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 #include <thrust/remove.h>
-#include <cuda_runtime.h>
+#include <thrust/device_vector.h>
 
 //input the aabb box of a Tetrahedron
 //generate a 30-bit morton code
@@ -279,8 +279,6 @@ __global__ void traverseTree(int numTris, const BVHNode<Scalar>* nodes, const in
     if (index >= numTris) return;
     int leafIdx = index + numTris - 1;
     const BVHNode<Scalar> myNode = nodes[leafIdx];
-    // record the closest intersection
-    Scalar closest = 1;
     int bvhStart = 0;
     int stack[64];
     int stackPtr = 0;

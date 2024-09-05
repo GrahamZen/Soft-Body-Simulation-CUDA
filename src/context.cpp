@@ -1,6 +1,7 @@
 #include <sceneStructs.h>
 #include <surfaceshader.h>
 #include <context.h>
+#include <collision/aabb.h>
 #include <simulation/simulationContext.h>
 #include <collision/rigid/sphere.h>
 #include <collision/rigid/cylinder.h>
@@ -382,7 +383,7 @@ void Context::Draw() {
     mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
 }
 
-void Context::SetBVHBuildType(BVH<solverPrecision>::BuildType buildType)
+void Context::SetBVHBuildType(int buildType)
 {
     mcrpSimContext->SetBVHBuildType(buildType);
 }
