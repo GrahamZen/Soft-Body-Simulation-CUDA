@@ -19,7 +19,7 @@ public:
     void Update();
     void Reset();
     const std::vector<const char*>& GetNamesSoftBodies() const { return namesSoftBodies; }
-    void UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr);
+    void UpdateSingleSBAttr(int index, SoftBodyAttr* pSoftBodyAttr);
     void SetDt(float dt) { mSolverParams.dt = dt; }
     void SetBVHBuildType(BVH<solverPrecision>::BuildType);
     void SetGlobalSolver(bool useEigen);

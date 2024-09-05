@@ -26,6 +26,7 @@ private:
     std::unique_ptr<Impl> m_impl;
     int totalNumDBC = 0;
     int totalNumVerts = 0;
+    int totalNumTris = 0;
     int totalNumTets = 0;
     int totalNumEdges = 0;
     const int threadsPerBlock;

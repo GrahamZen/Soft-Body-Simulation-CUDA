@@ -10,6 +10,10 @@ __device__ AABB<Scalar> computeTetTrajBBox(const glm::tvec3<Scalar>& v0, const g
     const glm::tvec3<Scalar>& v4, const glm::tvec3<Scalar>& v5, const glm::tvec3<Scalar>& v6, const glm::tvec3<Scalar>& v7);
 
 template<typename Scalar>
+__device__ AABB<Scalar> computeTriTrajBBox(const glm::tvec3<Scalar>& v0, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2, const glm::tvec3<Scalar>& v3,
+    const glm::tvec3<Scalar>& v4, const glm::tvec3<Scalar>& v5);
+
+template<typename Scalar>
 __device__ unsigned int genMortonCode(AABB<Scalar> bbox, glm::tvec3<Scalar> geoMin, glm::tvec3<Scalar> geoMax);
 
 __inline__ __device__ unsigned int expandBits(unsigned int v)

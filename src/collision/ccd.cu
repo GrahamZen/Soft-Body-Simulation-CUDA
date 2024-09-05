@@ -31,10 +31,26 @@ __device__ AABB<Scalar> computeTetTrajBBox(const glm::tvec3<Scalar>& v0, const g
     return AABB<Scalar>{ min - (Scalar)AABBThreshold, max + (Scalar)AABBThreshold };
 }
 
-template AABB<float> computeTetTrajBBox(const glm::tvec3<float>& v0, const glm::tvec3<float>& v1, const glm::tvec3<float>& v2, const glm::tvec3<float>& v3,
-    const glm::tvec3<float>& v4, const glm::tvec3<float>& v5, const glm::tvec3<float>& v6, const glm::tvec3<float>& v7);
-template AABB<double> computeTetTrajBBox(const glm::tvec3<double>& v0, const glm::tvec3<double>& v1, const glm::tvec3<double>& v2, const glm::tvec3<double>& v3,
-    const glm::tvec3<double>& v4, const glm::tvec3<double>& v5, const glm::tvec3<double>& v6, const glm::tvec3<double>& v7);
+template<typename Scalar>
+__device__ AABB<Scalar> computeTriTrajBBox(const glm::tvec3<Scalar>& v0, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2, const glm::tvec3<Scalar>& v3,
+    const glm::tvec3<Scalar>& v4, const glm::tvec3<Scalar>& v5)
+{
+    glm::tvec3<Scalar> min, max;
+    min.x = fminf(fminf(fminf(fminf(fminf(v0.x, v1.x), v2.x), v3.x), v4.x), v5.x);
+    min.y = fminf(fminf(fminf(fminf(fminf(v0.y, v1.y), v2.y), v3.y), v4.y), v5.y);
+    min.z = fminf(fminf(fminf(fminf(fminf(v0.z, v1.z), v2.z), v3.z), v4.z), v5.z);
+    max.x = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.x, v1.x), v2.x), v3.x), v4.x), v5.x);
+    max.y = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.y, v1.y), v2.y), v3.y), v4.y), v5.y);
+    max.z = fmaxf(fmaxf(fmaxf(fmaxf(fmaxf(v0.z, v1.z), v2.z), v3.z), v4.z), v5.z);
+
+    return AABB<Scalar>{ min - (Scalar)AABBThreshold, max + (Scalar)AABBThreshold };
+}
+
+template __device__ AABB<float> computeTriTrajBBox(const glm::tvec3<float>& v0, const glm::tvec3<float>& v1, const glm::tvec3<float>& v2, const glm::tvec3<float>& v3,
+    const glm::tvec3<float>& v4, const glm::tvec3<float>& v5);
+
+template __device__ AABB<double> computeTriTrajBBox(const glm::tvec3<double>& v0, const glm::tvec3<double>& v1, const glm::tvec3<double>& v2, const glm::tvec3<double>& v3,
+    const glm::tvec3<double>& v4, const glm::tvec3<double>& v5);
 
 template<typename Scalar>
 AABB<Scalar> AABB<Scalar>::expand(const AABB<Scalar>& aabb)const {

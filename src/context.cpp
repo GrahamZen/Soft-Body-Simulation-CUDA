@@ -119,7 +119,7 @@ void Context::PollEvents() {
     if (attrs.currSoftBodyId == -1) return;
     bool result = attrs.mu.second || attrs.lambda.second || attrs.damp.second || attrs.muN.second || attrs.muT.second || attrs.getJumpDirty();
     if (result)
-        mcrpSimContext->UpdateSingleSBAttr(guiData->softBodyAttr.currSoftBodyId, guiData->softBodyAttr);
+        mcrpSimContext->UpdateSingleSBAttr(guiData->softBodyAttr.currSoftBodyId, &guiData->softBodyAttr);
     else
         return;
     attrs.mu.second = false;
@@ -464,11 +464,11 @@ void cleanupCuda() {
 
 }
 
-void GuiDataContainer::SoftBodyAttr::setJump(bool val) {
+void SoftBodyAttr::setJump(bool val) {
     jump = { true, true };
 }
 
-void GuiDataContainer::SoftBodyAttr::setJumpClean(bool& val)
+void SoftBodyAttr::setJumpClean(bool& val)
 {
     if (jump.second) {
         val = jump.first;
@@ -481,7 +481,7 @@ void GuiDataContainer::SoftBodyAttr::setJumpClean(bool& val)
     }
 }
 
-bool GuiDataContainer::SoftBodyAttr::getJumpDirty()const {
+bool SoftBodyAttr::getJumpDirty()const {
     return jump.second;
 }
 

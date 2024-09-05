@@ -7,6 +7,7 @@ class FixedBodyData;
 
 template<typename Scalar>
 struct SolverData {
+    indexType* Tri = nullptr;
     indexType* Tet = nullptr;
     glm::tvec3<Scalar>* Force = nullptr;
     glm::tvec3<Scalar>* V = nullptr;
@@ -24,9 +25,10 @@ struct SolverData {
     glm::vec3* dev_Normals = nullptr;
     FixedBodyData* pFixedBodies = nullptr;
     Scalar* V0 = nullptr;
-    indexType* dev_TetFathers;
-    indexType* dev_Edges; 
+    indexType* dev_TriFathers;
+    indexType* dev_Edges;
     int numDBC = 0;
+    int numTris = 0;
     int numTets = 0;
     int numVerts = 0;
 };

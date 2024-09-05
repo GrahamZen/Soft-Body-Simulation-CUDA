@@ -158,12 +158,12 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
 
         }
         dataLoader.AllocData(startIndices, mSolverData, softBodies);
-        mSolverParams.pCollisionDetection->Init(mSolverData.numTets, mSolverData.numVerts, maxThreads);
+        mSolverParams.pCollisionDetection->Init(mSolverData.numTris, mSolverData.numVerts, maxThreads);
         cudaMalloc((void**)&mSolverData.dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(solverPrecision));
     }
     mSolverData.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
-    mSolver = new IPCSolver{ threadsPerBlock, mSolverData, 5e-2 };
+    mSolver = new PdSolver{ threadsPerBlock, mSolverData };
 }
 
 SimulationCUDAContext::~SimulationCUDAContext()
@@ -183,7 +183,7 @@ SimulationCUDAContext::~SimulationCUDAContext()
     cudaFree(mSolverData.mu);
     cudaFree(mSolverData.lambda);
     cudaFree(mSolverData.dev_Edges);
-    cudaFree(mSolverData.dev_TetFathers);
+    cudaFree(mSolverData.dev_TriFathers);
 
     for (auto softbody : softBodies) {
         delete softbody;
@@ -209,17 +209,9 @@ void SimulationCUDAContext::PrepareRenderData() {
         glm::vec3* pos;
         glm::vec4* nor;
         softbody->Mesh::MapDevicePtr(&pos, &nor);
-        if (softbody->GetNumTris() == 0) {
-            dim3 numThreadsPerBlock(softbody->GetNumTets() / threadsPerBlock + 1);
-            PopulatePos << <numThreadsPerBlock, threadsPerBlock >> > (pos, mSolverData.X, softbody->GetSoftBodyData().Tet, softbody->GetNumTets());
-            RecalculateNormals << <softbody->GetNumTets() * 4 / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, 4 * softbody->GetNumTets());
-            softbody->Mesh::UnMapDevicePtr();
-        }
-        else {
-            dim3 numThreadsPerBlock(softbody->GetNumTris() / threadsPerBlock + 1);
-            PopulateTriPos << <numThreadsPerBlock, threadsPerBlock >> > (pos, mSolverData.X, softbody->GetSoftBodyData().Tri, softbody->GetNumTris());
-            RecalculateNormals << <softbody->GetNumTris() / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, softbody->GetNumTris());
-            softbody->Mesh::UnMapDevicePtr();
-        }
+        dim3 numThreadsPerBlock(softbody->GetNumTris() / threadsPerBlock + 1);
+        PopulateTriPos << <numThreadsPerBlock, threadsPerBlock >> > (pos, mSolverData.X, softbody->GetSoftBodyData().Tri, softbody->GetNumTris());
+        RecalculateNormals << <softbody->GetNumTris() / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, softbody->GetNumTris());
+        softbody->Mesh::UnMapDevicePtr();
     }
 }

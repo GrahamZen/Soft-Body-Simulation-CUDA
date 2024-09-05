@@ -18,17 +18,17 @@ public:
     using ReadyFlagType = int;
     BVH<Scalar>(const int threadsPerBlock);
     ~BVH<Scalar>();
-    void Init(int numTets, int numVerts, int maxThreads);
+    void Init(int numTris, int numVerts, int maxThreads);
     void PrepareRenderData();
     const BVHNode<Scalar>* GetBVHNodes() const;
-    void BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTets, const glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* XTilde, const indexType* tets);
+    void BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* XTilde, const indexType* tets);
 private:
     void BuildBBoxes(BuildType buildType);
     BVHNode<Scalar>* dev_BVHNodes = nullptr;
     AABB<Scalar>* dev_bboxes = nullptr;
     unsigned int* dev_mortonCodes = nullptr;
     ReadyFlagType* dev_ready = nullptr;
-    int numTets;
+    int numTris;
     Scalar* dev_tI;
     int* dev_indicesToReport;
     const int threadsPerBlock;
@@ -45,7 +45,7 @@ public:
     CollisionDetection<Scalar>(const SolverData<Scalar>* solverData, const Context* context, const int threadsPerBlock, size_t maxNumQueries);
     ~CollisionDetection<Scalar>();
     void DetectCollision(Scalar* tI, glm::vec3* nors);
-    void Init(int numTets, int numVerts, int maxThreads);
+    void Init(int numTris, int numVerts, int maxThreads);
     void PrepareRenderData();
     void Draw(SurfaceShader*);
     int GetNumQueries() const {

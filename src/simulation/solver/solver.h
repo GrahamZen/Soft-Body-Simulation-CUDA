@@ -15,10 +15,8 @@ template<typename Scalar>
 class CollisionDetection;
 
 struct SoftBodyData {
-    indexType* Tet = nullptr;
     indexType* Tri = nullptr;
     int numTris = 0;
-    int numTets = 0;
 };
 
 template<typename Scalar>

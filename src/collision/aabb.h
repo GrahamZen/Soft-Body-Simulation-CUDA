@@ -18,7 +18,7 @@ public:
     int leftIndex;
     int rightIndex;
     int parent;
-    int TetrahedronIndex;
+    int TriangleIndex;
 };
 
 enum class QueryType {

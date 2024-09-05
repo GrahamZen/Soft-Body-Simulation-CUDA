@@ -108,18 +108,18 @@ template __global__ void PopulateTriPos(glm::vec3* vertices, glm::tvec3<float>* 
 template __global__ void PopulateTriPos(glm::vec3* vertices, glm::tvec3<double>* X, indexType* Tet, int numTris);
 
 
-void inspectMortonCodes(const int* dev_mortonCodes, int numTets) {
-    std::vector<unsigned int> hstMorton(numTets);
-    cudaMemcpy(hstMorton.data(), dev_mortonCodes, numTets * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-    utilityCore::inspectHostMorton(hstMorton.data(), numTets);
+void inspectMortonCodes(const int* dev_mortonCodes, int numTris) {
+    std::vector<unsigned int> hstMorton(numTris);
+    cudaMemcpy(hstMorton.data(), dev_mortonCodes, numTris * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    utilityCore::inspectHostMorton(hstMorton.data(), numTris);
 }
 
 template<typename Scalar>
-void inspectBVHNode(const BVHNode<Scalar>* dev_BVHNodes, int numTets)
+void inspectBVHNode(const BVHNode<Scalar>* dev_BVHNodes, int numTris)
 {
-    std::vector<BVHNode<Scalar>> hstBVHNodes(2 * numTets - 1);
-    cudaMemcpy(hstBVHNodes.data(), dev_BVHNodes, sizeof(BVHNode<Scalar>) * (2 * numTets - 1), cudaMemcpyDeviceToHost);
-    utilityCore::inspectHost(hstBVHNodes.data(), 2 * numTets - 1);
+    std::vector<BVHNode<Scalar>> hstBVHNodes(2 * numTris - 1);
+    cudaMemcpy(hstBVHNodes.data(), dev_BVHNodes, sizeof(BVHNode<Scalar>) * (2 * numTris - 1), cudaMemcpyDeviceToHost);
+    utilityCore::inspectHost(hstBVHNodes.data(), 2 * numTris - 1);
 }
 
 template<typename Scalar>

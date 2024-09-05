@@ -3,17 +3,8 @@
 
 SoftBody::SoftBody(const SoftBodyData* dataPtr, const SoftBodyAttribute _attrib, int threadsPerBlock) :softBodyData(*dataPtr), attrib(_attrib), threadsPerBlock(threadsPerBlock)
 {
-    Mesh::numTets = softBodyData.numTets;
     Mesh::numTris = softBodyData.numTris;
-    if (numTris == 0)
-        createTetrahedron();
-    else
-        createMesh();
-}
-
-int SoftBody::GetNumTets() const
-{
-    return softBodyData.numTets;
+    createMesh();
 }
 
 int SoftBody::GetNumTris() const
@@ -25,11 +16,11 @@ const SoftBodyData& SoftBody::GetSoftBodyData()const
     return softBodyData;
 }
 
-void SoftBody::SetAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr)
+void SoftBody::SetAttributes(SoftBodyAttr* pSoftBodyAttr)
 {
-    softBodyAttr.setJumpClean(attrib.jump);
-    if (softBodyAttr.mu.second)
-        attrib.mu = softBodyAttr.mu.first;
-    if (softBodyAttr.lambda.second)
-        attrib.lambda = softBodyAttr.lambda.first;
+    pSoftBodyAttr->setJumpClean(attrib.jump);
+    if (pSoftBodyAttr->mu.second)
+        attrib.mu = pSoftBodyAttr->mu.first;
+    if (pSoftBodyAttr->lambda.second)
+        attrib.lambda = pSoftBodyAttr->lambda.first;
 }

@@ -14,11 +14,8 @@ public:
     ~Mesh();
     void create() override;
 
-    void createFromOBJ(const char* filename, const char* textureFile, const char* bgTextureFile);
-    void createCube(const char* textureFile = nullptr, const char* bgTextureFile = nullptr);
     void createTetrahedron();
     void createMesh();
-    void createQuad(float length, float y);
     void bindTexture() const;
     void loadTexture() const;
     void bindBGTexture() const;

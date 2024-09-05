@@ -8,7 +8,22 @@ class Camera;
 class SimulationCUDAContext;
 class SurfaceShader;
 
-using solverPrecision = double;
+using solverPrecision = float;
+
+struct SoftBodyAttr
+{
+    int currSoftBodyId = -1;
+    std::pair<float, bool> mu;
+    std::pair<float, bool> lambda;
+    std::pair<float, bool> damp;
+    std::pair<float, bool> muN;
+    std::pair<float, bool> muT;
+    void setJumpClean(bool& val);
+    void setJump(bool val);
+    bool getJumpDirty()const;
+private:
+    std::pair<bool, bool> jump;
+};
 
 class GuiDataContainer
 {
@@ -36,20 +51,7 @@ public:
     int currSimContextId = -1;
     Query* mPQuery;
     bool QueryDirty = true;
-    struct SoftBodyAttr
-    {
-        int currSoftBodyId = -1;
-        std::pair<float, bool> mu;
-        std::pair<float, bool> lambda;
-        std::pair<float, bool> damp;
-        std::pair<float, bool> muN;
-        std::pair<float, bool> muT;
-        void setJumpClean(bool& val);
-        void setJump(bool val);
-        bool getJumpDirty()const;
-    private:
-        std::pair<bool, bool> jump;
-    }softBodyAttr;
+    SoftBodyAttr softBodyAttr;
 };
 
 
