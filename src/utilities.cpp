@@ -153,10 +153,7 @@ void utilityCore::inspectHost(const T* host_ptr, int size, const char* str) {
     }
     else {
         for (int i = 0; i < size; i++) {
-            if (abs(host_ptr[i]) < 1e-12)
-                std::cout << 0 << std::endl;
-            else
-                std::cout << host_ptr[i] << std::endl;
+            std::cout << host_ptr[i] << std::endl;
         }
     }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
@@ -173,6 +170,7 @@ template void utilityCore::inspectHost<glm::tmat4x4<double>>(const glm::tmat4x4<
 template void utilityCore::inspectHost<int>(const int*, int, const char* str);
 template void utilityCore::inspectHost<float>(const float*, int, const char* str);
 template void utilityCore::inspectHost<double>(const double*, int, const char* str);
+template void utilityCore::inspectHost<indexType>(const indexType*, int, const char* str);
 
 template<typename Scalar>
 void utilityCore::inspectHost(const BVHNode<Scalar>* hstBVHNodes, int size) {
