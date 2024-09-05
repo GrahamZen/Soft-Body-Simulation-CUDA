@@ -105,6 +105,9 @@ __global__ void storeTi(int numQueries, Query* queries, Scalar* tI, glm::vec3* n
                 tI[q.v2] = 0.5f;
                 tI[q.v3] = 0.5f;
                 nors[q.v0] = q.normal;
+                nors[q.v1] = -q.normal;
+                nors[q.v2] = -q.normal;
+                nors[q.v3] = -q.normal;
             }
         }
         /*

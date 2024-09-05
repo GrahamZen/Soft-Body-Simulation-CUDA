@@ -8,7 +8,7 @@ class SoftBody;
 class SurfaceShader;
 class Context;
 class SoftBodyAttr;
-using solverPrecision = float;
+using solverPrecision = double;
 
 class SimulationCUDAContext {
     template<typename Scalar>
