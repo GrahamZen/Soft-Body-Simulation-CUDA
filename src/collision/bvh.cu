@@ -168,8 +168,9 @@ const BVHNode<Scalar>* BVH<Scalar>::GetBVHNodes() const
 }
 
 template<typename Scalar>
-void CollisionDetection<Scalar>::DetectCollision(Scalar* tI, glm::vec3* nors)
+void CollisionDetection<Scalar>::DetectCollision(Scalar* tI, glm::vec3* nors, bool ignoreSelfCollision)
 {
+    this->ignoreSelfCollision = ignoreSelfCollision;
     thrust::device_ptr<Scalar> dev_ptr(tI);
     thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
     if (BroadPhase()) {

@@ -44,7 +44,7 @@ class CollisionDetection : public QueryDisplay {
 public:
     CollisionDetection<Scalar>(const SolverData<Scalar>* solverData, const Context* context, const int threadsPerBlock, size_t maxNumQueries);
     ~CollisionDetection<Scalar>();
-    void DetectCollision(Scalar* tI, glm::vec3* nors);
+    void DetectCollision(Scalar* tI, glm::vec3* nors, bool ignoreSelfCollision = false);
     void Init(int numTris, int numVerts, int maxThreads);
     void PrepareRenderData();
     void Draw(SurfaceShader*);
@@ -65,6 +65,7 @@ private:
     size_t numQueries;
     size_t maxNumQueries = 1 << 15;
     bool* dev_overflowFlag;
+    bool ignoreSelfCollision = false;
     const int threadsPerBlock;
     const SolverData<Scalar>* mpSolverData;
     const Context* mpContext;

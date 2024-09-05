@@ -273,7 +273,7 @@ __device__ bool isAdjacentTriangle(indexType v00, indexType v01, indexType v02, 
 }
 
 template<typename Scalar>
-__global__ void traverseTree(int numTris, const BVHNode<Scalar>* nodes, const indexType* tris, Query* queries, size_t* queryCount, size_t maxNumQueries, bool* overflowFlag)
+__global__ void traverseTree(int numTris, const BVHNode<Scalar>* nodes, const indexType* tris, const indexType* triFathers, Query* queries, size_t* queryCount, size_t maxNumQueries, bool* overflowFlag, bool ignoreSelfCollision)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index >= numTris) return;
@@ -298,20 +298,19 @@ __global__ void traverseTree(int numTris, const BVHNode<Scalar>* nodes, const in
         if (hitLeft)
         {
             // check triangle intersection
-            if (leftChild.isLeaf == 1)
+            if (leftChild.isLeaf == 1 && myNode.TriangleIndex != leftChild.TriangleIndex && (!ignoreSelfCollision || triFathers[myNode.TriangleIndex] != triFathers[leftChild.TriangleIndex])
+                && !isAdjacentTriangle(tris[myNode.TriangleIndex * 3 + 0], tris[myNode.TriangleIndex * 3 + 1], tris[myNode.TriangleIndex * 3 + 2],
+                    tris[leftChild.TriangleIndex * 3 + 0], tris[leftChild.TriangleIndex * 3 + 1], tris[leftChild.TriangleIndex * 3 + 2]))
             {
                 // 1 faces * 3 verts + 3 edges * 3 edges
-                if (myNode.TriangleIndex != leftChild.TriangleIndex && !isAdjacentTriangle(tris[myNode.TriangleIndex * 3 + 0], tris[myNode.TriangleIndex * 3 + 1], tris[myNode.TriangleIndex * 3 + 2],
-                    tris[leftChild.TriangleIndex * 3 + 0], tris[leftChild.TriangleIndex * 3 + 1], tris[leftChild.TriangleIndex * 3 + 2])) {
-                    int qIdx = atomicAdd(queryCount, 12);
-                    if (qIdx + 12 < maxNumQueries) {
-                        Query* qBegin = &queries[qIdx];
-                        fillQuery(qBegin, myNode.TriangleIndex, leftChild.TriangleIndex, tris);
-                    }
-                    else {
-                        *overflowFlag = true;
-                        return;
-                    }
+                int qIdx = atomicAdd(queryCount, 12);
+                if (qIdx + 12 < maxNumQueries) {
+                    Query* qBegin = &queries[qIdx];
+                    fillQuery(qBegin, myNode.TriangleIndex, leftChild.TriangleIndex, tris);
+                }
+                else {
+                    *overflowFlag = true;
+                    return;
                 }
             }
             else
@@ -323,19 +322,17 @@ __global__ void traverseTree(int numTris, const BVHNode<Scalar>* nodes, const in
         if (hitRight)
         {
             // check triangle intersection
-            if (rightChild.isLeaf == 1)
-            {
-                if (myNode.TriangleIndex != rightChild.TriangleIndex && !isAdjacentTriangle(tris[myNode.TriangleIndex * 3 + 0], tris[myNode.TriangleIndex * 3 + 1], tris[myNode.TriangleIndex * 3 + 2],
+            if (rightChild.isLeaf == 1 && myNode.TriangleIndex != rightChild.TriangleIndex && (!ignoreSelfCollision || triFathers[myNode.TriangleIndex] != triFathers[rightChild.TriangleIndex])
+                && !isAdjacentTriangle(tris[myNode.TriangleIndex * 3 + 0], tris[myNode.TriangleIndex * 3 + 1], tris[myNode.TriangleIndex * 3 + 2],
                     tris[rightChild.TriangleIndex * 3 + 0], tris[rightChild.TriangleIndex * 3 + 1], tris[rightChild.TriangleIndex * 3 + 2])) {
-                    int qIdx = atomicAdd(queryCount, 12);
-                    if (qIdx + 12 < maxNumQueries) {
-                        Query* qBegin = &queries[qIdx];
-                        fillQuery(qBegin, myNode.TriangleIndex, rightChild.TriangleIndex, tris);
-                    }
-                    else {
-                        *overflowFlag = true;
-                        return;
-                    }
+                int qIdx = atomicAdd(queryCount, 12);
+                if (qIdx + 12 < maxNumQueries) {
+                    Query* qBegin = &queries[qIdx];
+                    fillQuery(qBegin, myNode.TriangleIndex, rightChild.TriangleIndex, tris);
+                }
+                else {
+                    *overflowFlag = true;
+                    return;
                 }
             }
             else
@@ -357,7 +354,7 @@ bool CollisionDetection<Scalar>::DetectCollisionCandidates(const BVHNode<Scalar>
     do {
         overflow = false;
         cudaMemset(dev_overflowFlag, 0, sizeof(bool));
-        traverseTree << <numblocksTets, threadsPerBlock >> > (mpSolverData->numTris, dev_BVHNodes, mpSolverData->Tri, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag);
+        traverseTree << <numblocksTets, threadsPerBlock >> > (mpSolverData->numTris, dev_BVHNodes, mpSolverData->Tri, mpSolverData->dev_TriFathers, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag, ignoreSelfCollision);
         cudaMemcpy(&overflow, dev_overflowFlag, sizeof(bool), cudaMemcpyDeviceToHost);
         if (overflow) {
             overflowHappened = true;
