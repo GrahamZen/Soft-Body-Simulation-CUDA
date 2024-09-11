@@ -102,6 +102,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
     cudaMemcpy(x_n, solverData.X, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
     IPC::computeXTilde << <blocks, threadsPerBlock >> > (solverData.XTilde, solverData.X, solverData.V, h, solverData.numVerts);
     double E_last = 0;
+    energy.UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers, solverData.dev_queries, solverData.numQueries);
     E_last = energy.Val(solverData.X, solverData, h2);
 
     SearchDirection(solverData, h2);
@@ -120,6 +121,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
             }
         }
         cudaMemcpy(solverData.X, xTmp, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
+        energy.UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers, solverData.dev_queries, solverData.numQueries);
         E_last = energy.Val(solverData.X, solverData, h2);
         SearchDirection(solverData, h2);
     }
@@ -128,7 +130,6 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
 
 void IPCSolver::SearchDirection(SolverData<double>& solverData, double h2)
 {
-    energy.UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers, solverData.dev_queries, solverData.numQueries);
     energy.Gradient(solverData, h2);
     energy.Hessian(solverData, h2);
     DOFElimination(solverData);
