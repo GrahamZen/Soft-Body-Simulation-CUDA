@@ -9,7 +9,7 @@ class Cylinder;
 
 class FixedBodyData {
     template<typename Scalar>
-    friend class BarrierEnergy;
+    friend class ImplicitBarrierEnergy;
 public:
     FixedBodyData();
     FixedBodyData(int threadsPerBlock, const std::vector<FixedBody*>&);

@@ -4,7 +4,7 @@
 #include <energy/inertia.h>
 #include <energy/gravity.h>
 #include <energy/elasticity.h>
-#include <energy/barrier.h>
+#include <energy/implicitBarrier.h>
 
 class IPEnergy {
 public:
@@ -22,6 +22,6 @@ public:
 private:
     InertiaEnergy<double> inertia;
     GravityEnergy<double> gravity;
-    BarrierEnergy<double> barrier;
+    ImplicitBarrierEnergy<double> barrier;
     ElasticEnergy<double>* elastic = nullptr;
 };
