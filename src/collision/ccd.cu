@@ -32,7 +32,7 @@ __device__ AABB<Scalar> computeTetTrajBBox(const glm::tvec3<Scalar>& v0, const g
 }
 
 template<typename Scalar>
-__device__ AABB<Scalar> computeTriTrajBBox(const glm::tvec3<Scalar>& v0, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2, const glm::tvec3<Scalar>& v3,
+__device__ AABB<Scalar> computeTriTrajBBoxCCD(const glm::tvec3<Scalar>& v0, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2, const glm::tvec3<Scalar>& v3,
     const glm::tvec3<Scalar>& v4, const glm::tvec3<Scalar>& v5)
 {
     glm::tvec3<Scalar> min, max;
@@ -46,11 +46,29 @@ __device__ AABB<Scalar> computeTriTrajBBox(const glm::tvec3<Scalar>& v0, const g
     return AABB<Scalar>{ min - (Scalar)AABBThreshold, max + (Scalar)AABBThreshold };
 }
 
-template __device__ AABB<float> computeTriTrajBBox(const glm::tvec3<float>& v0, const glm::tvec3<float>& v1, const glm::tvec3<float>& v2, const glm::tvec3<float>& v3,
+template __device__ AABB<float> computeTriTrajBBoxCCD(const glm::tvec3<float>& v0, const glm::tvec3<float>& v1, const glm::tvec3<float>& v2, const glm::tvec3<float>& v3,
     const glm::tvec3<float>& v4, const glm::tvec3<float>& v5);
 
-template __device__ AABB<double> computeTriTrajBBox(const glm::tvec3<double>& v0, const glm::tvec3<double>& v1, const glm::tvec3<double>& v2, const glm::tvec3<double>& v3,
+template __device__ AABB<double> computeTriTrajBBoxCCD(const glm::tvec3<double>& v0, const glm::tvec3<double>& v1, const glm::tvec3<double>& v2, const glm::tvec3<double>& v3,
     const glm::tvec3<double>& v4, const glm::tvec3<double>& v5);
+
+template<typename Scalar>
+__device__ AABB<Scalar> computeTriTrajBBox(const glm::tvec3<Scalar>& v0, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2)
+{
+    glm::tvec3<Scalar> min, max;
+    min.x = fminf(fminf(v0.x, v1.x), v2.x);
+    min.y = fminf(fminf(v0.y, v1.y), v2.y);
+    min.z = fminf(fminf(v0.z, v1.z), v2.z);
+    max.x = fmaxf(fmaxf(v0.x, v1.x), v2.x);
+    max.y = fmaxf(fmaxf(v0.y, v1.y), v2.y);
+    max.z = fmaxf(fmaxf(v0.z, v1.z), v2.z);
+
+    return AABB<Scalar>{ min - (Scalar)AABBThreshold, max + (Scalar)AABBThreshold };
+}
+
+template __device__ AABB<float> computeTriTrajBBox(const glm::tvec3<float>& v0, const glm::tvec3<float>& v1, const glm::tvec3<float>& v2);
+
+template __device__ AABB<double> computeTriTrajBBox(const glm::tvec3<double>& v0, const glm::tvec3<double>& v1, const glm::tvec3<double>& v2);
 
 template<typename Scalar>
 AABB<Scalar> AABB<Scalar>::expand(const AABB<Scalar>& aabb)const {

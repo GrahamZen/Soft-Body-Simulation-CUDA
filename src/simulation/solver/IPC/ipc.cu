@@ -110,6 +110,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
         double alpha = energy.InitStepSize(solverData, p, xTmp);
         while (true) {
             IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, alpha, solverData.numVerts);
+            energy.UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers, solverData.dev_queries, solverData.numQueries);
             double E = energy.Val(xTmp, solverData, h2);
             if (E > E_last) {
                 alpha /= 2;
@@ -127,6 +128,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
 
 void IPCSolver::SearchDirection(SolverData<double>& solverData, double h2)
 {
+    energy.UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers, solverData.dev_queries, solverData.numQueries);
     energy.Gradient(solverData, h2);
     energy.Hessian(solverData, h2);
     DOFElimination(solverData);

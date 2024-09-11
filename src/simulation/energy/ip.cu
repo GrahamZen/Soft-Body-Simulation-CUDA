@@ -45,8 +45,14 @@ void IPEnergy::Hessian(const SolverData<double>& solverData, double h2) const
     implicitBarrier.Hessian(solverData, h2);
 }
 
-double IPEnergy::InitStepSize(const SolverData<double>& solverData, double* p, glm::dvec3* XTmp) const
+double IPEnergy::InitStepSize(SolverData<double>& solverData, double* p, glm::dvec3* XTmp) const
 {
-    double alpha = solverData.pCollisionDetection->DetectCollision(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, XTmp, solverData.dev_TriFathers, true);
+    double alpha = solverData.pCollisionDetection->ComputeMinStepSize(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, XTmp,
+        solverData.dev_TriFathers, true);
     return std::min(alpha, implicitBarrier.InitStepSize(solverData, p));
+}
+
+void IPEnergy::UpdateQueries(CollisionDetection<double>* cd, int numVerts, int numTris, const indexType* Tri, const glm::tvec3<double>* X, const indexType* TriFathers, Query*& queries, int& _numQueries)
+{
+    cd->BroadPhase(numVerts, numTris, Tri, X, TriFathers, queries, _numQueries);
 }

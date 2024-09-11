@@ -174,17 +174,17 @@ void CollisionDetection<Scalar>::DetectCollision(int numVerts, int numTris, cons
     this->mpX = X;
     thrust::device_ptr<Scalar> dev_ptr(tI);
     thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
-    if (BroadPhase(numVerts, numTris, Tri, X, XTilde, TriFathers)) {
+    if (BroadPhaseCCD(numVerts, numTris, Tri, X, XTilde, TriFathers)) {
         PrepareRenderData();
         NarrowPhase(X, XTilde, tI, nors);
     }
 }
 
 template<typename Scalar>
-Scalar CollisionDetection<Scalar>::DetectCollision(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers, bool ignoreSelfCollision)
+Scalar CollisionDetection<Scalar>::ComputeMinStepSize(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers, bool ignoreSelfCollision)
 {
     this->ignoreSelfCollision = ignoreSelfCollision;
-    if (BroadPhase(numVerts, numTris, Tri, X, XTilde, TriFathers)) {
+    if (BroadPhaseCCD(numVerts, numTris, Tri, X, XTilde, TriFathers)) {
         return NarrowPhase(X, XTilde);
     }
     return 1;

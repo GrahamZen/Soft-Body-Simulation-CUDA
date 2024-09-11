@@ -141,7 +141,7 @@ __global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNod
 
 // build the bounding box and morton code for each SoftBody
 template<typename Scalar>
-__global__ void buildLeafMorton(int startIndex, int numTri, Scalar minX, Scalar minY, Scalar minZ,
+__global__ void buildLeafMortonCCD(int startIndex, int numTri, Scalar minX, Scalar minY, Scalar minZ,
     Scalar maxX, Scalar maxY, Scalar maxZ, const indexType* tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, BVHNode<Scalar>* leafNodes,
     unsigned int* mortonCodes)
 {
@@ -149,7 +149,7 @@ __global__ void buildLeafMorton(int startIndex, int numTri, Scalar minX, Scalar 
     if (ind < numTri)
     {
         int leafPos = ind + numTri - 1;
-        leafNodes[leafPos].bbox = computeTriTrajBBox(X[tri[ind * 3]], X[tri[ind * 3 + 1]], X[tri[ind * 3 + 2]],
+        leafNodes[leafPos].bbox = computeTriTrajBBoxCCD(X[tri[ind * 3]], X[tri[ind * 3 + 1]], X[tri[ind * 3 + 2]],
             XTilde[tri[ind * 3]], XTilde[tri[ind * 3 + 1]], XTilde[tri[ind * 3 + 2]]);
         leafNodes[leafPos].isLeaf = 1;
         leafNodes[leafPos].leftIndex = -1;
@@ -160,12 +160,49 @@ __global__ void buildLeafMorton(int startIndex, int numTri, Scalar minX, Scalar 
 }
 
 template<typename Scalar>
-void BVH<Scalar>::BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* tris)
+__global__ void buildLeafMorton(int startIndex, int numTri, Scalar minX, Scalar minY, Scalar minZ,
+    Scalar maxX, Scalar maxY, Scalar maxZ, const indexType* tri, const glm::tvec3<Scalar>* X, BVHNode<Scalar>* leafNodes,
+    unsigned int* mortonCodes)
+{
+    int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ind < numTri)
+    {
+        int leafPos = ind + numTri - 1;
+        leafNodes[leafPos].bbox = computeTriTrajBBox(X[tri[ind * 3]], X[tri[ind * 3 + 1]], X[tri[ind * 3 + 2]]);
+        leafNodes[leafPos].isLeaf = 1;
+        leafNodes[leafPos].leftIndex = -1;
+        leafNodes[leafPos].rightIndex = -1;
+        leafNodes[leafPos].TriangleIndex = ind;
+        mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glm::tvec3<Scalar>(minX, minY, minZ), glm::tvec3<Scalar>(maxX, maxY, maxZ));
+    }
+}
+
+template<typename Scalar>
+void BVH<Scalar>::BuildBVHTreeCCD(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* tris)
+{
+    cudaMemset(dev_BVHNodes, 0, (numTris * 2 - 1) * sizeof(BVHNode<Scalar>));
+
+    buildLeafMortonCCD << <numblocksTets, threadsPerBlock >> > (0, numTris, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
+        tris, X, XTilde, dev_BVHNodes, dev_mortonCodes);
+
+    thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTris, dev_BVHNodes + numTris - 1);
+
+    buildSplitList << <numblocksTets, threadsPerBlock >> > (numTris, dev_mortonCodes, dev_BVHNodes);
+
+    BuildBBoxes(buildType);
+
+    cudaMemset(dev_mortonCodes, 0, numTris * sizeof(unsigned int));
+    cudaMemset(dev_ready, 0, (numTris - 1) * sizeof(ReadyFlagType));
+    cudaMemset(&dev_ready[numTris - 1], 1, numTris * sizeof(ReadyFlagType));
+}
+
+template<typename Scalar>
+void BVH<Scalar>::BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, const indexType* tris)
 {
     cudaMemset(dev_BVHNodes, 0, (numTris * 2 - 1) * sizeof(BVHNode<Scalar>));
 
     buildLeafMorton << <numblocksTets, threadsPerBlock >> > (0, numTris, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
-        tris, X, XTilde, dev_BVHNodes, dev_mortonCodes);
+        tris, X, dev_BVHNodes, dev_mortonCodes);
 
     thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTris, dev_BVHNodes + numTris - 1);
 
@@ -450,7 +487,7 @@ AABB<Scalar> computeBoundingBox(const thrust::device_ptr<const glm::tvec3<Scalar
 }
 
 template<typename Scalar>
-AABB<Scalar> CollisionDetection<Scalar>::GetAABB(int numVerts, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde) const
+AABB<Scalar> GetAABBCCD(int numVerts, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde)
 {
     thrust::device_ptr<const glm::tvec3<Scalar>> dev_ptr(X);
     thrust::device_ptr<const glm::tvec3<Scalar>> dev_ptrTildes(XTilde);
@@ -458,10 +495,17 @@ AABB<Scalar> CollisionDetection<Scalar>::GetAABB(int numVerts, const glm::tvec3<
 }
 
 template<typename Scalar>
-bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers)
+AABB<Scalar> GetAABB(int numVerts, const glm::tvec3<Scalar>* X)
+{
+    thrust::device_ptr<const glm::tvec3<Scalar>> dev_ptr(X);
+    return computeBoundingBox(dev_ptr, dev_ptr + numVerts);
+}
+
+template<typename Scalar>
+bool CollisionDetection<Scalar>::BroadPhaseCCD(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers)
 {
     const std::string buildTypeStr = buildType == BVH<Scalar>::BuildType::Cooperative ? "Cooperative" : buildType == BVH<Scalar>::BuildType::Atomic ? "Atomic" : "Serial";
-    m_bvh.BuildBVHTree(buildType, GetAABB(numVerts, X, XTilde), numTris, X, XTilde, Tri);
+    m_bvh.BuildBVHTreeCCD(buildType, GetAABBCCD(numVerts, X, XTilde), numTris, X, XTilde, Tri);
 
     if (!DetectCollisionCandidates(m_bvh.GetBVHNodes(), numTris, Tri, TriFathers)) {
         count = 0;
@@ -470,6 +514,25 @@ bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const ind
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
     sortEachQuery << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries);
     removeDuplicates(dev_queries, numQueries);
+    count = numVerts;
+    return true;
+}
+
+template<typename Scalar>
+bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers, Query*& queries, int& _numQueries)
+{
+    const std::string buildTypeStr = buildType == BVH<Scalar>::BuildType::Cooperative ? "Cooperative" : buildType == BVH<Scalar>::BuildType::Atomic ? "Atomic" : "Serial";
+    m_bvh.BuildBVHTree(buildType, GetAABB(numVerts, X), numTris, X, Tri);
+
+    if (!DetectCollisionCandidates(m_bvh.GetBVHNodes(), numTris, Tri, TriFathers)) {
+        count = 0;
+        return false;
+    }
+    dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
+    sortEachQuery << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries);
+    removeDuplicates(dev_queries, numQueries);
+    _numQueries = numQueries;
+    queries = dev_queries;
     count = numVerts;
     return true;
 }
