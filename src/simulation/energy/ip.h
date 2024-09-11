@@ -13,7 +13,7 @@ public:
     double Val(const glm::dvec3* Xs, const SolverData<double>& solverData, double h2) const;
     void Gradient(const SolverData<double>& solverData, double h2) const;
     void Hessian(const SolverData<double>& solverData, double h2) const;
-    double InitStepSize(const SolverData<double>& solverData, double* p) const;
+    double InitStepSize(const SolverData<double>& solverData, double* p, glm::dvec3* XTmp) const;
     double* gradient = nullptr;
     int nnz = 0;
     double* hessianVal = nullptr;
@@ -22,6 +22,7 @@ public:
 private:
     InertiaEnergy<double> inertia;
     GravityEnergy<double> gravity;
-    ImplicitBarrierEnergy<double> barrier;
+    ImplicitBarrierEnergy<double> implicitBarrier;
     ElasticEnergy<double>* elastic = nullptr;
+    BarrierEnergy<double> barrier;
 };

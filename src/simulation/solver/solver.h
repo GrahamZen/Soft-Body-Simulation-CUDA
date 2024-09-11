@@ -11,9 +11,6 @@ struct SoftBodyAttribute {
     bool jump = false;
 };
 
-template<typename Scalar>
-class CollisionDetection;
-
 struct SoftBodyData {
     indexType* Tri = nullptr;
     int numTris = 0;
@@ -32,7 +29,6 @@ struct SolverParams {
     float gravity = 9.8f;
     int numIterations = 1;
     bool handleCollision = true;
-    CollisionDetection<Scalar>* pCollisionDetection = nullptr;
 };
 
 template<typename Scalar>

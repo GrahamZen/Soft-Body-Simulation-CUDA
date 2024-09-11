@@ -164,7 +164,7 @@ void PdSolver::Update(SolverData<float>& solverData, SolverParams<float>& solver
     }
     SolverStep(solverData, solverParams);
     if (solverParams.handleCollision) {
-        solverParams.pCollisionDetection->DetectCollision(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.XTilde, solverData.dev_TriFathers, solverData.dev_tIs, solverData.dev_Normals, true);
+        solverData.pCollisionDetection->DetectCollision(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.XTilde, solverData.dev_TriFathers, solverData.dev_tIs, solverData.dev_Normals, true);
         int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
         CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts, solverParams.dt);
     }

@@ -35,7 +35,7 @@ void SimulationCUDAContext::Update()
     mSolverParams.handleCollision = (context->guiData->handleCollision && context->guiData->BVHEnabled);
     mSolver->Update(mSolverData, mSolverParams);
     if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
-        mSolverParams.pCollisionDetection->PrepareRenderData();
+        mSolverData.pCollisionDetection->PrepareRenderData();
     }
     if (context->guiData->ObjectVis) {
         PrepareRenderData();
@@ -49,7 +49,7 @@ void SimulationCUDAContext::UpdateSingleSBAttr(int index, SoftBodyAttr* pSoftBod
 
 void SimulationCUDAContext::SetBVHBuildType(int buildType)
 {
-    mSolverParams.pCollisionDetection->SetBuildType(buildType);
+    mSolverData.pCollisionDetection->SetBuildType(buildType);
 }
 
 void SimulationCUDAContext::SetGlobalSolver(bool useEigen)
@@ -80,7 +80,7 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
         }
     }
     if (context->guiData->handleCollision && context->guiData->BVHEnabled)
-        mSolverParams.pCollisionDetection->Draw(flatShaderProgram);
+        mSolverData.pCollisionDetection->Draw(flatShaderProgram);
 }
 
 const SolverParams<solverPrecision>& SimulationCUDAContext::GetSolverParams() const

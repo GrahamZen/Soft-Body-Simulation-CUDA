@@ -181,6 +181,16 @@ void CollisionDetection<Scalar>::DetectCollision(int numVerts, int numTris, cons
 }
 
 template<typename Scalar>
+Scalar CollisionDetection<Scalar>::DetectCollision(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers, bool ignoreSelfCollision)
+{
+    this->ignoreSelfCollision = ignoreSelfCollision;
+    if (BroadPhase(numVerts, numTris, Tri, X, XTilde, TriFathers)) {
+        return NarrowPhase(X, XTilde);
+    }
+    return 1;
+}
+
+template<typename Scalar>
 void CollisionDetection<Scalar>::SetBuildType(int _buildType)
 {
     buildType = static_cast<typename BVH<Scalar>::BuildType>(_buildType);

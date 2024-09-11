@@ -72,12 +72,12 @@ __global__ void detectCollisionNarrow(int numQueries, Query* queries, const glm:
 }
 
 template<typename Scalar>
-__global__ void storeTi(int numQueries, Query* queries, Scalar* tI, glm::vec3* nors)
+__global__ void storeTi(int numQueries, const Query* queries, Scalar* tI, glm::vec3* nors)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < numQueries)
     {
-        Query& q = queries[index];
+        const Query& q = queries[index];
 
         if (q.type == QueryType::EE)
         {
@@ -182,9 +182,27 @@ void CollisionDetection<Scalar>::NarrowPhase(const glm::tvec3<Scalar>* X, const 
     auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
     int numQueries = new_end - dev_queriesPtr;
     numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    //computeNewVel << <numBlocksQuery, threadsPerBlock >> > (numQueries, Xs, XTildes, dev_queries, V);
     storeTi << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, tI, nors);
     cudaDeviceSynchronize();
+}
+
+struct getToi {
+    __host__ __device__
+        float operator()(const Query& q) const {
+        return q.toi;
+    }
+};
+
+template<typename Scalar>
+Scalar CollisionDetection<Scalar>::NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde)
+{
+    dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
+    detectCollisionNarrow << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries, X, XTilde);
+    thrust::device_ptr<Query> dev_queriesPtr(dev_queries);
+
+    thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());
+    auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
+    return thrust::transform_reduce(dev_queriesPtr, dev_queriesPtr + numQueries, getToi(), 0.0f, thrust::minimum<Scalar>());
 }
 
 template class CollisionDetection<float>;

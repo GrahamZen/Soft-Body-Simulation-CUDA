@@ -24,7 +24,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     :context(ctx), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
 {
     DataLoader<solverPrecision> dataLoader(threadsPerBlock);
-    mSolverParams.pCollisionDetection = new CollisionDetection<solverPrecision>{ ctx, _threadsPerBlockBVH, 1 << 16 };
+    mSolverData.pCollisionDetection = new CollisionDetection<solverPrecision>{ ctx, _threadsPerBlockBVH, 1 << 16 };
     if (json.contains("dt")) {
         mSolverParams.dt = json["dt"].get<float>();
     }
@@ -159,7 +159,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
 
         }
         dataLoader.AllocData(startIndices, mSolverData, softBodies);
-        mSolverParams.pCollisionDetection->Init(mSolverData.numTris, mSolverData.numVerts, maxThreads);
+        mSolverData.pCollisionDetection->Init(mSolverData.numTris, mSolverData.numVerts, maxThreads);
         cudaMalloc((void**)&mSolverData.dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(solverPrecision));
     }
@@ -198,7 +198,7 @@ int SimulationCUDAContext::GetVertCnt() const {
 }
 
 int SimulationCUDAContext::GetNumQueries() const {
-    return mSolverParams.pCollisionDetection->GetNumQueries();
+    return mSolverData.pCollisionDetection->GetNumQueries();
 }
 
 int SimulationCUDAContext::GetTetCnt() const {

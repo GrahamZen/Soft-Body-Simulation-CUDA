@@ -6,6 +6,9 @@ using indexType = unsigned int;
 class FixedBodyData;
 
 template<typename Scalar>
+class CollisionDetection;
+
+template<typename Scalar>
 struct SolverData {
     indexType* Tri = nullptr;
     indexType* Tet = nullptr;
@@ -31,4 +34,5 @@ struct SolverData {
     int numTris = 0;
     int numTets = 0;
     int numVerts = 0;
+    CollisionDetection<Scalar>* pCollisionDetection = nullptr;
 };

@@ -45,6 +45,7 @@ public:
     CollisionDetection<Scalar>(const Context* context, const int threadsPerBlock, size_t maxNumQueries);
     ~CollisionDetection<Scalar>();
     void DetectCollision(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers, Scalar* tI, glm::vec3* nors, bool ignoreSelfCollision = false);
+    Scalar DetectCollision(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers, bool ignoreSelfCollision = false);
     void Init(int numTris, int numVerts, int maxThreads);
     void PrepareRenderData();
     void Draw(SurfaceShader*);
@@ -58,6 +59,7 @@ private:
     AABB<Scalar> GetAABB(int numVerts, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde) const;
     bool BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers);
     void NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, Scalar*& tI, glm::vec3*& nors);
+    Scalar NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde);
     bool DetectCollisionCandidates(const BVHNode<Scalar>* dev_BVHNodes, int numTris, const indexType* Tri, const indexType* TriFathers);
     Query* dev_queries;
     SingleQueryDisplay mSqDisplay;

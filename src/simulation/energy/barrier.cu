@@ -1,5 +1,5 @@
 #include <energy/barrier.h>
-#include <solver/solverUtil.cuh>
+#include <solver/solver.h>
 #include <thrust/transform_reduce.h>
 #include <thrust/iterator/counting_iterator.h>
 

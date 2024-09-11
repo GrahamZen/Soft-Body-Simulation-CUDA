@@ -26,11 +26,6 @@ void IPCSolver::Update(SolverData<double>& solverData, SolverParams<double>& sol
 {
     SolverStep(solverData, solverParams);
     if (solverParams.handleCollision) {
-        cudaMemcpy(solverData.XTilde, solverData.X, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
-        cudaMemcpy(solverData.X, x_n, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
-        solverParams.pCollisionDetection->DetectCollision(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.XTilde, solverData.dev_TriFathers, solverData.dev_tIs, solverData.dev_Normals);
-        int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-        IPCCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts);
     }
 }
 
@@ -111,7 +106,8 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
 
     SearchDirection(solverData, h2);
     while (!EndCondition(h)) {
-        double alpha = energy.InitStepSize(solverData, p);
+        IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, 1, solverData.numVerts);
+        double alpha = energy.InitStepSize(solverData, p, xTmp);
         while (true) {
             IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, alpha, solverData.numVerts);
             double E = energy.Val(xTmp, solverData, h2);
