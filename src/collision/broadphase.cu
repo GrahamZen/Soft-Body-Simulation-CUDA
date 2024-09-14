@@ -448,18 +448,23 @@ __global__ void sortEachQuery(size_t numQueries, Query* query)
     }
 }
 
-void removeDuplicates(Query* dev_queries, size_t& dev_numQueries) {
+void removeUnknowns(Query* dev_queries, size_t& numQueries) {
     thrust::device_ptr<Query> dev_ptr(dev_queries);
-    size_t numQueries = dev_numQueries;
 
     auto new_end_remove = thrust::remove_if(dev_ptr, dev_ptr + numQueries, IsUnknown());
     numQueries = new_end_remove - dev_ptr;
+}
 
+void removeDuplicates(Query* dev_queries, size_t& numQueries) {
+    thrust::device_ptr<Query> dev_ptr(dev_queries);
+
+    auto new_end_remove = thrust::remove_if(dev_ptr, dev_ptr + numQueries, IsUnknown());
+    numQueries = new_end_remove - dev_ptr;
     thrust::sort(dev_ptr, dev_ptr + numQueries, QueryComparator());
 
     auto new_end_unique = thrust::unique(dev_ptr, dev_ptr + numQueries, QueryEquality());
 
-    dev_numQueries = new_end_unique - dev_ptr;
+    numQueries = new_end_unique - dev_ptr;
 }
 
 template<typename Scalar>
@@ -519,7 +524,7 @@ bool CollisionDetection<Scalar>::BroadPhaseCCD(int numVerts, int numTris, const 
 }
 
 template<typename Scalar>
-bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers, Query*& queries, int& _numQueries)
+bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers)
 {
     const std::string buildTypeStr = buildType == BVH<Scalar>::BuildType::Cooperative ? "Cooperative" : buildType == BVH<Scalar>::BuildType::Atomic ? "Atomic" : "Serial";
     m_bvh.BuildBVHTree(buildType, GetAABB(numVerts, X), numTris, X, Tri);
@@ -531,9 +536,9 @@ bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const ind
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
     sortEachQuery << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries);
     removeDuplicates(dev_queries, numQueries);
-    _numQueries = numQueries;
-    queries = dev_queries;
     count = numVerts;
+    this->mpX = X;
+    PrepareRenderData();
     return true;
 }
 

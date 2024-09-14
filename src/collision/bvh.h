@@ -9,6 +9,8 @@ class SoftBody;
 class Context;
 class SurfaceShader;
 
+void removeUnknowns(Query* dev_queries, size_t& numQueries);
+
 template<typename Scalar>
 class BVH : public Wireframe {
 public:
@@ -49,12 +51,15 @@ public:
         const indexType* TriFathers, Scalar* tI, glm::vec3* nors, bool ignoreSelfCollision = false);
     Scalar ComputeMinStepSize(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde,
         const indexType* TriFathers, bool ignoreSelfCollision = false);
-    bool BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers, Query*& queries, int& _numQueries);
+    bool BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers);
     void Init(int numTris, int numVerts, int maxThreads);
     void PrepareRenderData();
     void Draw(SurfaceShader*);
-    int GetNumQueries() const {
+    size_t GetNumQueries() const {
         return numQueries;
+    } 
+    Query* GetQueries() const {
+        return dev_queries;
     }
     void SetBuildType(int);
     int GetBuildType();
@@ -73,7 +78,7 @@ private:
     bool ignoreSelfCollision = false;
     const int threadsPerBlock;
     const Context* mpContext;
-    const glm::tvec3<Scalar>* mpX;
+    const glm::tvec3<Scalar>* mpX = nullptr;
     BVH<Scalar> m_bvh;
     typename BVH<Scalar>::BuildType buildType = BVH<Scalar>::BuildType::Atomic;
 };

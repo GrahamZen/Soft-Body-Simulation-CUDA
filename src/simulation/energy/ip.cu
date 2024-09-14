@@ -1,6 +1,5 @@
 #include <energy/ip.h>
 #include <energy/corotated.h>
-#include <bvh.h>
 
 IPEnergy::IPEnergy(const SolverData<double>& solverData, double dHat) : inertia(solverData, nnz, solverData.numVerts, solverData.mass),
 elastic(new CorotatedEnergy<double>(solverData, nnz)), implicitBarrier(solverData, nnz, dHat), barrier(solverData, nnz, dHat)
@@ -24,7 +23,7 @@ IPEnergy::~IPEnergy()
 
 double IPEnergy::Val(const glm::dvec3* Xs, const SolverData<double>& solverData, double h2) const
 {
-    return inertia.Val(Xs, solverData) + h2 * (gravity.Val(Xs, solverData) + elastic->Val(Xs, solverData) + implicitBarrier.Val(Xs, solverData));
+    return inertia.Val(Xs, solverData) + h2 * (gravity.Val(Xs, solverData) + elastic->Val(Xs, solverData) + implicitBarrier.Val(Xs, solverData)) + barrier.Val(Xs, solverData);
 }
 
 void IPEnergy::Gradient(const SolverData<double>& solverData, double h2) const
@@ -34,6 +33,7 @@ void IPEnergy::Gradient(const SolverData<double>& solverData, double h2) const
     gravity.Gradient(gradient, solverData, h2);
     elastic->Gradient(gradient, solverData, h2);
     implicitBarrier.Gradient(gradient, solverData, h2);
+    barrier.Gradient(gradient, solverData, h2);
 }
 
 void IPEnergy::Hessian(const SolverData<double>& solverData, double h2) const
@@ -43,16 +43,12 @@ void IPEnergy::Hessian(const SolverData<double>& solverData, double h2) const
     gravity.Hessian(solverData, h2);
     elastic->Hessian(solverData, h2);
     implicitBarrier.Hessian(solverData, h2);
+    barrier.Hessian(solverData, h2);
 }
 
 double IPEnergy::InitStepSize(SolverData<double>& solverData, double* p, glm::dvec3* XTmp) const
 {
-    double alpha = solverData.pCollisionDetection->ComputeMinStepSize(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, XTmp,
-        solverData.dev_TriFathers, true);
-    return std::min(alpha, implicitBarrier.InitStepSize(solverData, p));
-}
-
-void IPEnergy::UpdateQueries(CollisionDetection<double>* cd, int numVerts, int numTris, const indexType* Tri, const glm::tvec3<double>* X, const indexType* TriFathers, Query*& queries, int& _numQueries)
-{
-    cd->BroadPhase(numVerts, numTris, Tri, X, TriFathers, queries, _numQueries);
+    /*double alpha = solverData.pCollisionDetection->ComputeMinStepSize(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, XTmp,
+        solverData.dev_TriFathers, true);*/
+    return std::min(1.0, implicitBarrier.InitStepSize(solverData, p));
 }

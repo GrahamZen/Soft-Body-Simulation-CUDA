@@ -32,6 +32,23 @@ __inline__ __host__ __device__ void printGLMVector(const glm::tvec3<Scalar>& v, 
 }
 
 template <typename Scalar>
+__inline__ __host__ __device__ Scalar barrierFunc(Scalar d, Scalar dhat, float kappa, Scalar contact_area) {
+    Scalar s = d / dhat;
+    return contact_area * dhat * kappa * 0.5 * (s - 1) * log(s);
+}
+
+template <typename Scalar>
+__inline__ __host__ __device__ glm::tvec3<Scalar> barrierFuncGrad(const glm::tvec3<Scalar>& normal, Scalar d, Scalar dhat, float kappa, Scalar contact_area) {
+    Scalar s = d / dhat;
+    return contact_area * dhat * (kappa / 2 * (log(s) / dhat + (s - 1) / d)) * normal;
+}
+
+template <typename Scalar>
+__inline__ __host__ __device__ glm::tmat3x3<Scalar> barrierFuncHess(const glm::tvec3<Scalar>& normal, Scalar d, Scalar dhat, float kappa, Scalar contact_area) {
+    return contact_area * dhat * kappa / (2 * d * d * dhat) * (d + dhat) * glm::outerProduct(normal, normal);
+}
+
+template <typename Scalar>
 __inline__ __host__ __device__ Scalar trace(const glm::tmat3x3<Scalar>& a)
 {
     return a[0][0] + a[1][1] + a[2][2];
@@ -224,7 +241,7 @@ __device__ Matrix9x12<Scalar> ComputePFPx(const glm::tmat3x3<Scalar>& DmInv)
 }
 
 template <typename Scalar>
-__global__ void IPCCDKernel(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* XTilde, glm::tvec3<Scalar>* V, Scalar* tI, glm::vec3* normals, float muT, float muN, int numVerts); 
+__global__ void IPCCDKernel(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* XTilde, glm::tvec3<Scalar>* V, Scalar* tI, glm::vec3* normals, float muT, float muN, int numVerts);
 
 template <typename Scalar>
 __global__ void CCDKernel(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* XTilde, glm::tvec3<Scalar>* V, Scalar* tI, glm::vec3* normals, float muT, float muN, int numVerts, Scalar dt);

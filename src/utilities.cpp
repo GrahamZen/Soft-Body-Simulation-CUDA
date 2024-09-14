@@ -27,6 +27,10 @@ template<typename T>
 struct is_glm_type : has_glm_to_string<T> {};
 namespace fs = std::filesystem;
 
+const char* distanceTypeString[] = {
+    "P_T0", "P_T1", "P_T2", "P_E0", "P_E1", "P_E2", "P_T", "EA0_EB0", "EA0_EB1", "EA1_EB0", "EA1_EB1", "EA_EB0", "EA_EB1", "EA0_EB", "EA1_EB", "EA_EB", "AUTO"
+};
+
 float utilityCore::clamp(float f, float min, float max) {
     if (f < min) {
         return min;
@@ -184,6 +188,9 @@ void utilityCore::inspectHost(const BVHNode<Scalar>* hstBVHNodes, int size) {
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
+template void utilityCore::inspectHost<float>(const BVHNode<float>* hstBVHNodes, int size);
+template void utilityCore::inspectHost<double>(const BVHNode<double>* hstBVHNodes, int size);
+
 template<typename Scalar>
 void utilityCore::inspectHost(const AABB<Scalar>* aabb, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
@@ -199,10 +206,12 @@ void utilityCore::inspectHost(const Query* query, int size) {
     for (int i = 0; i < size; i++) {
         if (query[i].type == QueryType::EE)
             std::cout << "EE:";
-        if (query[i].type == QueryType::VF)
+        else if (query[i].type == QueryType::VF)
             std::cout << "VF:";
-        if (query[i].type == QueryType::UNKNOWN)
+        else if (query[i].type == QueryType::UNKNOWN)
             std::cout << "UNKNOWN:";
+
+        std::cout << distanceTypeString[static_cast<int>(query[i].dType)] << ":";
         std::cout << query[i].v0 << "," << query[i].v1 << "," << query[i].v2 << "," << query[i].v3 << ", t:" << query[i].toi
             << ", n:" << glm::to_string(query[i].normal) << std::endl;
     }

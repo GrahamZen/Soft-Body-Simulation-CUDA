@@ -10,6 +10,24 @@
 __constant__ double AABBThreshold = 0.01;
 
 template<typename Scalar>
+int SolverData<Scalar>::numQueries() const
+{
+    return pCollisionDetection->GetNumQueries();
+}
+
+template int SolverData<float>::numQueries() const;
+template int SolverData<double>::numQueries() const;
+
+template<typename Scalar>
+Query* SolverData<Scalar>::queries() const
+{
+    return pCollisionDetection->GetQueries();
+}
+
+template Query* SolverData<float>::queries() const;
+template Query* SolverData<double>::queries() const;
+
+template<typename Scalar>
 struct HighPtoFloatP {
     __host__ __device__ glm::vec3 operator()(const glm::tvec3<Scalar>& d) {
         return glm::vec3(static_cast<float>(d.x), static_cast<float>(d.y), static_cast<float>(d.z));
@@ -143,7 +161,7 @@ void CollisionDetection<Scalar>::Draw(SurfaceShader* flatShaderProgram)
         flatShaderProgram->draw(m_bvh, 0);
     if (mpContext->guiData->QueryVis)
         flatShaderProgram->drawPoints(*this);
-    if (mpContext->guiData->QueryDebugMode) {
+    if (mpContext->guiData->QueryDebugMode && mpX) {
         glLineWidth(mpContext->guiData->LineWidth);
         flatShaderProgram->drawSingleQuery(GetSQDisplay(mpContext->guiData->CurrQueryId, mpX,
             mpContext->guiData->QueryDirty ? mpContext->guiData->mPQuery : nullptr));

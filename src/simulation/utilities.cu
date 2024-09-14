@@ -122,6 +122,9 @@ void inspectBVHNode(const BVHNode<Scalar>* dev_BVHNodes, int numTris)
     utilityCore::inspectHost(hstBVHNodes.data(), 2 * numTris - 1);
 }
 
+template void inspectBVHNode(const BVHNode<float>* dev_BVHNodes, int numTris);
+template void inspectBVHNode(const BVHNode<double>* dev_BVHNodes, int numTris);
+
 template<typename Scalar>
 void inspectBVH(const AABB<Scalar>* dev_aabbs, int size)
 {

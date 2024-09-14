@@ -156,7 +156,8 @@ void RenderImGui()
     ImGui::DragFloat("Line Width", &imguiData->LineWidth, 1, 0.1f, 50.f, "%.2f");
     // context->guiData->QueryDirty = ImGui::SliderInt("Query Index", &imguiData->CurrQueryId, 0, context->GetNumQueries() - 1);
     context->guiData->QueryDirty = ImGui::DragInt("Query Index", &imguiData->CurrQueryId, 1, 0, context->GetNumQueries() - 1);
-    ImGui::Text("v0: %d, v1: %d, v2: %d, v3: %d", context->guiData->mPQuery->v0, context->guiData->mPQuery->v1, context->guiData->mPQuery->v2, context->guiData->mPQuery->v3);
+    ImGui::Text("%s, v0: %d, v1: %d, v2: %d, v3: %d, d:%f", distanceTypeString[static_cast<int>(context->guiData->mPQuery->dType)],
+        context->guiData->mPQuery->v0, context->guiData->mPQuery->v1, context->guiData->mPQuery->v2, context->guiData->mPQuery->v3, context->guiData->mPQuery->d);
     ImGui::Text("toi: %.4f, normal: (%.4f, %.4f, %.4f)", context->guiData->mPQuery->toi, context->guiData->mPQuery->normal.x, context->guiData->mPQuery->normal.y, context->guiData->mPQuery->normal.z);
 
     ImGui::Separator();
