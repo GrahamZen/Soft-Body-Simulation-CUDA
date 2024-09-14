@@ -1,5 +1,6 @@
 #include <energy/ip.h>
 #include <energy/corotated.h>
+#include <collision/bvh.h>
 
 IPEnergy::IPEnergy(const SolverData<double>& solverData, double dHat) : inertia(solverData, nnz, solverData.numVerts, solverData.mass),
 elastic(new CorotatedEnergy<double>(solverData, nnz)), implicitBarrier(solverData, nnz, dHat), barrier(solverData, nnz, dHat)
@@ -48,7 +49,7 @@ void IPEnergy::Hessian(const SolverData<double>& solverData, double h2) const
 
 double IPEnergy::InitStepSize(SolverData<double>& solverData, double* p, glm::dvec3* XTmp) const
 {
-    /*double alpha = solverData.pCollisionDetection->ComputeMinStepSize(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, XTmp,
-        solverData.dev_TriFathers, true);*/
-    return std::min(1.0, implicitBarrier.InitStepSize(solverData, p));
+    double alpha = solverData.pCollisionDetection->ComputeMinStepSize(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, XTmp,
+        solverData.dev_TriFathers, true);
+    return glm::min(1.0, implicitBarrier.InitStepSize(solverData, p));
 }

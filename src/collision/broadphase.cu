@@ -538,7 +538,6 @@ bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const ind
     removeDuplicates(dev_queries, numQueries);
     count = numVerts;
     this->mpX = X;
-    PrepareRenderData();
     return true;
 }
 

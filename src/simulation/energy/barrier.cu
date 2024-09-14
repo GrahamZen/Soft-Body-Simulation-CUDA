@@ -1,12 +1,23 @@
 #include <energy/barrier.h>
-#include <distance/distance_type.h>
-#include <solver/solver.h>
 #include <collision/aabb.h>
-#include <utilities.cuh>
+#include <solverUtil.cuh>
 #include <thrust/transform_reduce.h>
 #include <thrust/iterator/counting_iterator.h>
 
 namespace Barrier {
+    template <typename Scalar>
+    __global__ void GradientKern(Scalar* grad, const glm::tvec3<Scalar>* Xs, const Query* queries, int numQueries) {
+        int qIdx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (qIdx >= numQueries) return;
+        const Query& q = queries[qIdx];
+        glm::tvec3<Scalar> x0 = Xs[q.v0], x1 = Xs[q.v1], x2 = Xs[q.v2], x3 = Xs[q.v3];
+        if (q.type == QueryType::EE) {
+            q.dType = edge_edge_distance_type(x0, x1, x2, x3);
+        }
+        else if (q.type == QueryType::VF) {
+            q.dType = point_triangle_distance_type(x0, x1, x2, x3);
+        }
+    }
 
 }
 
@@ -24,16 +35,22 @@ Scalar BarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData
     int num_queries = solverData.numQueries();
     if (num_queries == 0)return 0;
     Query* queries = solverData.queries();
+    Scalar dhat = this->dhat;
+    Scalar kappa = this->kappa;
     Scalar sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(num_queries),
         [=] __host__ __device__(indexType qIdx) {
-        const Query& q = queries[qIdx];
-        return 0;
+        Scalar d = queries[qIdx].d;
+        if (d < dhat) {
+            return barrierFunc(d, dhat, kappa, (Scalar)100.0);
+        }
+        else
+            return (Scalar)0;
     },
         0.0,
         thrust::plus<Scalar>());
-    return 0;
+    return sum;
 }
 
 template<typename Scalar>

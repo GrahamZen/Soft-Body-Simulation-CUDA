@@ -14,4 +14,5 @@ public:
     Scalar InitStepSize(const SolverData<Scalar>& solverData, Scalar* p) const;
 private:
     Scalar dhat = 1e-2;
+    float kappa = 100;
 };

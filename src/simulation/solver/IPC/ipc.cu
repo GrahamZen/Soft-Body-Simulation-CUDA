@@ -18,7 +18,7 @@ void UpdateQueries(CollisionDetection<double>* cd, int numVerts, int numTris, co
     thrust::device_ptr<Query> queries_ptr(queries);
     thrust::sort(queries_ptr, queries_ptr + num_queries, []__host__ __device__(const Query & a, const Query & b) { return a.dType < b.dType; });
     ComputeDistance<double> << < (num_queries + 255) / 256, 256 >> > (X, queries, num_queries);
-    removeUnknowns(queries, num_queries);
+    //removeUnknowns(queries, num_queries);
 }
 
 IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData, double tol)

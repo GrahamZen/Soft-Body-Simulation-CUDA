@@ -1,7 +1,9 @@
 #include <energy/corotated.h>
 #include <solverUtil.cuh>
+#include <matrix.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/transform_reduce.h>
+#include <svd.cuh>
 
 namespace Corotated {
     template <typename Scalar>
