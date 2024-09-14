@@ -67,7 +67,6 @@ include(eigen)
 include(spdlog)
 
 file(GLOB_RECURSE HEADER_FILES 
-     "${PROJECT_SOURCE_DIR}/src/*.hpp"
      "${PROJECT_SOURCE_DIR}/src/*.h"
      "${PROJECT_SOURCE_DIR}/src/*.cuh")
 file(GLOB_RECURSE SOURCE_FILES 
