@@ -33,12 +33,32 @@ __global__ void ComputeDistance(const glm::tvec3<Scalar>* Xs, Query* queries, in
     else if (q.type == QueryType::VF) {
         q.d = point_triangle_distance(x0, x1, x2, x3, q.dType);
     }
-    if (q.d > dhat)
-        q.type = QueryType::UNKNOWN;
+    //if (q.d > dhat)
+    //    q.type = QueryType::UNKNOWN;
 }
 
 template __global__ void ComputeDistance<float>(const glm::tvec3<float>* Xs, Query* queries, int numQueries, float dhat);
 template __global__ void ComputeDistance<double>(const glm::tvec3<double>* Xs, Query* queries, int numQueries, double dhat);
+
+
+template<typename Scalar>
+__forceinline__ __device__ glm::tvec2<Scalar> computeProjectedCoordinate(
+    const glm::tvec3<Scalar>& p,
+    const glm::tvec3<Scalar>& t0,
+    const glm::tvec3<Scalar>& t1,
+    const glm::tvec3<Scalar>& normal) {
+    glm::tmat2x3<Scalar> basis;
+    basis[0] = t1 - t0;
+    basis[1] = glm::cross(basis[0], normal);
+    glm::tmat2x2<Scalar> basisT_basis = glm::tmat2x2<Scalar>(
+        glm::dot(basis[0], basis[0]), glm::dot(basis[0], basis[1]),
+        glm::dot(basis[1], basis[0]), glm::dot(basis[1], basis[1])
+    );
+    return glm::inverse(basisT_basis) * glm::tvec2<Scalar>(
+        glm::dot(basis[0], p - t0), glm::dot(basis[1], p - t0)
+    );
+
+}
 
 template<typename Scalar>
 __device__ DistanceType point_triangle_distance_type(
@@ -48,64 +68,33 @@ __device__ DistanceType point_triangle_distance_type(
     const glm::tvec3<Scalar>& t2)
 {
     glm::tvec3<Scalar> normal = glm::cross(t1 - t0, t2 - t0);
+    glm::tmat3x2<Scalar> param;
 
-    glm::tmat2x3<Scalar> basis;
-    glm::tvec2<Scalar> param;
-
-    // 处理边 t0 -> t1
-    basis[0] = t1 - t0;
-    basis[1] = glm::cross(basis[0], normal);
-    glm::tmat2x2<Scalar> basisT_basis = glm::tmat2x2<Scalar>(
-        glm::dot(basis[0], basis[0]), glm::dot(basis[0], basis[1]),
-        glm::dot(basis[1], basis[0]), glm::dot(basis[1], basis[1])
-    );
-    param = glm::inverse(basisT_basis) * glm::tvec2<Scalar>(
-        glm::dot(basis[0], p - t0), glm::dot(basis[1], p - t0)
-    );
-    if (param.x > 0.0 && param.x < 1.0 && param.y >= 0.0) {
-        return DistanceType::P_E0; // 最近距离到边 t0 -> t1
+    param[0] = computeProjectedCoordinate(p, t0, t1, normal);
+    if (param[0][0] > 0.0 && param[0][0] < 1.0 && param[0][1] >= 0.0) {
+        return DistanceType::P_E0;
     }
 
-    // 处理边 t1 -> t2
-    basis[0] = t2 - t1;
-    basis[1] = glm::cross(basis[0], normal);
-    basisT_basis = glm::tmat2x2<Scalar>(
-        glm::dot(basis[0], basis[0]), glm::dot(basis[0], basis[1]),
-        glm::dot(basis[1], basis[0]), glm::dot(basis[1], basis[1])
-    );
-    param = glm::inverse(basisT_basis) * glm::tvec2<Scalar>(
-        glm::dot(basis[0], p - t1), glm::dot(basis[1], p - t1)
-    );
-    if (param.x > 0.0 && param.x < 1.0 && param.y >= 0.0) {
-        return DistanceType::P_E1; // 最近距离到边 t1 -> t2
+    param[1] = computeProjectedCoordinate(p, t1, t2, normal);
+    if (param[1][0] > 0.0 && param[1][0] < 1.0 && param[1][1] >= 0.0) {
+        return DistanceType::P_E1;
     }
 
-    // 处理边 t2 -> t0
-    basis[0] = t0 - t2;
-    basis[1] = glm::cross(basis[0], normal);
-    basisT_basis = glm::tmat2x2<Scalar>(
-        glm::dot(basis[0], basis[0]), glm::dot(basis[0], basis[1]),
-        glm::dot(basis[1], basis[0]), glm::dot(basis[1], basis[1])
-    );
-    param = glm::inverse(basisT_basis) * glm::tvec2<Scalar>(
-        glm::dot(basis[0], p - t2), glm::dot(basis[1], p - t2)
-    );
-    if (param.x > 0.0 && param.x < 1.0 && param.y >= 0.0) {
-        return DistanceType::P_E2; // 最近距离到边 t2 -> t0
+    param[2] = computeProjectedCoordinate(p, t2, t0, normal);
+    if (param[2][0] > 0.0 && param[2][0] < 1.0 && param[2][1] >= 0.0) {
+        return DistanceType::P_E2;
     }
 
-    // 判断点是否最近到顶点 t0, t1 或 t2
-    if (param.x <= 0.0 && param.y >= 1.0) {
-        return DistanceType::P_T0; // 最近到顶点 t0
+    if (param[0][0] <= 0.0 && param[2][0] >= 1.0) {
+        return DistanceType::P_T0;
     }
-    else if (param.x <= 0.0 && param.y >= 1.0) {
-        return DistanceType::P_T1; // 最近到顶点 t1
+    else if (param[1][0] <= 0.0 && param[0][0] >= 1.0) {
+        return DistanceType::P_T1;
     }
-    else if (param.x <= 0.0 && param.y >= 1.0) {
-        return DistanceType::P_T2; // 最近到顶点 t2
+    else if (param[2][0] <= 0.0 && param[1][0] >= 1.0) {
+        return DistanceType::P_T2;
     }
 
-    // 否则返回三角形平面内的点
     return DistanceType::P_T;
 }
 
@@ -134,9 +123,9 @@ __device__ DistanceType edge_edge_distance_type(
     const glm::tvec3<Scalar> v = eb1 - eb0;
     const glm::tvec3<Scalar> w = ea0 - eb0;
 
-    const Scalar a = glm::dot(u, u); // u.squaredNorm() in Eigen
+    const Scalar a = glm::dot(u, u);
     const Scalar b = glm::dot(u, v);
-    const Scalar c = glm::dot(v, v); // v.squaredNorm() in Eigen
+    const Scalar c = glm::dot(v, v);
     const Scalar d = glm::dot(u, w);
     const Scalar e = glm::dot(v, w);
     const Scalar D = a * c - b * b;

@@ -127,5 +127,5 @@ set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
 )
 target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_17 cuda_std_17)
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:--use_fast_math --extended-lambda -lineinfo>
+    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda -lineinfo>
 )

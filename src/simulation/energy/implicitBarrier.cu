@@ -23,7 +23,7 @@ namespace ImplicitBarrier {
             Scalar d = glm::dot(x - floorPos, floorUp);
             if (d < dhat)
             {
-                glm::tmat3x3<Scalar> hess = coef * contact_area[idx] * dhat * plane.kappa / (2 * d * d * dhat) * (d + dhat) * glm::outerProduct(floorUp, floorUp);
+                glm::tmat3x3<Scalar> hess = coef * barrierFuncHess(floorUp, d, dhat, plane.kappa, contact_area[idx]);
                 for (int k = 0; k < 3; k++)
                 {
                     for (int l = 0; l < 3; l++)
@@ -49,7 +49,7 @@ namespace ImplicitBarrier {
             glm::tvec3<Scalar> normal = glm::normalize(n);
             if (d < dhat)
             {
-                glm::tmat3x3<Scalar> hess = coef * contact_area[idx] * dhat * cy.kappa / (2 * d * d * dhat) * (d + dhat) * glm::outerProduct(normal, normal);
+                glm::tmat3x3<Scalar> hess = coef * barrierFuncHess(normal, d, dhat, cy.kappa, contact_area[idx]);
                 for (int k = 0; k < 3; k++)
                 {
                     for (int l = 0; l < 3; l++)
@@ -73,7 +73,7 @@ namespace ImplicitBarrier {
             glm::tvec3<Scalar> normal = glm::normalize(n);
             if (d < dhat)
             {
-                glm::tmat3x3<Scalar> hess = coef * contact_area[idx] * dhat * sphere.kappa / (2 * d * d * dhat) * (d + dhat) * glm::outerProduct(normal, normal);
+                glm::tmat3x3<Scalar> hess = coef * barrierFuncHess(normal, d, dhat, sphere.kappa, contact_area[idx]);
                 for (int k = 0; k < 3; k++)
                 {
                     for (int l = 0; l < 3; l++)
@@ -104,8 +104,7 @@ namespace ImplicitBarrier {
             Scalar d = glm::dot(x - floorPos, floorUp);
             if (d < dhat)
             {
-                Scalar s = d / dhat;
-                glm::tvec3<Scalar> gradient = coef * contact_area[idx] * dhat * (plane.kappa / 2 * (log(s) / dhat + (s - 1) / d)) * floorUp;
+                glm::tvec3<Scalar> gradient = coef * barrierFuncGrad(floorUp, d, dhat, plane.kappa, contact_area[idx]);
                 grad[idx * 3] += gradient.x;
                 grad[idx * 3 + 1] += gradient.y;
                 grad[idx * 3 + 2] += gradient.z;
@@ -122,8 +121,7 @@ namespace ImplicitBarrier {
             glm::tvec3<Scalar> normal = glm::normalize(n);
             if (d < dhat)
             {
-                Scalar s = d / dhat;
-                glm::tvec3<Scalar> gradient = coef * contact_area[idx] * dhat * (cy.kappa / 2 * (log(s) / dhat + (s - 1) / d)) * normal;
+                glm::tvec3<Scalar> gradient = coef * barrierFuncGrad(normal, d, dhat, cy.kappa, contact_area[idx]);
                 grad[idx * 3] += gradient.x;
                 grad[idx * 3 + 1] += gradient.y;
                 grad[idx * 3 + 2] += gradient.z;
@@ -138,8 +136,7 @@ namespace ImplicitBarrier {
             glm::tvec3<Scalar> normal = glm::normalize(n);
             if (d < dhat)
             {
-                Scalar s = d / dhat;
-                glm::tvec3<Scalar> gradient = coef * contact_area[idx] * dhat * (sphere.kappa / 2 * (log(s) / dhat + (s - 1) / d)) * normal;
+                glm::tvec3<Scalar> gradient = coef * barrierFuncGrad(normal, d, dhat, sphere.kappa, contact_area[idx]);
                 grad[idx * 3] += gradient.x;
                 grad[idx * 3 + 1] += gradient.y;
                 grad[idx * 3 + 2] += gradient.z;
@@ -180,8 +177,7 @@ Scalar ImplicitBarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const So
             Scalar d = glm::dot(x - floorPos, floorUp);
             if (d < dhat)
             {
-                Scalar s = d / dhat;
-                sum += solverData.contact_area[vertIdx] * dhat * plane.kappa * 0.5 * (s - 1) * log(s);
+                sum += barrierFunc(d, dhat, plane.kappa, solverData.contact_area[vertIdx]);
             }
         }
         for (int j = 0; j < numCylinders; j++) {
@@ -194,8 +190,7 @@ Scalar ImplicitBarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const So
             Scalar d = glm::length(n) - cylinderRadius;
             if (d < dhat)
             {
-                Scalar s = d / dhat;
-                sum += solverData.contact_area[vertIdx] * dhat * cy.kappa * 0.5 * (s - 1) * log(s);
+                sum += barrierFunc(d, dhat, cy.kappa, solverData.contact_area[vertIdx]);
             }
         }
         for (int j = 0; j < numSpheres; j++) {
@@ -207,8 +202,7 @@ Scalar ImplicitBarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const So
             glm::tvec3<Scalar> normal = glm::normalize(n);
             if (d < dhat)
             {
-                Scalar s = d / dhat;
-                sum += solverData.contact_area[vertIdx] * dhat * sphere.kappa * 0.5 * (s - 1) * log(s);
+                sum += barrierFunc(d, dhat, sphere.kappa, solverData.contact_area[vertIdx]);
             }
         }
         return sum;
