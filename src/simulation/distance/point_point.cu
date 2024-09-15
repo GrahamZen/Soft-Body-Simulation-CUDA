@@ -20,21 +20,29 @@ namespace ipc {
         const glm::tvec3<double>& p0,
         const glm::tvec3<double>& p1);
 
-    // template<typename Scalar>
-    // VectorMax6d point_point_distance_gradient(
-    //     const glm::tvec3<Scalar>& p0,
-    //     const glm::tvec3<Scalar>& p1)
-    // {
-    //     int dim = p0.size();
-    //     assert(p1.size() == dim);
+     template<typename Scalar>
+     __device__ Vector<Scalar, 6> point_point_distance_gradient(
+         const glm::tvec3<Scalar>& p0,
+         const glm::tvec3<Scalar>& p1)
+     {
+         auto v = (Scalar)2.0 * (p0 - p1);
+         Vector<Scalar, 6> grad;
+         Vector<Scalar, 3> tmp = v;
+         Vector<Scalar, 3> tmpM = -v;
 
-    //     VectorMax6d grad(2 * dim);
+         grad.head(3) = tmp;
+         grad.tail(3) = tmpM;
 
-    //     grad.head(dim) = 2.0 * (p0 - p1);
-    //     grad.tail(dim) = -grad.head(dim);
+         return grad;
+     }
 
-    //     return grad;
-    // }
+    template __device__ Vector<float, 6> point_point_distance_gradient<float>(
+        const glm::tvec3<float>& p0,
+        const glm::tvec3<float>& p1);
+
+    template __device__ Vector<double, 6> point_point_distance_gradient<double>(
+        const glm::tvec3<double>& p0,
+        const glm::tvec3<double>& p1);
 
     // template<typename Scalar>
     // MatrixMax6d point_point_distance_hessian(

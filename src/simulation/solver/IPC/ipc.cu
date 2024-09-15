@@ -1,8 +1,6 @@
 #include <IPC/ipc.h>
 #include <collision/bvh.h>
 #include <linear/choleskyImmed.h>
-#include <fixedBodyData.h>
-#include <solver/solverUtil.cuh>
 #include <distance/distance_type.h>
 #include <thrust/sort.h>
 #include <thrust/transform_reduce.h>
@@ -18,7 +16,10 @@ void UpdateQueries(CollisionDetection<double>* cd, int numVerts, int numTris, co
     thrust::device_ptr<Query> queries_ptr(queries);
     thrust::sort(queries_ptr, queries_ptr + num_queries, []__host__ __device__(const Query & a, const Query & b) { return a.dType < b.dType; });
     ComputeDistance<double> << < (num_queries + 255) / 256, 256 >> > (X, queries, num_queries);
-    //removeUnknowns(queries, num_queries);
+    thrust::sort(queries_ptr, queries_ptr + num_queries, []__host__ __device__(const Query & a, const Query & b) {
+        if (a.d == b.d) return a.dType < b.dType;
+        return a.d < b.d;
+    });
 }
 
 IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData, double tol)
@@ -126,7 +127,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
         double alpha = energy.InitStepSize(solverData, p, xTmp);
         while (true) {
             IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, alpha, solverData.numVerts);
-            //energy.UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers);
+            UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers);
             double E = energy.Val(xTmp, solverData, h2);
             if (E > E_last) {
                 alpha /= 2;
@@ -136,7 +137,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
             }
         }
         cudaMemcpy(solverData.X, xTmp, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
-        //energy.UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers);
+        UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers);
         E_last = energy.Val(solverData.X, solverData, h2);
         SearchDirection(solverData, h2);
     }

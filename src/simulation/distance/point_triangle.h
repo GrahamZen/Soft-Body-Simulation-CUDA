@@ -1,6 +1,7 @@
 #pragma once
 
 #include <distance/distance_type.h>
+#include <vector.h>
 #include <cuda_runtime.h>
 
 namespace ipc {
@@ -29,13 +30,13 @@ __device__ Scalar point_triangle_distance(
 /// @param t2 The third vertex of the triangle.
 /// @param dtype The point-triangle distance type to compute.
 /// @return The gradient of the distance wrt p, t0, t1, and t2.
-// template<typename Scalar>
-// Vector12d point_triangle_distance_gradient(
-//     const glm::tvec3<Scalar>& p,
-//     const glm::tvec3<Scalar>& t0,
-//     const glm::tvec3<Scalar>& t1,
-//     const glm::tvec3<Scalar>& t2,
-//     PointTriangleDistanceType dtype = PointTriangleDistanceType::AUTO);
+ template<typename Scalar>
+ __device__ Vector12<Scalar> point_triangle_distance_gradient(
+     const glm::tvec3<Scalar>& p,
+     const glm::tvec3<Scalar>& t0,
+     const glm::tvec3<Scalar>& t1,
+     const glm::tvec3<Scalar>& t2,
+     DistanceType dtype = DistanceType::AUTO);
 
 // /// @brief Compute the hessian of the distance between a points and a triangle.
 // /// @note The distance is actually squared distance.
@@ -51,6 +52,6 @@ __device__ Scalar point_triangle_distance(
 //     const glm::tvec3<Scalar>& t0,
 //     const glm::tvec3<Scalar>& t1,
 //     const glm::tvec3<Scalar>& t2,
-//     PointTriangleDistanceType dtype = PointTriangleDistanceType::AUTO);
+//     DistanceType dtype = DistanceType::AUTO);
 
 } // namespace ipc

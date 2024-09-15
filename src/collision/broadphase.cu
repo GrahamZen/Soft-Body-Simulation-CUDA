@@ -33,8 +33,8 @@ __device__ unsigned int genMortonCode(AABB<Scalar> bbox, glm::tvec3<Scalar> geoM
     return xx * 4 + yy * 2 + zz;
 }
 
-template unsigned int genMortonCode<float>(AABB<float> bbox, glm::tvec3<float> geoMin, glm::tvec3<float> geoMax);
-template unsigned int genMortonCode<double>(AABB<double> bbox, glm::tvec3<double> geoMin, glm::tvec3<double> geoMax);
+template __device__ unsigned int genMortonCode<float>(AABB<float> bbox, glm::tvec3<float> geoMin, glm::tvec3<float> geoMax);
+template __device__ unsigned int genMortonCode<double>(AABB<double> bbox, glm::tvec3<double> geoMin, glm::tvec3<double> geoMax);
 
 __device__ unsigned long long expandMorton(int index, unsigned int mortonCode)
 {

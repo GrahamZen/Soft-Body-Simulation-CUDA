@@ -40,7 +40,13 @@ __global__ void ComputeDistance(const glm::tvec3<Scalar>* Xs, Query* queries, in
 template __global__ void ComputeDistance<float>(const glm::tvec3<float>* Xs, Query* queries, int numQueries, float dhat);
 template __global__ void ComputeDistance<double>(const glm::tvec3<double>* Xs, Query* queries, int numQueries, double dhat);
 
-
+/// @brief Solve the least square problem: min ||A * x - b||^2
+/// @note A = [t1 - t0, glm::cross(t1 - t0, normal)], b = p - t0
+/// @param p The point to project
+/// @param t0 One end of the edge
+/// @param t1 The other end of the edge
+/// @param normal The normal of the triangle
+/// @return The projected coordinate of the point w.r.t. the coordinate system defined by the edge and normal
 template<typename Scalar>
 __forceinline__ __device__ glm::tvec2<Scalar> computeProjectedCoordinate(
     const glm::tvec3<Scalar>& p,
@@ -57,7 +63,6 @@ __forceinline__ __device__ glm::tvec2<Scalar> computeProjectedCoordinate(
     return glm::inverse(basisT_basis) * glm::tvec2<Scalar>(
         glm::dot(basis[0], p - t0), glm::dot(basis[1], p - t0)
     );
-
 }
 
 template<typename Scalar>
@@ -141,10 +146,9 @@ __device__ DistanceType edge_edge_distance_type(
         return DistanceType::EA_EB0;  // Edge B is degenerate (point), check Edge A
     }
 
-    // Special handling for parallel edges
     const Scalar parallel_tolerance = PARALLEL_THRESHOLD * glm::max(static_cast<Scalar>(1.0), a * c);
     if (glm::length2(glm::cross(u, v)) < parallel_tolerance) {
-        return edge_edge_parallel_distance_type(ea0, ea1, eb0, eb1); // Handle parallel case
+        return edge_edge_parallel_distance_type(ea0, ea1, eb0, eb1);
     }
 
     DistanceType default_case = DistanceType::EA_EB;

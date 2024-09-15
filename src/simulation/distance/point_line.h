@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector.h>
 #include<glm/glm.hpp>
 
 namespace ipc {
@@ -22,11 +23,11 @@ namespace ipc {
     /// @param e0 The first vertex of the edge defining the line.
     /// @param e1 The second vertex of the edge defining the line.
     /// @return The gradient of the distance wrt p, e0, and e1.
-    // template<typename Scalar>
-    // VectorMax9d point_line_distance_gradient(
-    //     const glm::tvec3<Scalar>& p,
-    //     const glm::tvec3<Scalar>& e0,
-    //     const glm::tvec3<Scalar>& e1);
+    template<typename Scalar>
+    __device__ Vector<Scalar, 9> point_line_distance_gradient(
+        const glm::tvec3<Scalar>& p,
+        const glm::tvec3<Scalar>& e0,
+        const glm::tvec3<Scalar>& e1);
 
     // /// @brief Compute the hessian of the distance between a point and line.
     // /// @note The distance is actually squared distance.

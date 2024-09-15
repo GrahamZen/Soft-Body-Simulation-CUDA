@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector.h>
 #include<glm/glm.hpp>
 
 namespace ipc {
@@ -19,9 +20,10 @@ namespace ipc {
 /// @param p0 The first point.
 /// @param p1 The second point.
 /// @return The computed gradient.
-// VectorMax6d point_point_distance_gradient(
-//     const glm::tvec3<Scalar>& p0,
-//     const glm::tvec3<Scalar>& p1);
+    template<typename Scalar>
+    __device__ Vector<Scalar, 6> point_point_distance_gradient(
+    const glm::tvec3<Scalar>& p0,
+    const glm::tvec3<Scalar>& p1);
 
 // /// @brief Compute the hessian of the distance between two points.
 // /// @note The distance is actually squared distance.

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector.h>
 #include<glm/glm.hpp>
 
 namespace ipc {
@@ -36,25 +37,25 @@ __device__ Scalar point_plane_distance(
 /// @param origin The origin of the plane.
 /// @param normal The normal of the plane.
 /// @return The gradient of the distance wrt p.
-// template<typename Scalar>
-// Eigen::Vector3d point_plane_distance_gradient(
-//     const glm::tvec3<Scalar>& p,
-//     const glm::tvec3<Scalar>& origin,
-//     const glm::tvec3<Scalar>& normal);
+template<typename Scalar>
+__device__ Vector<Scalar,3> point_plane_distance_gradient(
+    const glm::tvec3<Scalar>& p,
+    const glm::tvec3<Scalar>& origin,
+    const glm::tvec3<Scalar>& normal);
 
-// /// @brief Compute the gradient of the distance between a point and a plane.
-// /// @note The distance is actually squared distance.
-// /// @param p The point.
-// /// @param t0 The first vertex of the triangle.
-// /// @param t1 The second vertex of the triangle.
-// /// @param t2 The third vertex of the triangle.
-// /// @return The gradient of the distance wrt p, t0, t1, and t2.
-// template<typename Scalar>
-// Vector12d point_plane_distance_gradient(
-//     const glm::tvec3<Scalar>& p,
-//     const glm::tvec3<Scalar>& t0,
-//     const glm::tvec3<Scalar>& t1,
-//     const glm::tvec3<Scalar>& t2);
+/// @brief Compute the gradient of the distance between a point and a plane.
+/// @note The distance is actually squared distance.
+/// @param p The point.
+/// @param t0 The first vertex of the triangle.
+/// @param t1 The second vertex of the triangle.
+/// @param t2 The third vertex of the triangle.
+/// @return The gradient of the distance wrt p, t0, t1, and t2.
+ template<typename Scalar>
+ __device__ Vector12<Scalar> point_plane_distance_gradient(
+     const glm::tvec3<Scalar>& p,
+     const glm::tvec3<Scalar>& t0,
+     const glm::tvec3<Scalar>& t1,
+     const glm::tvec3<Scalar>& t2);
 
 // /// @brief Compute the hessian of the distance between a point and a plane.
 // /// @note The distance is actually squared distance.
@@ -85,7 +86,7 @@ __device__ Scalar point_plane_distance(
 // Symbolically generated derivatives;
 namespace autogen {
 template<typename Scalar>
-    void point_plane_distance_gradient(
+__device__  void point_plane_distance_gradient(
         Scalar v01,
         Scalar v02,
         Scalar v03,
