@@ -20,16 +20,7 @@ find_package(CUDAToolkit REQUIRED)
 ########################################
 # Catch2 Setup
 ########################################
-Include(FetchContent)
-
-FetchContent_Declare(
-  Catch2
-  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-  GIT_TAG        v3.4.0 # or a later release
-)
-
-FetchContent_MakeAvailable(Eigen)
-FetchContent_MakeAvailable(Catch2)
+include(catch2)
 ########################################
 
 ########################################

@@ -13,7 +13,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/recipes/")
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/find/")
 
-set(CMAKE_CUDA_ARCHITECTURES 86)
+set(CMAKE_CUDA_ARCHITECTURES native)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 set(CUDA_NVCC_FLAGS_DEBUG "${CUDA_NVCC_FLAGS_DEBUG} -G -g")
@@ -117,9 +117,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui" "${
 target_link_libraries(${CMAKE_PROJECT_NAME}
 ${LIBRARIES}
 CUDA::cudart
-Eigen3::Eigen
-OpenMP::OpenMP_CXX
 CUDA::cusolver
+OpenMP::OpenMP_CXX
 spdlog::spdlog
 #stream_compaction  # TODO: uncomment if using your stream compaction
 )
@@ -128,5 +127,5 @@ set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
     CUDA_RESOLVE_DEVICE_SYMBOLS ON
 )
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda -lineinfo>
+    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda -lineinfo --expt-relaxed-constexpr -Xcompiler "/wd 4819 /wd 4068 /wd 4661" -Xcudafe "--display_error_number --diag_suppress=20012 --diag_suppress=20011 --diag_suppress=20014">
 )
