@@ -12,7 +12,7 @@ namespace Gravity {
 }
 
 template<typename Scalar>
-inline int GravityEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData)
+inline int GravityEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const
 {
     return 0;
 }

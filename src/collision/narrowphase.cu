@@ -203,7 +203,7 @@ Scalar CollisionDetection<Scalar>::NarrowPhase(const glm::tvec3<Scalar>* X, cons
     thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());
     auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
     numQueries = new_end - dev_queriesPtr;
-    return thrust::transform_reduce(dev_queriesPtr, dev_queriesPtr + numQueries, getToi(), 0.0f, thrust::minimum<Scalar>());
+    return thrust::transform_reduce(dev_queriesPtr, dev_queriesPtr + numQueries, getToi(), 1.0f, thrust::minimum<Scalar>());
 }
 
 template class CollisionDetection<float>;

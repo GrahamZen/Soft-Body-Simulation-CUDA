@@ -146,9 +146,8 @@ namespace ImplicitBarrier {
 }
 
 template <typename Scalar>
-int ImplicitBarrierEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) {
-    Energy<Scalar>::nnz = solverData.numVerts * 9;
-    return Energy<Scalar>::nnz;
+int ImplicitBarrierEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const {
+    return solverData.numVerts * 9;
 }
 
 template <typename Scalar>

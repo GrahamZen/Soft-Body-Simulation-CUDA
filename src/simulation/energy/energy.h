@@ -7,8 +7,7 @@ public:
     Energy(int hessianIdxOffset);
     Energy() = default;
     virtual ~Energy() = default;
-    virtual int NNZ(const SolverData<Scalar>& solverData) = 0;
-    int NNZ() const;
+    virtual int NNZ(const SolverData<Scalar>& solverData) const = 0;
     virtual Scalar Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData) const = 0;
     virtual void Gradient(Scalar* grad, const SolverData<Scalar>& solverData, Scalar coef = 1) const = 0;
     virtual void Hessian(const SolverData<Scalar>& solverData, Scalar coef = 1) const = 0;
@@ -18,5 +17,4 @@ protected:
     int* hessianRowIdx = nullptr;
     int* hessianColIdx = nullptr;
     int hessianIdxOffset = -1;
-    int nnz = 0;
 };

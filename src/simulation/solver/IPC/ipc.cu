@@ -149,13 +149,13 @@ void IPCSolver::SearchDirection(SolverData<double>& solverData, double h2)
     energy.Gradient(solverData, h2);
     energy.Hessian(solverData, h2);
     DOFElimination(solverData);
-    linearSolver->Solve(solverData.numVerts * 3, energy.gradient, p, energy.hessianVal, energy.NNZ(), energy.hessianRowIdx, energy.hessianColIdx);
+    linearSolver->Solve(solverData.numVerts * 3, energy.gradient, p, energy.hessianVal, energy.NNZ(solverData), energy.hessianRowIdx, energy.hessianColIdx);
 }
 
 void IPCSolver::DOFElimination(SolverData<double>& solverData)
 {
-    int blocks = (energy.NNZ() + threadsPerBlock - 1) / threadsPerBlock;
-    IPC::DOFEliminationHessKernel << <blocks, threadsPerBlock >> > (energy.hessianRowIdx, energy.hessianColIdx, energy.hessianVal, energy.NNZ(), solverData.DBC, solverData.numDBC);
+    int blocks = (energy.NNZ(solverData) + threadsPerBlock - 1) / threadsPerBlock;
+    IPC::DOFEliminationHessKernel << <blocks, threadsPerBlock >> > (energy.hessianRowIdx, energy.hessianColIdx, energy.hessianVal, energy.NNZ(solverData), solverData.DBC, solverData.numDBC);
     blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
     IPC::DOFEliminationGradKernel << <blocks, threadsPerBlock >> > (energy.gradient, numVerts, solverData.DBC, solverData.numDBC);
 }

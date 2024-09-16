@@ -14,7 +14,7 @@ public:
     void Gradient(const SolverData<double>& solverData, double h2) const;
     void Hessian(const SolverData<double>& solverData, double h2) const;
     double InitStepSize(SolverData<double>& solverData, double* p, glm::tvec3<double>* XTmp) const;
-    int NNZ();
+    int NNZ(const SolverData<double>& solverData) const;
     double* gradient = nullptr;
     // collision queries should be updated if dirty
     double* hessianVal = nullptr;

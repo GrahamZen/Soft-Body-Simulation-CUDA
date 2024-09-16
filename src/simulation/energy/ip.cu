@@ -40,7 +40,7 @@ void IPEnergy::Gradient(const SolverData<double>& solverData, double h2) const
 
 void IPEnergy::Hessian(const SolverData<double>& solverData, double h2) const
 {
-    cudaMemset(hessianVal, 0, sizeof(double) * nnz);
+    cudaMemset(hessianVal, 0, sizeof(double) * NNZ(solverData));
     inertia.Hessian(solverData, 1);
     gravity.Hessian(solverData, h2);
     elastic->Hessian(solverData, h2);
@@ -53,8 +53,7 @@ double IPEnergy::InitStepSize(SolverData<double>& solverData, double* p, glm::tv
     return std::min(1.0, std::min(implicitBarrier.InitStepSize(solverData, p), barrier.InitStepSize(solverData, p, XTmp)));
 }
 
-int IPEnergy::NNZ()
+int IPEnergy::NNZ(const SolverData<double>& solverData) const
 {
-    nnz = inertia.Energy::NNZ() + implicitBarrier.Energy::NNZ() + elastic->Energy::NNZ() + barrier.Energy::NNZ();
-    return nnz;
+    return inertia.NNZ(solverData) + implicitBarrier.NNZ(solverData) + elastic->NNZ(solverData) + barrier.NNZ(solverData);
 }

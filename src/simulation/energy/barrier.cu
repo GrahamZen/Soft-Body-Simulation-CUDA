@@ -50,8 +50,9 @@ namespace Barrier {
         }
         indexType v[4] = { q.v0, q.v1, q.v2, q.v3 };
         for (int i = 0; i < 4; i++) {
+            int row = v[i] * 3;
             for (int j = 0; j < 4; j++) {
-                int row = v[i] * 3, col = v[j] * 3;
+               int col = v[j] * 3;
                 for (int k = 0; k < 3; k++) {
                     for (int l = 0; l < 3; l++) {
                         int idx = row + k;
@@ -69,9 +70,8 @@ namespace Barrier {
 }
 
 template <typename Scalar>
-int BarrierEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) {
-    Energy<Scalar>::nnz = solverData.numQueries() * 9;
-    return Energy<Scalar>::nnz;
+int BarrierEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const {
+    return solverData.numQueries() * 9;
 }
 
 template <typename Scalar>
