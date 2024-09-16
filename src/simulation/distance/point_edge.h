@@ -12,7 +12,7 @@ namespace ipc {
 /// @param dtype The point edge distance type to compute.
 /// @return The distance between the point and edge.
 template<typename Scalar>
-__device__ Scalar point_edge_distance(
+__host__ __device__ Scalar point_edge_distance(
     const glm::tvec3<Scalar>& p,
     const glm::tvec3<Scalar>& e0,
     const glm::tvec3<Scalar>& e1,

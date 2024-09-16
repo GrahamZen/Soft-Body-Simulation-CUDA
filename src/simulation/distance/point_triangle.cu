@@ -8,7 +8,7 @@
 namespace ipc {
 
     template<typename Scalar>
-    __device__ Scalar point_triangle_distance(
+    __host__ __device__ Scalar point_triangle_distance(
         const glm::tvec3<Scalar>& p,
         const glm::tvec3<Scalar>& t0,
         const glm::tvec3<Scalar>& t1,
@@ -43,21 +43,21 @@ namespace ipc {
 
     }
 
-    template __device__ float point_triangle_distance<float>(
+    template __host__ __device__ float point_triangle_distance<float>(
         const glm::tvec3<float>& p,
         const glm::tvec3<float>& t0,
         const glm::tvec3<float>& t1,
         const glm::tvec3<float>& t2,
         DistanceType dtype);
 
-    template __device__ double point_triangle_distance<double>(
+    template __host__ __device__ double point_triangle_distance<double>(
         const glm::tvec3<double>& p,
         const glm::tvec3<double>& t0,
         const glm::tvec3<double>& t1,
         const glm::tvec3<double>& t2,
         DistanceType dtype);
     template<typename Scalar>
-    __device__ Vector12<Scalar> point_triangle_distance_gradient(
+    __host__ __device__ Vector12<Scalar> point_triangle_distance_gradient(
        const glm::tvec3<Scalar>& p,
        const glm::tvec3<Scalar>& t0,
        const glm::tvec3<Scalar>& t1,
@@ -112,14 +112,14 @@ namespace ipc {
        return grad;
     }
     
-    template __device__ Vector12<float> point_triangle_distance_gradient<float>(
+    template __host__ __device__ Vector12<float> point_triangle_distance_gradient<float>(
        const glm::tvec3<float>& p,
        const glm::tvec3<float>& t0,
        const glm::tvec3<float>& t1,
        const glm::tvec3<float>& t2,
        DistanceType dtype);
 
-    template __device__ Vector12<double> point_triangle_distance_gradient<double>(
+    template __host__ __device__ Vector12<double> point_triangle_distance_gradient<double>(
          const glm::tvec3<double>& p,
          const glm::tvec3<double>& t0,
          const glm::tvec3<double>& t1,

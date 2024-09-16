@@ -205,16 +205,17 @@ void utilityCore::inspectHost(const Query* query, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size; i++) {
         if (query[i].type == QueryType::EE)
-            std::cout << "EE:";
+            std::cout << "QueryType::EE,";
         else if (query[i].type == QueryType::VF)
-            std::cout << "VF:";
+            std::cout << "QueryType::VF,";
         else if (query[i].type == QueryType::UNKNOWN)
-            std::cout << "UNKNOWN:";
+            std::cout << "QueryType::UNKNOWN,";
+        // format: Query{QueryType::EE,DistanceType::AUTO,0,0,3,2,6},
 
-        std::cout << distanceTypeString[static_cast<int>(query[i].dType)] << ":";
-        std::cout << query[i].v0 << "," << query[i].v1 << "," << query[i].v2 << "," << query[i].v3 << ", t:" << query[i].toi << ", d:" << query[i].d
-            << ", n:" << glm::to_string(query[i].normal) << std::endl;
-    }
+        std::cout << "DistanceType::" << distanceTypeString[static_cast<int>(query[i].dType)] << ",";
+        std::cout << query[i].v0 << "," << query[i].v1 << "," << query[i].v2 << "," << query[i].v3 << "," << query[i].toi << "," << query[i].d << ","
+            << glm::to_string(query[i].normal) << std::endl;
+        }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 

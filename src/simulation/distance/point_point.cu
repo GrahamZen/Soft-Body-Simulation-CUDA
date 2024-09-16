@@ -5,23 +5,23 @@
 namespace ipc {
 
     template<typename Scalar>
-    __device__ Scalar point_point_distance(
+    __host__ __device__ Scalar point_point_distance(
         const glm::tvec3<Scalar>& p0,
         const glm::tvec3<Scalar>& p1)
     {
         return glm::length2(p0 - p1);
     }
 
-    template __device__ float point_point_distance<float>(
+    template __host__ __device__ float point_point_distance<float>(
         const glm::tvec3<float>& p0,
         const glm::tvec3<float>& p1);
 
-    template __device__ double point_point_distance<double>(
+    template __host__ __device__ double point_point_distance<double>(
         const glm::tvec3<double>& p0,
         const glm::tvec3<double>& p1);
 
      template<typename Scalar>
-     __device__ Vector<Scalar, 6> point_point_distance_gradient(
+     __host__ __device__ Vector<Scalar, 6> point_point_distance_gradient(
          const glm::tvec3<Scalar>& p0,
          const glm::tvec3<Scalar>& p1)
      {
@@ -36,11 +36,11 @@ namespace ipc {
          return grad;
      }
 
-    template __device__ Vector<float, 6> point_point_distance_gradient<float>(
+    template __host__ __device__ Vector<float, 6> point_point_distance_gradient<float>(
         const glm::tvec3<float>& p0,
         const glm::tvec3<float>& p1);
 
-    template __device__ Vector<double, 6> point_point_distance_gradient<double>(
+    template __host__ __device__ Vector<double, 6> point_point_distance_gradient<double>(
         const glm::tvec3<double>& p0,
         const glm::tvec3<double>& p1);
 

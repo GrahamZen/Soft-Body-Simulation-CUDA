@@ -186,6 +186,16 @@ template<typename Scalar>
 using Vector12 = Vector<Scalar, 12>;
 
 template<typename Scalar, size_t N>
-__forceinline__ __host__ __device__ void printVector(const Vector<Scalar, N>& v, const char* name) {
+__forceinline__ __host__ __device__ void printVectorFixed(const Vector<Scalar, N>& v, const char* name) {
     printf("Vector %d %s\n%f %f %f \n--------------------------------\n", N, name, v[0], v[1], v[2]);
+}
+
+template<typename Scalar, size_t N>
+__forceinline__ __host__ __device__ void printVector(const Vector<Scalar, N>& v, const char* name) {
+    printf("Vector %d %s\n", (int)N, name);
+    for (size_t i = 0; i < N; i++)
+    {
+        printf("%f ", v[i]);
+    }
+    printf("\n--------------------------------\n");
 }

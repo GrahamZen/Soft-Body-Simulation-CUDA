@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector.h>
+#include <matrix.h>
 #include<glm/glm.hpp>
 
 namespace ipc {
@@ -14,7 +14,7 @@ namespace ipc {
 /// @param ea1 The second vertex of the edge defining the second line.
 /// @return The distance between the two lines.
 template<typename Scalar>
-__device__ Scalar line_line_distance(
+__host__ __device__ Scalar line_line_distance(
     const glm::tvec3<Scalar>& ea0,
     const glm::tvec3<Scalar>& ea1,
     const glm::tvec3<Scalar>& eb0,
@@ -29,7 +29,7 @@ __device__ Scalar line_line_distance(
 /// @param ea1 The second vertex of the edge defining the second line.
 /// @return The gradient of the distance wrt ea0, ea1, eb0, and eb1.
  template<typename Scalar>
- __device__ Vector12<Scalar> line_line_distance_gradient(
+ __host__ __device__ Vector12<Scalar> line_line_distance_gradient(
      const glm::tvec3<Scalar>& ea0,
      const glm::tvec3<Scalar>& ea1,
      const glm::tvec3<Scalar>& eb0,
@@ -53,7 +53,7 @@ __device__ Scalar line_line_distance(
 // Symbolically generated derivatives;
 namespace autogen {
 template<typename Scalar>
-__device__ void line_line_distance_gradient(
+__host__ __device__ void line_line_distance_gradient(
         Scalar v01,
         Scalar v02,
         Scalar v03,

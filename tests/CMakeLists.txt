@@ -17,18 +17,17 @@ endif()
 
 find_package(CUDAToolkit REQUIRED)
 
-########################################
-# Catch2 Setup
-########################################
 include(catch2)
-########################################
+include(finite_diff)
 
 ########################################
 # Catch2 Tests
 ########################################
 file(GLOB_RECURSE TEST_SOURCES "./*.cpp")
+file(GLOB_RECURSE TEST_DISTANCE_SOURCES "${CMAKE_SOURCE_DIR}/src/simulation/distance/*.cu")
 add_executable(tests
 ${TEST_SOURCES}
+${TEST_DISTANCE_SOURCES}
 ${CMAKE_SOURCE_DIR}/src/simulation/solver/linear/cg.cu
 ${CMAKE_SOURCE_DIR}/src/simulation/solver/linear/linear.cu
 )
@@ -37,8 +36,14 @@ target_link_libraries(tests PUBLIC
 Eigen3::Eigen
 CUDA::cudart
 Catch2::Catch2
-CUDA::cusolver)
+CUDA::cusolver
+finitediff::finitediff
+)
+set_target_properties(tests PROPERTIES
+    CUDA_SEPARABLE_COMPILATION ON
+    CUDA_RESOLVE_DEVICE_SYMBOLS ON
+)
 target_compile_options(tests PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda -lineinfo>
+    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda -lineinfo --expt-relaxed-constexpr -Xcompiler "/wd 4819 /wd 4068 /wd 4661" -Xcudafe "--display_error_number --diag_suppress=20012 --diag_suppress=20011 --diag_suppress=20014">
 )
 ########################################

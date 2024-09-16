@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector.h>
+#include <matrix.h>
 #include<glm/glm.hpp>
 
 namespace ipc {
@@ -12,7 +12,7 @@ namespace ipc {
 /// @param normal The normal of the plane.
 /// @return The distance between the point and plane.
 template<typename Scalar>
-__device__ Scalar point_plane_distance(
+__host__ __device__ Scalar point_plane_distance(
     const glm::tvec3<Scalar>& p,
     const glm::tvec3<Scalar>& origin,
     const glm::tvec3<Scalar>& normal);
@@ -25,7 +25,7 @@ __device__ Scalar point_plane_distance(
 /// @param t2 The third vertex of the triangle.
 /// @return The distance between the point and plane.
 template<typename Scalar>
-__device__ Scalar point_plane_distance(
+__host__ __device__ Scalar point_plane_distance(
     const glm::tvec3<Scalar>& p,
     const glm::tvec3<Scalar>& t0,
     const glm::tvec3<Scalar>& t1,
@@ -38,7 +38,7 @@ __device__ Scalar point_plane_distance(
 /// @param normal The normal of the plane.
 /// @return The gradient of the distance wrt p.
 template<typename Scalar>
-__device__ Vector<Scalar,3> point_plane_distance_gradient(
+__host__ __device__ Vector<Scalar,3> point_plane_distance_gradient(
     const glm::tvec3<Scalar>& p,
     const glm::tvec3<Scalar>& origin,
     const glm::tvec3<Scalar>& normal);
@@ -51,7 +51,7 @@ __device__ Vector<Scalar,3> point_plane_distance_gradient(
 /// @param t2 The third vertex of the triangle.
 /// @return The gradient of the distance wrt p, t0, t1, and t2.
  template<typename Scalar>
- __device__ Vector12<Scalar> point_plane_distance_gradient(
+ __host__ __device__ Vector12<Scalar> point_plane_distance_gradient(
      const glm::tvec3<Scalar>& p,
      const glm::tvec3<Scalar>& t0,
      const glm::tvec3<Scalar>& t1,
@@ -86,7 +86,7 @@ __device__ Vector<Scalar,3> point_plane_distance_gradient(
 // Symbolically generated derivatives;
 namespace autogen {
 template<typename Scalar>
-__device__  void point_plane_distance_gradient(
+__host__ __device__  void point_plane_distance_gradient(
         Scalar v01,
         Scalar v02,
         Scalar v03,

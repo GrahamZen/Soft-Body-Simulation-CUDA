@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector.h>
+#include <matrix.h>
 #include<glm/glm.hpp>
 
 namespace ipc {
@@ -12,7 +12,7 @@ namespace ipc {
     /// @param e1 The second vertex of the edge defining the line.
     /// @return The distance between the point and line.
     template<typename Scalar>
-    __device__ Scalar point_line_distance(
+    __host__ __device__ Scalar point_line_distance(
         const glm::tvec3<Scalar>& p,
         const glm::tvec3<Scalar>& e0,
         const glm::tvec3<Scalar>& e1);
@@ -24,7 +24,7 @@ namespace ipc {
     /// @param e1 The second vertex of the edge defining the line.
     /// @return The gradient of the distance wrt p, e0, and e1.
     template<typename Scalar>
-    __device__ Vector<Scalar, 9> point_line_distance_gradient(
+    __host__ __device__ Vector<Scalar, 9> point_line_distance_gradient(
         const glm::tvec3<Scalar>& p,
         const glm::tvec3<Scalar>& e0,
         const glm::tvec3<Scalar>& e1);

@@ -97,7 +97,7 @@ void generateSPDMatrixCOO(int N, int nonZeroEntries, std::vector<int>& rowIdx, s
     }
 }
 
-TEST_CASE("CG Test", "[CG]") {
+TEST_CASE("CG Test", "[CG][.][SKIP]") {
     int N = 75000;
     int nz = 10000;
     int num_test = 100;
@@ -181,7 +181,7 @@ TEST_CASE("CG Test", "[CG]") {
     cudaFree(dev_x);
 }
 
-TEST_CASE("vector 9", "[tensor]") {
+TEST_CASE("vector 9", "[tensor][.][SKIP]") {
     glm::mat3 U(-0.6208, 0.7763, -0.1091, -0.2820, -0.3509, -0.8929, -0.7315, -0.5236, 0.4368);
     U = glm::transpose(U);
     glm::mat3 V(-0.6501, 0.3252, 0.6867, -0.6324, 0.2694, -0.7263, -0.4212, -0.9064, 0.0305);

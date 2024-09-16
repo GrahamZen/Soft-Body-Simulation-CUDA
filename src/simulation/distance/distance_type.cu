@@ -48,7 +48,7 @@ template __global__ void ComputeDistance<double>(const glm::tvec3<double>* Xs, Q
 /// @param normal The normal of the triangle
 /// @return The projected coordinate of the point w.r.t. the coordinate system defined by the edge and normal
 template<typename Scalar>
-__forceinline__ __device__ glm::tvec2<Scalar> computeProjectedCoordinate(
+__forceinline__ __host__ __device__ glm::tvec2<Scalar> computeProjectedCoordinate(
     const glm::tvec3<Scalar>& p,
     const glm::tvec3<Scalar>& t0,
     const glm::tvec3<Scalar>& t1,
@@ -66,7 +66,7 @@ __forceinline__ __device__ glm::tvec2<Scalar> computeProjectedCoordinate(
 }
 
 template<typename Scalar>
-__device__ DistanceType point_triangle_distance_type(
+__host__ __device__ DistanceType point_triangle_distance_type(
     const glm::tvec3<Scalar>& p,
     const glm::tvec3<Scalar>& t0,
     const glm::tvec3<Scalar>& t1,
@@ -103,20 +103,20 @@ __device__ DistanceType point_triangle_distance_type(
     return DistanceType::P_T;
 }
 
-template __device__ DistanceType point_triangle_distance_type<float>(
+template __host__ __device__ DistanceType point_triangle_distance_type<float>(
     const glm::tvec3<float>& p,
     const glm::tvec3<float>& t0,
     const glm::tvec3<float>& t1,
     const glm::tvec3<float>& t2);
 
-template __device__ DistanceType point_triangle_distance_type<double>(
+template __host__ __device__ DistanceType point_triangle_distance_type<double>(
     const glm::tvec3<double>& p,
     const glm::tvec3<double>& t0,
     const glm::tvec3<double>& t1,
     const glm::tvec3<double>& t2);
 
 template<typename Scalar>
-__device__ DistanceType edge_edge_distance_type(
+__host__ __device__ DistanceType edge_edge_distance_type(
     const glm::tvec3<Scalar>& ea0,
     const glm::tvec3<Scalar>& ea1,
     const glm::tvec3<Scalar>& eb0,
@@ -214,7 +214,7 @@ __device__ DistanceType edge_edge_distance_type(
 }
 
 template<typename Scalar>
-__device__ DistanceType edge_edge_parallel_distance_type(
+__host__ __device__ DistanceType edge_edge_parallel_distance_type(
     const glm::tvec3<Scalar>& ea0,
     const glm::tvec3<Scalar>& ea1,
     const glm::tvec3<Scalar>& eb0,
@@ -253,13 +253,13 @@ __device__ DistanceType edge_edge_parallel_distance_type(
     return DistanceType((ebc < 2 ? (eac << 1 | ebc) : (6 + eac)) + 7);
 }
 
-template __device__ DistanceType edge_edge_distance_type<float>(
+template __host__ __device__ DistanceType edge_edge_distance_type<float>(
     const glm::tvec3<float>& ea0,
     const glm::tvec3<float>& ea1,
     const glm::tvec3<float>& eb0,
     const glm::tvec3<float>& eb1);
 
-template __device__ DistanceType edge_edge_distance_type<double>(
+template __host__ __device__ DistanceType edge_edge_distance_type<double>(
     const glm::tvec3<double>& ea0,
     const glm::tvec3<double>& ea1,
     const glm::tvec3<double>& eb0,

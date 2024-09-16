@@ -8,7 +8,7 @@
 namespace ipc {
 
     template<typename Scalar>
-    __device__ Scalar point_edge_distance(
+    __host__ __device__ Scalar point_edge_distance(
         const glm::tvec3<Scalar>& p,
         const glm::tvec3<Scalar>& e0,
         const glm::tvec3<Scalar>& e1,
@@ -25,13 +25,13 @@ namespace ipc {
         }
     }
 
-    template __device__ float point_edge_distance<float>(
+    template __host__ __device__ float point_edge_distance<float>(
         const glm::tvec3<float>& p,
         const glm::tvec3<float>& e0,
         const glm::tvec3<float>& e1,
         PointEdgeDistanceType dtype);
 
-    template __device__ double point_edge_distance<double>(
+    template __host__ __device__ double point_edge_distance<double>(
         const glm::tvec3<double>& p,
         const glm::tvec3<double>& e0,
         const glm::tvec3<double>& e1,

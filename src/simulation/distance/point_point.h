@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector.h>
+#include <matrix.h>
 #include<glm/glm.hpp>
 
 namespace ipc {
@@ -11,7 +11,7 @@ namespace ipc {
 /// @param p1 The second point.
 /// @return The distance between p0 and p1.
     template<typename Scalar>
-    __device__ Scalar point_point_distance(
+    __host__ __device__ Scalar point_point_distance(
     const glm::tvec3<Scalar>& p0,
     const glm::tvec3<Scalar>& p1);
 
@@ -21,7 +21,7 @@ namespace ipc {
 /// @param p1 The second point.
 /// @return The computed gradient.
     template<typename Scalar>
-    __device__ Vector<Scalar, 6> point_point_distance_gradient(
+    __host__ __device__ Vector<Scalar, 6> point_point_distance_gradient(
     const glm::tvec3<Scalar>& p0,
     const glm::tvec3<Scalar>& p1);
 
