@@ -13,6 +13,12 @@ inline Energy<Scalar>::Energy(int hessianIdxOffset) :hessianIdxOffset(hessianIdx
 }
 
 template<typename Scalar>
+int Energy<Scalar>::NNZ() const
+{
+    return nnz;
+}
+
+template<typename Scalar>
 inline void Energy<Scalar>::SetHessianPtr(Scalar* hessianVal, int* hessianRowIdx, int* hessianColIdx)
 {
     if (hessianIdxOffset == -1)return;

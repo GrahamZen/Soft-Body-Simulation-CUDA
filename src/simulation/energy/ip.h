@@ -13,14 +13,15 @@ public:
     double Val(const glm::dvec3* Xs, const SolverData<double>& solverData, double h2) const;
     void Gradient(const SolverData<double>& solverData, double h2) const;
     void Hessian(const SolverData<double>& solverData, double h2) const;
-    double InitStepSize(SolverData<double>& solverData, double* p, glm::dvec3* XTmp) const;
+    double InitStepSize(SolverData<double>& solverData, double* p, glm::tvec3<double>* XTmp) const;
+    int NNZ();
     double* gradient = nullptr;
-    int nnz = 0;
     // collision queries should be updated if dirty
     double* hessianVal = nullptr;
     int* hessianRowIdx = nullptr;
     int* hessianColIdx = nullptr;
 private:
+    int nnz = 0;
     InertiaEnergy<double> inertia;
     GravityEnergy<double> gravity;
     ImplicitBarrierEnergy<double> implicitBarrier;

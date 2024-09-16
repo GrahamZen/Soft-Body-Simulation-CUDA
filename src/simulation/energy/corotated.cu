@@ -108,9 +108,10 @@ inline CorotatedEnergy<Scalar>::CorotatedEnergy(const SolverData<Scalar>& solver
 }
 
 template<typename Scalar>
-inline int CorotatedEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const
+inline int CorotatedEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData)
 {
-    return solverData.numTets * 144;
+    Energy<Scalar>::nnz = solverData.numTets * 144;
+    return Energy<Scalar>::nnz;
 }
 
 template <typename Scalar>

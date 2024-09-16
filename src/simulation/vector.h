@@ -178,6 +178,10 @@ public:
         os << "]";
         return os;
     }
+
+    friend __host__ __device__ Vector operator*(Scalar val, const Vector& vec) {
+        return vec * val;
+    }
 };
 
 template<typename Scalar>

@@ -12,6 +12,7 @@ elastic(new CorotatedEnergy<double>(solverData, nnz)), implicitBarrier(solverDat
     inertia.SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
     implicitBarrier.SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
     elastic->SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
+    barrier.SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
 }
 
 IPEnergy::~IPEnergy()
@@ -24,7 +25,7 @@ IPEnergy::~IPEnergy()
 
 double IPEnergy::Val(const glm::dvec3* Xs, const SolverData<double>& solverData, double h2) const
 {
-    return inertia.Val(Xs, solverData) + h2 * (gravity.Val(Xs, solverData) + elastic->Val(Xs, solverData) + implicitBarrier.Val(Xs, solverData)) + barrier.Val(Xs, solverData);
+    return inertia.Val(Xs, solverData) + h2 * (gravity.Val(Xs, solverData) + elastic->Val(Xs, solverData) + implicitBarrier.Val(Xs, solverData) + barrier.Val(Xs, solverData));
 }
 
 void IPEnergy::Gradient(const SolverData<double>& solverData, double h2) const
@@ -47,9 +48,13 @@ void IPEnergy::Hessian(const SolverData<double>& solverData, double h2) const
     barrier.Hessian(solverData, h2);
 }
 
-double IPEnergy::InitStepSize(SolverData<double>& solverData, double* p, glm::dvec3* XTmp) const
+double IPEnergy::InitStepSize(SolverData<double>& solverData, double* p, glm::tvec3<double>* XTmp) const
 {
-    double alpha = solverData.pCollisionDetection->ComputeMinStepSize(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, XTmp,
-        solverData.dev_TriFathers, true);
-    return glm::min(1.0, implicitBarrier.InitStepSize(solverData, p));
+    return std::min(1.0, std::min(implicitBarrier.InitStepSize(solverData, p), barrier.InitStepSize(solverData, p, XTmp)));
+}
+
+int IPEnergy::NNZ()
+{
+    nnz = inertia.Energy::NNZ() + implicitBarrier.Energy::NNZ() + elastic->Energy::NNZ() + barrier.Energy::NNZ();
+    return nnz;
 }

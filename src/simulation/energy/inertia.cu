@@ -36,7 +36,10 @@ namespace Inertia {
 }
 
 template <typename Scalar>
-int InertiaEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const { return solverData.numVerts * 3; }
+int InertiaEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) {
+    Energy<Scalar>::nnz = solverData.numVerts * 3;
+    return Energy<Scalar>::nnz;
+}
 
 template <typename Scalar>
 InertiaEnergy<Scalar>::InertiaEnergy(const SolverData<Scalar>& solverData, int& hessianIdxOffset, int numVerts, const Scalar* dev_mass) :
