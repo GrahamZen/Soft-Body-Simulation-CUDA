@@ -45,28 +45,28 @@ namespace ipc {
         const glm::tvec3<double>& t1,
         const glm::tvec3<double>& t2);
 
-     template<typename Scalar>
-     __host__ __device__ Vector<Scalar, 3> point_plane_distance_gradient(
-         const glm::tvec3<Scalar>& p,
-         const glm::tvec3<Scalar>& origin,
-         const glm::tvec3<Scalar>& normal)
-     {
+    template<typename Scalar>
+    __host__ __device__ Vector<Scalar, 3> point_plane_distance_gradient(
+        const glm::tvec3<Scalar>& p,
+        const glm::tvec3<Scalar>& origin,
+        const glm::tvec3<Scalar>& normal)
+    {
         return (2 / glm::dot(normal, normal)) * glm::dot(p - origin, normal) * normal;
-     }
+    }
 
-     template<typename Scalar>
-     __host__ __device__ Vector12<Scalar> point_plane_distance_gradient(
-         const glm::tvec3<Scalar>& p,
-         const glm::tvec3<Scalar>& t0,
-         const glm::tvec3<Scalar>& t1,
-         const glm::tvec3<Scalar>& t2)
-     {
-         Vector12<Scalar> grad;
-         autogen::point_plane_distance_gradient(
-             p[0], p[1], p[2], t0[0], t0[1], t0[2], t1[0], t1[1], t1[2], t2[0],
-             t2[1], t2[2], grad.data());
-         return grad;
-     }
+    template<typename Scalar>
+    __host__ __device__ Vector12<Scalar> point_plane_distance_gradient(
+        const glm::tvec3<Scalar>& p,
+        const glm::tvec3<Scalar>& t0,
+        const glm::tvec3<Scalar>& t1,
+        const glm::tvec3<Scalar>& t2)
+    {
+        Vector12<Scalar> grad;
+        autogen::point_plane_distance_gradient(
+            p[0], p[1], p[2], t0[0], t0[1], t0[2], t1[0], t1[1], t1[2], t2[0],
+            t2[1], t2[2], grad.data());
+        return grad;
+    }
 
     template __host__ __device__ Vector12<float> point_plane_distance_gradient(
         const glm::tvec3<float>& p,
@@ -80,27 +80,39 @@ namespace ipc {
         const glm::tvec3<double>& t1,
         const glm::tvec3<double>& t2);
     // template<typename Scalar>
-    // Eigen::Matrix3d point_plane_distance_hessian(
+    // Matrix3<Scalar> point_plane_distance_hessian(
     //     const glm::tvec3<Scalar>& p,
     //     const glm::tvec3<Scalar>& origin,
     //     const glm::tvec3<Scalar>& normal)
     // {
-    //     return 2 / normal.squaredNorm() * normal * normal.transpose();
+    //      return 2 / normal.squaredNorm() * normal * normal.transpose();
     // }
 
-    // template<typename Scalar>
-    // Matrix12d point_plane_distance_hessian(
-    //     const glm::tvec3<Scalar>& p,
-    //     const glm::tvec3<Scalar>& t0,
-    //     const glm::tvec3<Scalar>& t1,
-    //     const glm::tvec3<Scalar>& t2)
-    // {
-    //     Matrix12d hess;
-    //     autogen::point_plane_distance_hessian(
-    //         p[0], p[1], p[2], t0[0], t0[1], t0[2], t1[0], t1[1], t1[2], t2[0],
-    //         t2[1], t2[2], hess.data());
-    //     return hess;
-    // }
+    template<typename Scalar>
+    Matrix12<Scalar> point_plane_distance_hessian(
+        const glm::tvec3<Scalar>& p,
+        const glm::tvec3<Scalar>& t0,
+        const glm::tvec3<Scalar>& t1,
+        const glm::tvec3<Scalar>& t2)
+    {
+        Matrix12<Scalar> hess;
+        autogen::point_plane_distance_hessian(
+            p[0], p[1], p[2], t0[0], t0[1], t0[2], t1[0], t1[1], t1[2], t2[0],
+            t2[1], t2[2], hess.data());
+        return hess;
+    }
+
+    template Matrix12<float> point_plane_distance_hessian(
+        const glm::tvec3<float>& p,
+        const glm::tvec3<float>& t0,
+        const glm::tvec3<float>& t1,
+        const glm::tvec3<float>& t2);
+
+    template Matrix12<double> point_plane_distance_hessian(
+        const glm::tvec3<double>& p,
+        const glm::tvec3<double>& t0,
+        const glm::tvec3<double>& t1,
+        const glm::tvec3<double>& t2);
 
     namespace autogen {
 

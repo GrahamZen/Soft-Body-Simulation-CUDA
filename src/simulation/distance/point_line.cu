@@ -23,49 +23,50 @@ namespace ipc {
         const glm::tvec3<double>& e1);
 
     template<typename Scalar>
-    __host__ __device__ Vector<Scalar,9> point_line_distance_gradient(
+    __host__ __device__ Vector<Scalar, 9> point_line_distance_gradient(
         const glm::tvec3<Scalar>& p,
         const glm::tvec3<Scalar>& e0,
         const glm::tvec3<Scalar>& e1)
     {
-        Vector<Scalar,9> grad;
+        Vector<Scalar, 9> grad;
         autogen::point_line_distance_gradient_3D(
             p[0], p[1], p[2], e0[0], e0[1], e0[2], e1[0], e1[1], e1[2],
             grad.data());
         return grad;
     }
 
-    template Vector<float,9> __host__ __device__ point_line_distance_gradient<float>(
+    template Vector<float, 9> __host__ __device__ point_line_distance_gradient<float>(
         const glm::tvec3<float>& p,
         const glm::tvec3<float>& e0,
         const glm::tvec3<float>& e1);
 
-    template Vector<double,9> __host__ __device__ point_line_distance_gradient<double>(
+    template Vector<double, 9> __host__ __device__ point_line_distance_gradient<double>(
         const glm::tvec3<double>& p,
         const glm::tvec3<double>& e0,
         const glm::tvec3<double>& e1);
 
-    // template<typename Scalar>
-    // MatrixMax9d point_line_distance_hessian(
-    //     const glm::tvec3<Scalar>& p,
-    //     const glm::tvec3<Scalar>& e0,
-    //     const glm::tvec3<Scalar>& e1)
-    // {
-    //     const int dim = p.size();
-    //     assert(e0.size() == dim);
-    //     assert(e1.size() == dim);
+    template<typename Scalar>
+    Matrix9<Scalar> point_line_distance_hessian(
+        const glm::tvec3<Scalar>& p,
+        const glm::tvec3<Scalar>& e0,
+        const glm::tvec3<Scalar>& e1)
+    {
+        Matrix9<Scalar> hess;
+        autogen::point_line_distance_hessian_3D(
+            p[0], p[1], p[2], e0[0], e0[1], e0[2], e1[0], e1[1], e1[2],
+            hess.data());
+        return hess;
+    }
 
-    //     MatrixMax9d hess(3 * dim, 3 * dim);
-    //     if (dim == 2) {
-    //         autogen::point_line_distance_hessian_2D(
-    //             p[0], p[1], e0[0], e0[1], e1[0], e1[1], hess.data());
-    //     } else {
-    //         autogen::point_line_distance_hessian_3D(
-    //             p[0], p[1], p[2], e0[0], e0[1], e0[2], e1[0], e1[1], e1[2],
-    //             hess.data());
-    //     }
-    //     return hess;
-    // }
+    template Matrix9<float> point_line_distance_hessian<float>(
+        const glm::tvec3<float>& p,
+        const glm::tvec3<float>& e0,
+        const glm::tvec3<float>& e1);
+
+    template Matrix9<double> point_line_distance_hessian<double>(
+        const glm::tvec3<double>& p,
+        const glm::tvec3<double>& e0,
+        const glm::tvec3<double>& e1);
 
     namespace autogen {
 

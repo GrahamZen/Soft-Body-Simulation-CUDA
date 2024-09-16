@@ -20,21 +20,21 @@ namespace ipc {
         const glm::tvec3<double>& p0,
         const glm::tvec3<double>& p1);
 
-     template<typename Scalar>
-     __host__ __device__ Vector<Scalar, 6> point_point_distance_gradient(
-         const glm::tvec3<Scalar>& p0,
-         const glm::tvec3<Scalar>& p1)
-     {
-         auto v = (Scalar)2.0 * (p0 - p1);
-         Vector<Scalar, 6> grad;
-         Vector<Scalar, 3> tmp = v;
-         Vector<Scalar, 3> tmpM = -v;
+    template<typename Scalar>
+    __host__ __device__ Vector<Scalar, 6> point_point_distance_gradient(
+        const glm::tvec3<Scalar>& p0,
+        const glm::tvec3<Scalar>& p1)
+    {
+        auto v = (Scalar)2.0 * (p0 - p1);
+        Vector<Scalar, 6> grad;
+        Vector<Scalar, 3> tmp = v;
+        Vector<Scalar, 3> tmpM = -v;
 
-         grad.head(3) = tmp;
-         grad.tail(3) = tmpM;
+        grad.head(3) = tmp;
+        grad.tail(3) = tmpM;
 
-         return grad;
-     }
+        return grad;
+    }
 
     template __host__ __device__ Vector<float, 6> point_point_distance_gradient<float>(
         const glm::tvec3<float>& p0,
@@ -44,23 +44,25 @@ namespace ipc {
         const glm::tvec3<double>& p0,
         const glm::tvec3<double>& p1);
 
-    // template<typename Scalar>
-    // MatrixMax6d point_point_distance_hessian(
-    //     const glm::tvec3<Scalar>& p0,
-    //     const glm::tvec3<Scalar>& p1)
-    // {
-    //     int dim = p0.size();
-    //     assert(p1.size() == dim);
+    template<typename Scalar>
+    Matrix6<Scalar> point_point_distance_hessian(
+        const glm::tvec3<Scalar>& p0,
+        const glm::tvec3<Scalar>& p1)
+    {
+        Matrix6<Scalar> hess;
+        hess[0][0] = hess[1][1] = hess[2][2] = hess[3][3] = hess[4][4] = hess[5][5] = 2.0;
+        for (int i = 0; i < 3; i++) {
+            hess[i][i + 3] = hess[i + 3][i] = -2.0;
+        }
+        return hess;
+    }
 
-    //     MatrixMax6d hess(2 * dim, 2 * dim);
+    template Matrix6<float> point_point_distance_hessian<float>(
+        const glm::tvec3<float>& p0,
+        const glm::tvec3<float>& p1);
 
-    //     hess.setZero();
-    //     hess.diagonal().setConstant(2.0);
-    //     for (int i = 0; i < dim; i++) {
-    //         hess(i, i + dim) = hess(i + dim, i) = -2;
-    //     }
-
-    //     return hess;
-    // }
+    template Matrix6<double> point_point_distance_hessian<double>(
+        const glm::tvec3<double>& p0,
+        const glm::tvec3<double>& p1);
 
 } // namespace ipc

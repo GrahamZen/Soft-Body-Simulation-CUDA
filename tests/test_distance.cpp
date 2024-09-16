@@ -105,28 +105,46 @@ TEST_CASE("distance", "[DISTANCE]") {
         auto& q = queries[i];
         glm::dvec3 x0 = points[q.v0], x1 = points[q.v1], x2 = points[q.v2], x3 = points[q.v3];
         Vector12<double> grad;
+        Matrix12<double> hess;
         if (q.type == QueryType::VF) {
             q.dType = point_triangle_distance_type(x0, x1, x2, x3);
             q.d = ipc::point_triangle_distance(x0, x1, x2, x3, q.dType);
             grad = ipc::point_triangle_distance_gradient<double>(x0, x1, x2, x3, q.dType);
-            Eigen::VectorXd fgrad(1);
+            hess = ipc::point_triangle_distance_hessian<double>(x0, x1, x2, x3, q.dType);
+
             Eigen::Matrix<double, 12, 1, Eigen::ColMajor, 12, 1> x;
+            x << x0.x, x0.y, x0.z, x1.x, x1.y, x1.z, x2.x, x2.y, x2.z, x3.x, x3.y, x3.z;
+            // *******************************************************************************
+            // Compare the gradient with finite differences
             Eigen::Matrix<double, 12, 1, Eigen::ColMajor, 12, 1> eig_grad;
             eig_grad << grad[0], grad[1], grad[2], grad[3], grad[4], grad[5], grad[6], grad[7], grad[8], grad[9], grad[10], grad[11];
-            x << x0.x, x0.y, x0.z, x1.x, x1.y, x1.z, x2.x, x2.y, x2.z, x3.x, x3.y, x3.z;
 
-            // Compute the gradient using finite differences
-            fd::finite_gradient(x, [=](const Eigen::VectorXd& _x) { 
+            Eigen::VectorXd fgrad(1);
+            fd::finite_gradient(x, [=](const Eigen::VectorXd& _x) {
                 glm::dvec3 _x0(_x[0], _x[1], _x[2]), _x1(_x[3], _x[4], _x[5]), _x2(_x[6], _x[7], _x[8]), _x3(_x[9], _x[10], _x[11]);
                 return (double)ipc::point_triangle_distance(_x0, _x1, _x2, _x3, q.dType);
                 }
             , fgrad);
             CHECK(fd::compare_gradient(eig_grad, fgrad));
+            // *******************************************************************************
+            // Compare the hessian with finite differences
+            Eigen::MatrixXd eig_hess(12, 12);
+            eig_hess = Eigen::Map<Eigen::Matrix<double, 12, 12, Eigen::ColMajor>>(hess.data());
+            Eigen::MatrixXd fhess(12, 12);
+            fd::finite_hessian(x, [=](const Eigen::VectorXd& _x) {
+                glm::dvec3 _x0(_x[0], _x[1], _x[2]), _x1(_x[3], _x[4], _x[5]), _x2(_x[6], _x[7], _x[8]), _x3(_x[9], _x[10], _x[11]);
+                return (double)ipc::point_triangle_distance(_x0, _x1, _x2, _x3, q.dType);
+                }
+            , fhess);
+            CHECK(fd::compare_hessian(eig_hess, fhess));
         }
         else if (q.type == QueryType::EE) {
             q.dType = edge_edge_distance_type(x0, x1, x2, x3);
             q.d = ipc::edge_edge_distance(x0, x1, x2, x3, q.dType);
             grad = ipc::edge_edge_distance_gradient<double>(x0, x1, x2, x3, q.dType);
+            hess = ipc::edge_edge_distance_hessian<double>(x0, x1, x2, x3, q.dType);
+            // *******************************************************************************
+            // Compare the gradient with finite differences
             Eigen::VectorXd fgrad(1);
             Eigen::Matrix<double, 12, 1, Eigen::ColMajor, 12, 1> x;
             Eigen::Matrix<double, 12, 1, Eigen::ColMajor, 12, 1> eig_grad;
@@ -134,13 +152,25 @@ TEST_CASE("distance", "[DISTANCE]") {
             x << x0.x, x0.y, x0.z, x1.x, x1.y, x1.z, x2.x, x2.y, x2.z, x3.x, x3.y, x3.z;
 
             // Compute the gradient using finite differences
-            fd::finite_gradient(x, [=](const Eigen::VectorXd& _x) { 
+            fd::finite_gradient(x, [=](const Eigen::VectorXd& _x) {
                 glm::dvec3 _x0(_x[0], _x[1], _x[2]), _x1(_x[3], _x[4], _x[5]), _x2(_x[6], _x[7], _x[8]), _x3(_x[9], _x[10], _x[11]);
                 return (double)ipc::edge_edge_distance(_x0, _x1, _x2, _x3, q.dType);
                 }
             , fgrad);
             CHECK(fd::compare_gradient(eig_grad, fgrad));
+            // *******************************************************************************
+            // Compare the hessian with finite differences
+            Eigen::MatrixXd eig_hess(12, 12);
+            eig_hess = Eigen::Map<Eigen::Matrix<double, 12, 12, Eigen::ColMajor>>(hess.data());
+            Eigen::MatrixXd fhess(12, 12);
+            fd::finite_hessian(x, [=](const Eigen::VectorXd& _x) {
+                glm::dvec3 _x0(_x[0], _x[1], _x[2]), _x1(_x[3], _x[4], _x[5]), _x2(_x[6], _x[7], _x[8]), _x3(_x[9], _x[10], _x[11]);
+                return (double)ipc::edge_edge_distance(_x0, _x1, _x2, _x3, q.dType);
+                }
+            , fhess);
+            CHECK(fd::compare_hessian(eig_hess, fhess));
         }
         printVector(grad, "grad");
+        printMatrix(hess, "hess");
     }
 }

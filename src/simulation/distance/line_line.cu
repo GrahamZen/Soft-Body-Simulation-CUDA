@@ -27,45 +27,57 @@ namespace ipc {
         const glm::tvec3<double>& eb0,
         const glm::tvec3<double>& eb1);
 
-     template<typename Scalar>
-     __host__ __device__ Vector12<Scalar> line_line_distance_gradient(
-         const glm::tvec3<Scalar>& ea0,
-         const glm::tvec3<Scalar>& ea1,
-         const glm::tvec3<Scalar>& eb0,
-         const glm::tvec3<Scalar>& eb1)
-     {
-         Vector12<Scalar> grad;
-         autogen::line_line_distance_gradient(
-             ea0[0], ea0[1], ea0[2], ea1[0], ea1[1], ea1[2], eb0[0], eb0[1], eb0[2],
-             eb1[0], eb1[1], eb1[2], grad.data());
-         return grad;
-     }
+    template<typename Scalar>
+    __host__ __device__ Vector12<Scalar> line_line_distance_gradient(
+        const glm::tvec3<Scalar>& ea0,
+        const glm::tvec3<Scalar>& ea1,
+        const glm::tvec3<Scalar>& eb0,
+        const glm::tvec3<Scalar>& eb1)
+    {
+        Vector12<Scalar> grad;
+        autogen::line_line_distance_gradient(
+            ea0[0], ea0[1], ea0[2], ea1[0], ea1[1], ea1[2], eb0[0], eb0[1], eb0[2],
+            eb1[0], eb1[1], eb1[2], grad.data());
+        return grad;
+    }
 
-        template __host__ __device__ Vector12<float> line_line_distance_gradient(
-            const glm::tvec3<float>& ea0,
-            const glm::tvec3<float>& ea1,
-            const glm::tvec3<float>& eb0,
-            const glm::tvec3<float>& eb1);
+    template __host__ __device__ Vector12<float> line_line_distance_gradient(
+        const glm::tvec3<float>& ea0,
+        const glm::tvec3<float>& ea1,
+        const glm::tvec3<float>& eb0,
+        const glm::tvec3<float>& eb1);
 
-        template __host__ __device__ Vector12<double> line_line_distance_gradient(
-            const glm::tvec3<double>& ea0,
-            const glm::tvec3<double>& ea1,
-            const glm::tvec3<double>& eb0,
-            const glm::tvec3<double>& eb1);
+    template __host__ __device__ Vector12<double> line_line_distance_gradient(
+        const glm::tvec3<double>& ea0,
+        const glm::tvec3<double>& ea1,
+        const glm::tvec3<double>& eb0,
+        const glm::tvec3<double>& eb1);
 
-    // template<typename Scalar>
-    // Matrix12d line_line_distance_hessian(
-    //     const glm::tvec3<Scalar>& ea0,
-    //     const glm::tvec3<Scalar>& ea1,
-    //     const glm::tvec3<Scalar>& eb0,
-    //     const glm::tvec3<Scalar>& eb1)
-    // {
-    //     Matrix12d hess;
-    //     autogen::line_line_distance_hessian(
-    //         ea0[0], ea0[1], ea0[2], ea1[0], ea1[1], ea1[2], eb0[0], eb0[1], eb0[2],
-    //         eb1[0], eb1[1], eb1[2], hess.data());
-    //     return hess;
-    // }
+    template<typename Scalar>
+    Matrix12<Scalar> line_line_distance_hessian(
+        const glm::tvec3<Scalar>& ea0,
+        const glm::tvec3<Scalar>& ea1,
+        const glm::tvec3<Scalar>& eb0,
+        const glm::tvec3<Scalar>& eb1)
+    {
+        Matrix12<Scalar> hess;
+        autogen::line_line_distance_hessian(
+            ea0[0], ea0[1], ea0[2], ea1[0], ea1[1], ea1[2], eb0[0], eb0[1], eb0[2],
+            eb1[0], eb1[1], eb1[2], hess.data());
+        return hess;
+    }
+
+    template Matrix12<float> line_line_distance_hessian(
+        const glm::tvec3<float>& ea0,
+        const glm::tvec3<float>& ea1,
+        const glm::tvec3<float>& eb0,
+        const glm::tvec3<float>& eb1);
+
+    template Matrix12<double> line_line_distance_hessian(
+        const glm::tvec3<double>& ea0,
+        const glm::tvec3<double>& ea1,
+        const glm::tvec3<double>& eb0,
+        const glm::tvec3<double>& eb1);
 
     namespace autogen {
 

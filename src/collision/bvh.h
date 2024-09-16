@@ -58,6 +58,9 @@ public:
     size_t GetNumQueries() const {
         return numQueries;
     } 
+    size_t GetMaxNumQueries() const {
+        return maxNumQueries;
+    } 
     Query* GetQueries() const {
         return dev_queries;
     }

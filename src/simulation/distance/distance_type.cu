@@ -33,8 +33,6 @@ __global__ void ComputeDistance(const glm::tvec3<Scalar>* Xs, Query* queries, in
     else if (q.type == QueryType::VF) {
         q.d = point_triangle_distance(x0, x1, x2, x3, q.dType);
     }
-    //if (q.d > dhat)
-    //    q.type = QueryType::UNKNOWN;
 }
 
 template __global__ void ComputeDistance<float>(const glm::tvec3<float>* Xs, Query* queries, int numQueries, float dhat);

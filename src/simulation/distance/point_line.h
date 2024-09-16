@@ -29,17 +29,17 @@ namespace ipc {
         const glm::tvec3<Scalar>& e0,
         const glm::tvec3<Scalar>& e1);
 
-    // /// @brief Compute the hessian of the distance between a point and line.
-    // /// @note The distance is actually squared distance.
-    // /// @param p The point.
-    // /// @param e0 The first vertex of the edge defining the line.
-    // /// @param e1 The second vertex of the edge defining the line.
-    // /// @return The hessian of the distance wrt p, e0, and e1.
-    // template<typename Scalar>
-    // MatrixMax9d point_line_distance_hessian(
-    //     const glm::tvec3<Scalar>& p,
-    //     const glm::tvec3<Scalar>& e0,
-    //     const glm::tvec3<Scalar>& e1);
+    /// @brief Compute the hessian of the distance between a point and line.
+    /// @note The distance is actually squared distance.
+    /// @param p The point.
+    /// @param e0 The first vertex of the edge defining the line.
+    /// @param e1 The second vertex of the edge defining the line.
+    /// @return The hessian of the distance wrt p, e0, and e1.
+    template<typename Scalar>
+    Matrix9<Scalar> point_line_distance_hessian(
+        const glm::tvec3<Scalar>& p,
+        const glm::tvec3<Scalar>& e0,
+        const glm::tvec3<Scalar>& e1);
 
     // Symbolically generated derivatives;
     namespace autogen {
