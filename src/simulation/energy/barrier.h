@@ -5,7 +5,7 @@
 template <typename Scalar>
 class BarrierEnergy : public Energy<Scalar> {
 public:
-    BarrierEnergy(const SolverData<Scalar>& solverData, int& hessianIdxOffset, Scalar dhat);
+    BarrierEnergy(const SolverData<Scalar>& solverData, int& hessianIdxOffset, Scalar dhat, Scalar kappa);
     virtual ~BarrierEnergy() = default;
     virtual int NNZ(const SolverData<Scalar>& solverData) const override;
     virtual Scalar Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData) const override;
@@ -14,5 +14,5 @@ public:
     Scalar InitStepSize(const SolverData<Scalar>& solverData, Scalar* p, glm::tvec3<Scalar>* XTmp) const;
 private:
     const Scalar dhat = 1e-2;
-    float kappa = 100;
+    Scalar kappa = 1e5;
 };

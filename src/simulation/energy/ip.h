@@ -8,7 +8,7 @@
 
 class IPEnergy {
 public:
-    IPEnergy(const SolverData<double>& solverData, double dhat);
+    IPEnergy(const SolverData<double>& solverData, double dhat, double kappa);
     ~IPEnergy();
     double Val(const glm::dvec3* Xs, const SolverData<double>& solverData, double h2) const;
     void Gradient(const SolverData<double>& solverData, double h2) const;

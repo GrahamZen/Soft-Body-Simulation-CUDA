@@ -2,8 +2,8 @@
 #include <energy/corotated.h>
 #include <collision/bvh.h>
 
-IPEnergy::IPEnergy(const SolverData<double>& solverData, double dhat) : dhat(dhat), inertia(solverData, nnz, solverData.numVerts, solverData.mass),
-elastic(new CorotatedEnergy<double>(solverData, nnz)), implicitBarrier(solverData, nnz, dhat), barrier(solverData, nnz, dhat)
+IPEnergy::IPEnergy(const SolverData<double>& solverData, double dhat, double kappa) : dhat(dhat), inertia(solverData, nnz, solverData.numVerts, solverData.mass),
+elastic(new CorotatedEnergy<double>(solverData, nnz)), implicitBarrier(solverData, nnz, dhat), barrier(solverData, nnz, dhat, kappa)
 {
     cudaMalloc((void**)&gradient, sizeof(double) * solverData.numVerts * 3);
     cudaMalloc((void**)&hessianVal, sizeof(double) * nnz);

@@ -6,9 +6,9 @@
 #include <thrust/transform_reduce.h>
 #include <thrust/device_ptr.h>
 
-IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData, double dhat, double tol)
+IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData, double dhat, double kappa, double tol)
     : numVerts(solverData.numVerts), tolerance(tol), FEMSolver(threadsPerBlock, solverData),
-    energy(solverData, dhat), linearSolver(new CholeskySpImmedSolver<double>(solverData.numVerts * 3))
+    energy(solverData, dhat, kappa), linearSolver(new CholeskySpImmedSolver<double>(solverData.numVerts * 3))
 {
     cudaMalloc((void**)&p, sizeof(double) * solverData.numVerts * 3);
     cudaMalloc((void**)&xTmp, sizeof(glm::dvec3) * solverData.numVerts);

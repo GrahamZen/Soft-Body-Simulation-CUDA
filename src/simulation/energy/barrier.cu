@@ -98,7 +98,8 @@ int BarrierEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const {
 }
 
 template <typename Scalar>
-BarrierEnergy<Scalar>::BarrierEnergy(const SolverData<Scalar>& solverData, int& hessianIdxOffset, Scalar dhat) :dhat(dhat), Energy<Scalar>(hessianIdxOffset)
+BarrierEnergy<Scalar>::BarrierEnergy(const SolverData<Scalar>& solverData, int& hessianIdxOffset, Scalar dhat, Scalar kappa)
+    :dhat(dhat), kappa(kappa), Energy<Scalar>(hessianIdxOffset)
 {
     hessianIdxOffset += solverData.pCollisionDetection->GetMaxNumQueries() * 144;
 }
