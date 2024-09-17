@@ -1,34 +1,17 @@
 #include <IPC/ipc.h>
 #include <collision/bvh.h>
 #include <linear/choleskyImmed.h>
-#include <distance/distance_type.h>
 #include <thrust/sort.h>
 #include <thrust/transform_reduce.h>
 #include <thrust/device_ptr.h>
 
-void UpdateQueries(CollisionDetection<double>* cd, int numVerts, int numTris, const indexType* Tri, const glm::tvec3<double>* X, const indexType* TriFathers)
-{
-    cd->BroadPhase(numVerts, numTris, Tri, X, TriFathers);
-    size_t num_queries = cd->GetNumQueries();
-    if (num_queries == 0)return;
-    Query* queries = cd->GetQueries();
-    GetDistanceType<double> << <(num_queries + 255) / 256, 256 >> > (X, queries, num_queries);
-    thrust::device_ptr<Query> queries_ptr(queries);
-    thrust::sort(queries_ptr, queries_ptr + num_queries, []__host__ __device__(const Query & a, const Query & b) { return a.dType < b.dType; });
-    ComputeDistance<double> << < (num_queries + 255) / 256, 256 >> > (X, queries, num_queries);
-    thrust::sort(queries_ptr, queries_ptr + num_queries, []__host__ __device__(const Query & a, const Query & b) {
-        if (a.d == b.d) return a.dType < b.dType;
-        return a.d < b.d;
-    });
-}
-
-IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData, double tol)
+IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData, double dhat, double tol)
     : numVerts(solverData.numVerts), tolerance(tol), FEMSolver(threadsPerBlock, solverData),
-    energy(solverData), linearSolver(new CholeskySpImmedSolver<double>(solverData.numVerts * 3))
+    energy(solverData, dhat), linearSolver(new CholeskySpImmedSolver<double>(solverData.numVerts * 3))
 {
-    cudaMalloc(&p, sizeof(double) * solverData.numVerts * 3);
-    cudaMalloc(&xTmp, sizeof(glm::dvec3) * solverData.numVerts);
-    cudaMalloc(&x_n, sizeof(glm::dvec3) * solverData.numVerts);
+    cudaMalloc((void**)&p, sizeof(double) * solverData.numVerts * 3);
+    cudaMalloc((void**)&xTmp, sizeof(glm::dvec3) * solverData.numVerts);
+    cudaMalloc((void**)&x_n, sizeof(glm::dvec3) * solverData.numVerts);
 }
 
 IPCSolver::~IPCSolver()
@@ -118,7 +101,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
     cudaMemcpy(x_n, solverData.X, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
     IPC::computeXTilde << <blocks, threadsPerBlock >> > (solverData.XTilde, solverData.X, solverData.V, h, solverData.numVerts);
     double E_last = 0;
-    UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers);
+    solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers, energy.dhat);
     E_last = energy.Val(solverData.X, solverData, h2);
 
     SearchDirection(solverData, h2);
@@ -127,7 +110,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
         double alpha = energy.InitStepSize(solverData, p, xTmp);
         while (true) {
             IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, alpha, solverData.numVerts);
-            UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers);
+            solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers, energy.dhat);
             double E = energy.Val(xTmp, solverData, h2);
             if (E > E_last) {
                 alpha /= 2;
@@ -137,7 +120,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
             }
         }
         cudaMemcpy(solverData.X, xTmp, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
-        UpdateQueries(solverData.pCollisionDetection, solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers);
+        solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers, energy.dhat);
         E_last = energy.Val(solverData.X, solverData, h2);
         SearchDirection(solverData, h2);
     }

@@ -101,7 +101,7 @@ template AABB<double> AABB<double>::expand(const AABB<double>& aabb)const;
 
 template<typename Scalar>
 CollisionDetection<Scalar>::CollisionDetection(const Context* context, const int _threadsPerBlock, size_t _maxNumQueries) :
-    mpContext(context), threadsPerBlock(_threadsPerBlock), maxNumQueries(_maxNumQueries), m_bvh(_threadsPerBlock)
+    mpContext(context), threadsPerBlock(_threadsPerBlock), numQueries(0), maxNumQueries(_maxNumQueries), m_bvh(_threadsPerBlock)
 {
     cudaMalloc(&dev_queries, maxNumQueries * sizeof(Query));
 

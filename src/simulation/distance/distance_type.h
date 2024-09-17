@@ -7,7 +7,7 @@
 template <typename Scalar>
 __global__ void GetDistanceType(const glm::tvec3<Scalar>* Xs, Query* queries, int numQueries);
 template <typename Scalar>
-__global__ void ComputeDistance(const glm::tvec3<Scalar>* Xs, Query* queries, int numQueries, Scalar dhat = 1e-3);
+__global__ void ComputeDistance(const glm::tvec3<Scalar>* Xs, Query* queries, int numQueries);
 
 template<typename Scalar>
 __host__ __device__ DistanceType point_triangle_distance_type(

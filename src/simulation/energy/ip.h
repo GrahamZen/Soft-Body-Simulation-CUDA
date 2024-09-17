@@ -8,7 +8,7 @@
 
 class IPEnergy {
 public:
-    IPEnergy(const SolverData<double>& solverData, double dHat = 1e-2);
+    IPEnergy(const SolverData<double>& solverData, double dhat);
     ~IPEnergy();
     double Val(const glm::dvec3* Xs, const SolverData<double>& solverData, double h2) const;
     void Gradient(const SolverData<double>& solverData, double h2) const;
@@ -20,6 +20,7 @@ public:
     double* hessianVal = nullptr;
     int* hessianRowIdx = nullptr;
     int* hessianColIdx = nullptr;
+    const double dhat = 1e-2;
 private:
     int nnz = 0;
     InertiaEnergy<double> inertia;

@@ -4,6 +4,7 @@
 #include <collision/bvh.cuh>
 #include <collision/bvh.h>
 #include <simulation/simulationContext.h>
+#include <distance/distance_type.h>
 #include <collision/intersections.h>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
@@ -448,10 +449,11 @@ __global__ void sortEachQuery(size_t numQueries, Query* query)
     }
 }
 
-void removeUnknowns(Query* dev_queries, size_t& numQueries) {
+template <typename Predicate>
+void remove(Query* dev_queries, size_t& numQueries, Predicate pred) {
     thrust::device_ptr<Query> dev_ptr(dev_queries);
 
-    auto new_end_remove = thrust::remove_if(dev_ptr, dev_ptr + numQueries, IsUnknown());
+    auto new_end_remove = thrust::remove_if(dev_ptr, dev_ptr + numQueries, pred);
     numQueries = new_end_remove - dev_ptr;
 }
 
@@ -539,6 +541,22 @@ bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const ind
     count = numVerts;
     this->mpX = X;
     return true;
+}
+
+template<typename Scalar>
+void CollisionDetection<Scalar>::UpdateQueries(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers, Scalar dhat)
+{
+    BroadPhase(numVerts, numTris, Tri, X, TriFathers);
+    if (numQueries == 0)return;
+    GetDistanceType<Scalar> << <(numQueries + 255) / 256, 256 >> > (X, dev_queries, numQueries);
+    thrust::device_ptr<Query> queries_ptr(dev_queries);
+    thrust::sort(queries_ptr, queries_ptr + numQueries, []__host__ __device__(const Query & a, const Query & b) { return a.dType < b.dType; });
+    ComputeDistance<Scalar> << < (numQueries + 255) / 256, 256 >> > (X, dev_queries, numQueries);
+    thrust::sort(queries_ptr, queries_ptr + numQueries, []__host__ __device__(const Query & a, const Query & b) {
+        if (a.d == b.d) return a.dType < b.dType;
+        return a.d < b.d;
+    });
+    remove(dev_queries, numQueries, [dhat]__host__ __device__(const Query & q) { return q.d > dhat; });
 }
 
 template class CollisionDetection<float>;

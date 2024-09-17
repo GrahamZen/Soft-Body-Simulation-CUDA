@@ -8,7 +8,7 @@ class LinearSolver;
 
 class IPCSolver : public FEMSolver<double> {
 public:
-    IPCSolver(int threadsPerBlock, const SolverData<double>&, double tolerance = 1e-2);
+    IPCSolver(int threadsPerBlock, const SolverData<double>&, double dhat, double tolerance = 1e-2);
     ~IPCSolver();
     virtual void Update(SolverData<double>& solverData, SolverParams<double>& solverParams) override;
     bool EndCondition(double h);

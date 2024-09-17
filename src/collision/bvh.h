@@ -51,16 +51,16 @@ public:
         const indexType* TriFathers, Scalar* tI, glm::vec3* nors, bool ignoreSelfCollision = false);
     Scalar ComputeMinStepSize(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde,
         const indexType* TriFathers, bool ignoreSelfCollision = false);
-    bool BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers);
+    void UpdateQueries(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers, Scalar dhat);
     void Init(int numTris, int numVerts, int maxThreads);
     void PrepareRenderData();
     void Draw(SurfaceShader*);
     size_t GetNumQueries() const {
         return numQueries;
-    } 
+    }
     size_t GetMaxNumQueries() const {
         return maxNumQueries;
-    } 
+    }
     Query* GetQueries() const {
         return dev_queries;
     }
@@ -68,6 +68,7 @@ public:
     int GetBuildType();
 private:
     SingleQueryDisplay& GetSQDisplay(int i, const glm::tvec3<Scalar>* Xs, Query* guiQuery);
+    bool BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers);
     bool BroadPhaseCCD(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers);
     void NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, Scalar*& tI, glm::vec3*& nors);
     Scalar NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde);

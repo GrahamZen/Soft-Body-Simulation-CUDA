@@ -22,7 +22,7 @@ template __global__ void GetDistanceType<float>(const glm::tvec3<float>* Xs, Que
 template __global__ void GetDistanceType<double>(const glm::tvec3<double>* Xs, Query* queries, int numQueries);
 
 template <typename Scalar>
-__global__ void ComputeDistance(const glm::tvec3<Scalar>* Xs, Query* queries, int numQueries, Scalar dhat) {
+__global__ void ComputeDistance(const glm::tvec3<Scalar>* Xs, Query* queries, int numQueries) {
     int qIdx = blockIdx.x * blockDim.x + threadIdx.x;
     if (qIdx >= numQueries) return;
     Query& q = queries[qIdx];
@@ -35,8 +35,8 @@ __global__ void ComputeDistance(const glm::tvec3<Scalar>* Xs, Query* queries, in
     }
 }
 
-template __global__ void ComputeDistance<float>(const glm::tvec3<float>* Xs, Query* queries, int numQueries, float dhat);
-template __global__ void ComputeDistance<double>(const glm::tvec3<double>* Xs, Query* queries, int numQueries, double dhat);
+template __global__ void ComputeDistance<float>(const glm::tvec3<float>* Xs, Query* queries, int numQueries);
+template __global__ void ComputeDistance<double>(const glm::tvec3<double>* Xs, Query* queries, int numQueries);
 
 /// @brief Solve the least square problem: min ||A * x - b||^2
 /// @note A = [t1 - t0, glm::cross(t1 - t0, normal)], b = p - t0
