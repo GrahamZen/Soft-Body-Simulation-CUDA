@@ -1,6 +1,7 @@
 #include <IPC/ipc.h>
 #include <collision/bvh.h>
 #include <linear/choleskyImmed.h>
+#include <utilities.cuh>
 #include <thrust/sort.h>
 #include <thrust/transform_reduce.h>
 #include <thrust/device_ptr.h>

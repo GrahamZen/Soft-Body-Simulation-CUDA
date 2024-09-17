@@ -64,7 +64,7 @@ namespace ipc {
     /// @param normal The normal of the plane.
     /// @return The hessian of the distance wrt p.
     template<typename Scalar>
-    Matrix3<Scalar> point_plane_distance_hessian(
+    __host__ __device__ Matrix3<Scalar> point_plane_distance_hessian(
         const glm::tvec3<Scalar>& p,
         const glm::tvec3<Scalar>& origin,
         const glm::tvec3<Scalar>& normal);
@@ -77,7 +77,7 @@ namespace ipc {
     /// @param t2 The third vertex of the triangle.
     /// @return The hessian of the distance wrt p, t0, t1, and t2.
     template<typename Scalar>
-    Matrix12<Scalar> point_plane_distance_hessian(
+    __host__ __device__ Matrix12<Scalar> point_plane_distance_hessian(
         const glm::tvec3<Scalar>& p,
         const glm::tvec3<Scalar>& t0,
         const glm::tvec3<Scalar>& t1,
