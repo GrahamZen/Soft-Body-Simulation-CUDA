@@ -172,7 +172,7 @@ void CollisionDetection<Scalar>::Draw(SurfaceShader* flatShaderProgram)
 template<typename Scalar>
 SingleQueryDisplay& CollisionDetection<Scalar>::GetSQDisplay(int i, const glm::tvec3<Scalar>* X, Query* guiQuery)
 {
-    if (numQueries == 0) {
+    if (numQueries == 0 || i >= numQueries || i < 0) {
         mSqDisplay.SetCount(0);
         return mSqDisplay;
     }
