@@ -14,7 +14,7 @@ namespace Barrier {
     }
 
     template <typename Scalar>
-    __forceinline__ __host__ __device__ Scalar barrierSquareFuncDerivate(Scalar d_sqr, Scalar dhat, Scalar kappa) {
+    __forceinline__ __host__ __device__ Scalar barrierSquareFuncDerivative(Scalar d_sqr, Scalar dhat, Scalar kappa) {
         Scalar dhat_sqr = dhat * dhat;
         Scalar s = d_sqr / dhat_sqr;
         return 0.5 * dhat * (kappa / 8 * (log(s) / dhat_sqr + (s - 1) / d_sqr));
@@ -42,7 +42,7 @@ namespace Barrier {
         else if (q.type == QueryType::VF) {
             localGrad = ipc::point_triangle_distance_gradient(x0, x1, x2, x3, q.dType);
         }
-        localGrad = coef * barrierSquareFuncDerivate((Scalar)q.d, dhat, kappa) * localGrad;
+        localGrad = coef * barrierSquareFuncDerivative((Scalar)q.d, dhat, kappa) * localGrad;
         atomicAdd(&grad[q.v0 * 3 + 0], localGrad[0]);
         atomicAdd(&grad[q.v0 * 3 + 1], localGrad[1]);
         atomicAdd(&grad[q.v0 * 3 + 2], localGrad[2]);

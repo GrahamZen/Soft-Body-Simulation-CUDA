@@ -13,7 +13,7 @@ __forceinline__ __host__ __device__ Scalar barrierSquareFunc(Scalar d_sqr, Scala
 }
 
 template <typename Scalar>
-__forceinline__ __host__ __device__ Scalar barrierSquareFuncDerivate(Scalar d_sqr, Scalar dhat, Scalar kappa) {
+__forceinline__ __host__ __device__ Scalar barrierSquareFuncDerivative(Scalar d_sqr, Scalar dhat, Scalar kappa) {
     Scalar dhat_sqr = dhat * dhat;
     Scalar s = d_sqr / dhat_sqr;
     return 0.5 * dhat * (kappa / 8 * (log(s) / dhat_sqr + (s - 1) / d_sqr));
@@ -146,8 +146,7 @@ TEST_CASE("distance", "[DISTANCE]") {
                 q.dType = point_triangle_distance_type(x0, x1, x2, x3);
             q.d = ipc::point_triangle_distance(x0, x1, x2, x3, q.dType);
             Vector12<double>local_grad = ipc::point_triangle_distance_gradient<double>(x0, x1, x2, x3, q.dType);
-            double der = barrierSquareFuncDerivate((double)q.d, dhat, kappa);
-            grad = der * local_grad;
+            grad = barrierSquareFuncDerivative((double)q.d, dhat, kappa) * local_grad;
             hess = ipc::point_triangle_distance_hessian<double>(x0, x1, x2, x3, q.dType);
             hess = barrierSquareFuncHess(double(q.d), dhat, kappa, local_grad, hess);
             Eigen::Matrix<double, 12, 1, Eigen::ColMajor, 12, 1> x;
@@ -165,7 +164,7 @@ TEST_CASE("distance", "[DISTANCE]") {
                 }
             , fgrad);
 
-            double bgrad1 = barrierSquareFuncDerivate((double)q.d, dhat, kappa);
+            double bgrad1 = barrierSquareFuncDerivative((double)q.d, dhat, kappa);
             CHECK(fd::compare_gradient(eig_grad, fgrad));
             // *******************************************************************************
             // Compare the hessian with finite differences
