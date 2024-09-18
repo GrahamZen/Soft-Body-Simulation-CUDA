@@ -119,58 +119,6 @@ __global__ void storeTi(int numQueries, const Query* queries, Scalar* tI, glm::v
     }
 }
 
-__global__ void computeNewVel(int numQueries, const glm::vec3* Xs, const glm::vec3* XTildes, Query* queries, glm::vec3* Vs)
-{
-    int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (index < numQueries)
-    {
-        Query& q = queries[index];
-
-        if (q.type == QueryType::EE)
-        {
-            if (q.toi < 1.0f)
-            {
-                float distance1 = glm::length(XTildes[q.v0] - Xs[q.v0]) * (1.0f - q.toi) + 0.001f;
-                float distance2 = glm::length(XTildes[q.v1] - Xs[q.v1]) * (1.0f - q.toi) + 0.001f;
-                glm::vec3 vel1 = 1.0f / distance1 * q.normal;
-                glm::vec3 vel2 = 1.0f / distance2 * q.normal;
-
-                atomicAdd(&Vs[q.v0][0], vel1[0]);
-                atomicAdd(&Vs[q.v0][1], vel1[1]);
-                atomicAdd(&Vs[q.v0][2], vel1[2]);
-
-                atomicAdd(&Vs[q.v1][0], vel2[0]);
-                atomicAdd(&Vs[q.v1][1], vel2[1]);
-                atomicAdd(&Vs[q.v1][2], vel2[2]);
-            }
-        }
-        if (q.type == QueryType::VF)
-        {
-            if (q.toi < 1.0f)
-            {
-                float distance = glm::length(XTildes[q.v0] - Xs[q.v0]) * (1.0f - q.toi) + 0.001f;
-                glm::vec3 vel = 1.0f / distance * q.normal;
-
-                atomicAdd(&Vs[q.v0][0], vel[0]);
-                atomicAdd(&Vs[q.v0][1], vel[1]);
-                atomicAdd(&Vs[q.v0][2], vel[2]);
-
-                atomicAdd(&Vs[q.v1][0], -vel[0]);
-                atomicAdd(&Vs[q.v1][1], -vel[1]);
-                atomicAdd(&Vs[q.v1][2], -vel[2]);
-
-                atomicAdd(&Vs[q.v2][0], -vel[0]);
-                atomicAdd(&Vs[q.v2][1], -vel[1]);
-                atomicAdd(&Vs[q.v2][2], -vel[2]);
-
-                atomicAdd(&Vs[q.v3][0], -vel[0]);
-                atomicAdd(&Vs[q.v3][1], -vel[1]);
-                atomicAdd(&Vs[q.v3][2], -vel[2]);
-            }
-        }
-    }
-}
-
 template<typename Scalar>
 void CollisionDetection<Scalar>::NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, Scalar*& tI, glm::vec3*& nors)
 {
@@ -192,7 +140,6 @@ struct getToi {
         return q.toi;
     }
 };
-#include <utilities.cuh>
 template<typename Scalar>
 Scalar CollisionDetection<Scalar>::NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde)
 {
@@ -203,9 +150,6 @@ Scalar CollisionDetection<Scalar>::NarrowPhase(const glm::tvec3<Scalar>* X, cons
     thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());
     auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
     numQueries = new_end - dev_queriesPtr;
-    inspectGLM(X, 12, "199");
-    inspectGLM(XTilde, 12, "200");
-    inspectQuerys(dev_queries, numQueries);
     return thrust::transform_reduce(dev_queriesPtr, dev_queriesPtr + numQueries, getToi(), 1.0f, thrust::minimum<Scalar>());
 }
 
