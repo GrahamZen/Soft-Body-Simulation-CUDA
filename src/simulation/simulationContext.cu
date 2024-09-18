@@ -34,6 +34,9 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     if (json.contains("tolerance")) {
         mSolverParams.tol = json["tolerance"].get<float>();
     }
+    if (json.contains("maxIterations")) {
+        mSolverParams.maxIterations = json["maxIterations"].get<int>();
+    }
     if (json.contains("dhat")) {
         mSolverParams.dhat = json["dhat"].get<float>();
     }

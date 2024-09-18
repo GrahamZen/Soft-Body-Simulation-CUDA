@@ -16,7 +16,7 @@ public:
     virtual void Update(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
 protected:
     virtual void SolverPrepare(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
-    virtual void SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
+    virtual bool SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
 private:
     LinearSolver<float>* ls = nullptr;
     bool useEigen = false;

@@ -27,7 +27,7 @@ void ExplicitSolver::SolverPrepare(SolverData<float>& solverData, const SolverPa
 }
 
 
-void ExplicitSolver::SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams)
+bool ExplicitSolver::SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
     glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.softBodyAttr.mass, 0.0f };
     thrust::device_ptr<glm::vec3> dev_ptr(solverData.Force);
@@ -35,6 +35,7 @@ void ExplicitSolver::SolverStep(SolverData<float>& solverData, const SolverParam
     Laplacian_Smoothing(solverData, 0.5);
     ExplicitUtil::ComputeForcesSVD << <(solverData.numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.Force, solverData.XTilde, solverData.Tet, solverData.numTets, solverData.DmInv, solverParams.softBodyAttr.mu, solverParams.softBodyAttr.lambda);
     ExplicitUtil::EulerMethod << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.XTilde, solverData.V, solverData.Force, solverData.numVerts, solverParams.softBodyAttr.mass, solverParams.dt);
+    return true;
 }
 
 

@@ -119,8 +119,15 @@ void RenderImGui()
     if (ImGui::DragFloat("tolerance", &tol, 0.0001f, 0.0001f, 0.05f, "%.4f"))
         imguiData->solverParams->tol = tol;
     float kappa = imguiData->solverParams->kappa;
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
     if (ImGui::DragFloat("kappa", &kappa, 1000.f, 1e2, 1e5, "%.4f"))
         imguiData->solverParams->kappa = kappa;
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    int maxIterations = imguiData->solverParams->maxIterations;
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    if (ImGui::DragInt("max iteration", &maxIterations, 1, 1, 1000))
+        imguiData->solverParams->maxIterations = maxIterations;
     ImGui::SetNextItemWidth(availWidth * 0.25f);
     bool cameraPhiChanged = ImGui::DragFloat("Camera Phi", &imguiData->phi, 0.1f, -PI, PI, "%.4f");
     ImGui::SameLine();

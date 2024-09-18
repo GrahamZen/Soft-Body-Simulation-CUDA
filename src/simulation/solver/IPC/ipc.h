@@ -11,13 +11,15 @@ public:
     IPCSolver(int threadsPerBlock, const SolverData<double>&);
     ~IPCSolver();
     virtual void Update(SolverData<double>& solverData, const SolverParams<double>& solverParams) override;
+    virtual void Reset() override;
     bool EndCondition(double h, double tolerance);
 protected:
     virtual void SolverPrepare(SolverData<double>& solverData, const SolverParams<double>& solverParams) override;
-    virtual void SolverStep(SolverData<double>& solverData, const SolverParams<double>& solverParams) override;
+    virtual bool SolverStep(SolverData<double>& solverData, const SolverParams<double>& solverParams) override;
     void SearchDirection(SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2);
     void DOFElimination(SolverData<double>& solverData);
 private:
+    bool failed = false;
     int numVerts = 0;
     // Hessian(sparse)
     double* p = nullptr; // search direction

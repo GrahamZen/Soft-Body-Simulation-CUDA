@@ -14,9 +14,10 @@ public:
     virtual ~Solver();
 
     virtual void Update(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
+    virtual void Reset();
 protected:
     virtual void SolverPrepare(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
-    virtual void SolverStep(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
+    virtual bool SolverStep(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
     int threadsPerBlock;
 
     bool solverReady = false;
@@ -29,4 +30,10 @@ Solver<Scalar>::Solver(int threadsPerBlock) : threadsPerBlock(threadsPerBlock)
 
 template<typename Scalar>
 Solver<Scalar>::~Solver() {
+}
+
+template<typename Scalar>
+inline void Solver<Scalar>::Reset()
+{
+    solverReady = false;
 }

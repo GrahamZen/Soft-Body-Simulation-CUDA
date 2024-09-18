@@ -117,7 +117,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
 }
 
 
-void PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams)
+bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
     float dt = solverParams.dt;
     float const dtInv = 1.0f / dt;
@@ -152,6 +152,7 @@ void PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
     }
 
     PdUtil::updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilde, solverData.V, solverData.numVerts);
+    return true;
 }
 
 void PdSolver::Update(SolverData<float>& solverData, const SolverParams<float>& solverParams)

@@ -65,6 +65,7 @@ void SimulationCUDAContext::Reset()
     cudaMemcpy(mSolverData.X, mSolverData.X0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(mSolverData.XTilde, mSolverData.X0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
     cudaMemset(mSolverData.V, 0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts);
+    mSolver->Reset();
 }
 
 void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* flatShaderProgram)

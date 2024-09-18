@@ -31,6 +31,12 @@ void IPCSolver::Update(SolverData<double>& solverData, const SolverParams<double
     }
 }
 
+void IPCSolver::Reset()
+{
+    Solver::Reset();
+    failed = false;
+}
+
 void IPCSolver::SolverPrepare(SolverData<double>& solverData, const SolverParams<double>& solverParams)
 {
 }
@@ -96,8 +102,9 @@ namespace IPC {
     }
 }
 
-void IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<double>& solverParams)
+bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<double>& solverParams)
 {
+    if (failed) return false;
     double h = solverParams.dt;
     double h2 = h * h;
     int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
@@ -108,7 +115,14 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
     E_last = energy.Val(solverData.X, solverData, solverParams, h2);
 
     SearchDirection(solverData, solverParams, h2);
+    int maxIter = solverParams.maxIterations;
+    int iter = 0;
     while (!EndCondition(h, solverParams.tol)) {
+        if (++iter > maxIter) {
+            failed = true;
+            std::cout << "IPC Solver did not converge" << std::endl;
+            return false;
+        }
         IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, 1, solverData.numVerts);
         double alpha = energy.InitStepSize(solverData, solverParams, p, xTmp);
         while (true) {
@@ -128,6 +142,7 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
         SearchDirection(solverData, solverParams, h2);
     }
     IPC::updateVel << <blocks, threadsPerBlock >> > (solverData.X, x_n, solverData.V, 1.0 / h, solverData.numVerts);
+    return true;
 }
 
 void IPCSolver::SearchDirection(SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2)

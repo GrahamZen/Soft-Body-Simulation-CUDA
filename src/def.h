@@ -53,6 +53,7 @@ template<typename Scalar>
 struct SolverParams {
     SoftBodyAttribute softBodyAttr;
     int numIterations = 1;
+    int maxIterations = 100;
     Scalar dt = 0.001f;
     Scalar damp = 0.999f;
     Scalar muN = 0.5f;

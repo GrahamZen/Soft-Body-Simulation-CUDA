@@ -11,5 +11,5 @@ public:
     virtual void Update(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
 protected:
     virtual void SolverPrepare(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
-    virtual void SolverStep(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
+    virtual bool SolverStep(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
 };
