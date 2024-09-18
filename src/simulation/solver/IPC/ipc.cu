@@ -5,10 +5,12 @@
 #include <thrust/sort.h>
 #include <thrust/transform_reduce.h>
 #include <thrust/device_ptr.h>
+#include <fstream>
 
-IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData, double dhat, double kappa, double tol)
-    : numVerts(solverData.numVerts), tolerance(tol), FEMSolver(threadsPerBlock, solverData),
-    energy(solverData, dhat, kappa), linearSolver(new CholeskySpImmedSolver<double>(solverData.numVerts * 3))
+
+IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData)
+    : numVerts(solverData.numVerts), FEMSolver(threadsPerBlock, solverData),
+    energy(solverData), linearSolver(new CholeskySpImmedSolver<double>(solverData.numVerts * 3))
 {
     cudaMalloc((void**)&p, sizeof(double) * solverData.numVerts * 3);
     cudaMalloc((void**)&xTmp, sizeof(glm::dvec3) * solverData.numVerts);
@@ -22,14 +24,14 @@ IPCSolver::~IPCSolver()
     cudaFree(x_n);
 }
 
-void IPCSolver::Update(SolverData<double>& solverData, SolverParams<double>& solverParams)
+void IPCSolver::Update(SolverData<double>& solverData, const SolverParams<double>& solverParams)
 {
     SolverStep(solverData, solverParams);
     if (solverParams.handleCollision) {
     }
 }
 
-void IPCSolver::SolverPrepare(SolverData<double>& solverData, SolverParams<double>& solverParams)
+void IPCSolver::SolverPrepare(SolverData<double>& solverData, const SolverParams<double>& solverParams)
 {
 }
 namespace IPC {
@@ -94,7 +96,7 @@ namespace IPC {
     }
 }
 
-void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>& solverParams)
+void IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<double>& solverParams)
 {
     double h = solverParams.dt;
     double h2 = h * h;
@@ -102,17 +104,17 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
     cudaMemcpy(x_n, solverData.X, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
     IPC::computeXTilde << <blocks, threadsPerBlock >> > (solverData.XTilde, solverData.X, solverData.V, h, solverData.numVerts);
     double E_last = 0;
-    solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers, energy.dhat);
-    E_last = energy.Val(solverData.X, solverData, h2);
+    solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers, solverParams.dhat);
+    E_last = energy.Val(solverData.X, solverData, solverParams, h2);
 
-    SearchDirection(solverData, h2);
-    while (!EndCondition(h)) {
+    SearchDirection(solverData, solverParams, h2);
+    while (!EndCondition(h, solverParams.tol)) {
         IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, 1, solverData.numVerts);
-        double alpha = energy.InitStepSize(solverData, p, xTmp);
+        double alpha = energy.InitStepSize(solverData, solverParams, p, xTmp);
         while (true) {
             IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, alpha, solverData.numVerts);
-            solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers, energy.dhat);
-            double E = energy.Val(xTmp, solverData, h2);
+            solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers, solverParams.dhat);
+            double E = energy.Val(xTmp, solverData, solverParams, h2);
             if (E > E_last) {
                 alpha /= 2;
             }
@@ -121,17 +123,17 @@ void IPCSolver::SolverStep(SolverData<double>& solverData, SolverParams<double>&
             }
         }
         cudaMemcpy(solverData.X, xTmp, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
-        solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers, energy.dhat);
-        E_last = energy.Val(solverData.X, solverData, h2);
-        SearchDirection(solverData, h2);
+        solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers, solverParams.dhat);
+        E_last = energy.Val(solverData.X, solverData, solverParams, h2);
+        SearchDirection(solverData, solverParams, h2);
     }
     IPC::updateVel << <blocks, threadsPerBlock >> > (solverData.X, x_n, solverData.V, 1.0 / h, solverData.numVerts);
 }
 
-void IPCSolver::SearchDirection(SolverData<double>& solverData, double h2)
+void IPCSolver::SearchDirection(SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2)
 {
-    energy.Gradient(solverData, h2);
-    energy.Hessian(solverData, h2);
+    energy.Gradient(solverData, solverParams, h2);
+    energy.Hessian(solverData, solverParams, h2);
     DOFElimination(solverData);
     linearSolver->Solve(solverData.numVerts * 3, energy.gradient, p, energy.hessianVal, energy.NNZ(solverData), energy.hessianRowIdx, energy.hessianColIdx);
 }
@@ -144,7 +146,7 @@ void IPCSolver::DOFElimination(SolverData<double>& solverData)
     IPC::DOFEliminationGradKernel << <blocks, threadsPerBlock >> > (energy.gradient, numVerts, solverData.DBC, solverData.numDBC);
 }
 
-bool IPCSolver::EndCondition(double h)
+bool IPCSolver::EndCondition(double h, double tolerance)
 {
     thrust::device_ptr<double> dev_ptr(p);
     double inf_norm = thrust::transform_reduce(dev_ptr, dev_ptr + numVerts * 3,

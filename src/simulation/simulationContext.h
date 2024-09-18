@@ -21,11 +21,10 @@ public:
     void Reset();
     const std::vector<const char*>& GetNamesSoftBodies() const { return namesSoftBodies; }
     void UpdateSingleSBAttr(int index, SoftBodyAttr* pSoftBodyAttr);
-    void SetDt(float dt) { mSolverParams.dt = dt; }
     void SetBVHBuildType(int);
     void SetGlobalSolver(bool useEigen);
     void Draw(SurfaceShader*, SurfaceShader*);
-    const SolverParams<solverPrecision>& GetSolverParams() const;
+    SolverParams<solverPrecision>* GetSolverParams();
     int GetTetCnt() const;
     int GetVertCnt() const;
     int GetThreadsPerBlock() const { return threadsPerBlock; }

@@ -28,6 +28,15 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     if (json.contains("dt")) {
         mSolverParams.dt = json["dt"].get<float>();
     }
+    if (json.contains("kappa")) {
+        mSolverParams.kappa = json["kappa"].get<float>();
+    }
+    if (json.contains("tolerance")) {
+        mSolverParams.tol = json["tolerance"].get<float>();
+    }
+    if (json.contains("dhat")) {
+        mSolverParams.dhat = json["dhat"].get<float>();
+    }
     if (json.contains("gravity")) {
         mSolverParams.gravity = json["gravity"].get<float>();
     }
@@ -164,7 +173,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(solverPrecision));
     }
     mSolverData.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
-    mSolver = new IPCSolver{ threadsPerBlock, mSolverData, 5e-2, 1e3 };
+    mSolver = new IPCSolver{ threadsPerBlock, mSolverData };
 }
 
 SimulationCUDAContext::~SimulationCUDAContext()

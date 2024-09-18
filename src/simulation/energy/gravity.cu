@@ -18,7 +18,7 @@ inline int GravityEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) cons
 }
 
 template<typename Scalar>
-inline Scalar GravityEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData) const
+inline Scalar GravityEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) const
 {
     Scalar sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
@@ -32,7 +32,7 @@ inline Scalar GravityEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const Sol
 }
 
 template<typename Scalar>
-inline void GravityEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, Scalar coef) const
+inline void GravityEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const
 {
     int blockSize = 256;
     int numBlocks = (solverData.numVerts + blockSize - 1) / blockSize;

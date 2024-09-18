@@ -7,6 +7,8 @@ class Camera;
 class SimulationCUDAContext;
 class SurfaceShader;
 
+using solverPrecision = double;
+
 struct SoftBodyAttr
 {
     int currSoftBodyId = -1;
@@ -27,7 +29,7 @@ class GuiDataContainer
 public:
     GuiDataContainer();
     ~GuiDataContainer();
-    float Dt = 0.001;
+    SolverParams<solverPrecision>* solverParams = nullptr;
     float PointSize = 5;
     float LineWidth = 1;
     bool WireFrame = false;

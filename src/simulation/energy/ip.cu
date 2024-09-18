@@ -2,8 +2,8 @@
 #include <energy/corotated.h>
 #include <collision/bvh.h>
 
-IPEnergy::IPEnergy(const SolverData<double>& solverData, double dhat, double kappa) : dhat(dhat), inertia(solverData, nnz, solverData.numVerts, solverData.mass),
-elastic(new CorotatedEnergy<double>(solverData, nnz)), implicitBarrier(solverData, nnz, dhat), barrier(solverData, nnz, dhat, kappa)
+IPEnergy::IPEnergy(const SolverData<double>& solverData) :inertia(solverData, nnz, solverData.numVerts, solverData.mass),
+elastic(new CorotatedEnergy<double>(solverData, nnz)), implicitBarrier(solverData, nnz), barrier(solverData, nnz)
 {
     cudaMalloc((void**)&gradient, sizeof(double) * solverData.numVerts * 3);
     cudaMalloc((void**)&hessianVal, sizeof(double) * nnz);
@@ -23,32 +23,32 @@ IPEnergy::~IPEnergy()
     cudaFree(hessianColIdx);
 }
 
-double IPEnergy::Val(const glm::dvec3* Xs, const SolverData<double>& solverData, double h2) const
+double IPEnergy::Val(const glm::dvec3* Xs, const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const
 {
-    return inertia.Val(Xs, solverData) + h2 * (gravity.Val(Xs, solverData) + elastic->Val(Xs, solverData) + implicitBarrier.Val(Xs, solverData) + barrier.Val(Xs, solverData));
+    return inertia.Val(Xs, solverData, solverParams) + h2 * (gravity.Val(Xs, solverData, solverParams) + elastic->Val(Xs, solverData, solverParams) + implicitBarrier.Val(Xs, solverData, solverParams) + barrier.Val(Xs, solverData, solverParams));
 }
 
-void IPEnergy::Gradient(const SolverData<double>& solverData, double h2) const
+void IPEnergy::Gradient(const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const
 {
     cudaMemset(gradient, 0, sizeof(double) * solverData.numVerts * 3);
-    inertia.Gradient(gradient, solverData, 1);
-    gravity.Gradient(gradient, solverData, h2);
-    elastic->Gradient(gradient, solverData, h2);
-    implicitBarrier.Gradient(gradient, solverData, h2);
-    barrier.Gradient(gradient, solverData, h2);
+    inertia.Gradient(gradient, solverData, solverParams, 1);
+    gravity.Gradient(gradient, solverData, solverParams, h2);
+    elastic->Gradient(gradient, solverData, solverParams, h2);
+    implicitBarrier.Gradient(gradient, solverData, solverParams, h2);
+    barrier.Gradient(gradient, solverData, solverParams, h2);
 }
 
-void IPEnergy::Hessian(const SolverData<double>& solverData, double h2) const
+void IPEnergy::Hessian(const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const
 {
     cudaMemset(hessianVal, 0, sizeof(double) * NNZ(solverData));
-    inertia.Hessian(solverData, 1);
-    gravity.Hessian(solverData, h2);
-    elastic->Hessian(solverData, h2);
-    implicitBarrier.Hessian(solverData, h2);
-    barrier.Hessian(solverData, h2);
+    inertia.Hessian(solverData, solverParams, 1);
+    gravity.Hessian(solverData, solverParams, h2);
+    elastic->Hessian(solverData, solverParams, h2);
+    implicitBarrier.Hessian(solverData, solverParams, h2);
+    barrier.Hessian(solverData, solverParams, h2);
 }
 
-double IPEnergy::InitStepSize(SolverData<double>& solverData, double* p, glm::tvec3<double>* XTmp) const
+double IPEnergy::InitStepSize(SolverData<double>& solverData, const SolverParams<double>& solverParams, double* p, glm::tvec3<double>* XTmp) const
 {
     return std::min(1.0, std::min(implicitBarrier.InitStepSize(solverData, p), barrier.InitStepSize(solverData, p, XTmp)));
 }

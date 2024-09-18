@@ -151,20 +151,20 @@ int ImplicitBarrierEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) con
 }
 
 template <typename Scalar>
-ImplicitBarrierEnergy<Scalar>::ImplicitBarrierEnergy(const SolverData<Scalar>& solverData, int& hessianIdxOffset, Scalar dhat) : Energy<Scalar>(hessianIdxOffset), dhat(dhat)
+ImplicitBarrierEnergy<Scalar>::ImplicitBarrierEnergy(const SolverData<Scalar>& solverData, int& hessianIdxOffset) : Energy<Scalar>(hessianIdxOffset)
 {
     hessianIdxOffset += NNZ(solverData);
 }
 
 template <typename Scalar>
-Scalar ImplicitBarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData) const {
+Scalar ImplicitBarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) const {
     const Plane* planes = solverData.pFixedBodies->dev_planes;
     const Cylinder* cylinders = solverData.pFixedBodies->dev_cylinders;
     const Sphere* spheres = solverData.pFixedBodies->dev_spheres;
     int numSpheres = solverData.pFixedBodies->numSpheres;
     int numCylinders = solverData.pFixedBodies->numCylinders;
     int numPlanes = solverData.pFixedBodies->numPlanes;
-    Scalar dhat = this->dhat;
+    Scalar dhat = solverParams.dhat;
     Scalar sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(solverData.numVerts),
@@ -215,21 +215,21 @@ Scalar ImplicitBarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const So
 }
 
 template<typename Scalar>
-void ImplicitBarrierEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, Scalar coef) const
+void ImplicitBarrierEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const
 {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     ImplicitBarrier::gradientKern << <numBlocks, threadsPerBlock >> > (grad, solverData.X, solverData.numVerts, solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes,
-        solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, solverData.pFixedBodies->dev_spheres, solverData.pFixedBodies->numSpheres, dhat, solverData.contact_area, coef);
+        solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, solverData.pFixedBodies->dev_spheres, solverData.pFixedBodies->numSpheres, solverParams.dhat, solverData.contact_area, coef);
 }
 
 template <typename Scalar>
-void ImplicitBarrierEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, Scalar coef) const
+void ImplicitBarrierEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const
 {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     ImplicitBarrier::hessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.numVerts,
-        solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes, solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, solverData.pFixedBodies->dev_spheres, solverData.pFixedBodies->numSpheres, dhat, solverData.contact_area, coef);
+        solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes, solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, solverData.pFixedBodies->dev_spheres, solverData.pFixedBodies->numSpheres, solverParams.dhat, solverData.contact_area, coef);
 }
 
 template<typename Scalar>

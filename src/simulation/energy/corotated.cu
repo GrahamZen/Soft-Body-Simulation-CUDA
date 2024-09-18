@@ -114,7 +114,7 @@ inline int CorotatedEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) co
 }
 
 template <typename Scalar>
-Scalar CorotatedEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData) const {
+Scalar CorotatedEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) const {
     Scalar sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(solverData.numTets),
@@ -136,7 +136,7 @@ Scalar CorotatedEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverDa
 }
 
 template <typename Scalar>
-void CorotatedEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, Scalar coef) const {
+void CorotatedEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     Corotated::GradientKern << <numBlocks, threadsPerBlock >> > (grad, solverData.X, solverData.Tet, solverData.DmInv,
@@ -144,7 +144,7 @@ void CorotatedEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& s
 }
 
 template <typename Scalar>
-void CorotatedEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, Scalar coef) const {
+void CorotatedEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     Corotated::HessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx,

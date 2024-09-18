@@ -83,7 +83,7 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
         mSolverData.pCollisionDetection->Draw(flatShaderProgram);
 }
 
-const SolverParams<solverPrecision>& SimulationCUDAContext::GetSolverParams() const
+SolverParams<solverPrecision>* SimulationCUDAContext::GetSolverParams()
 {
-    return mSolverParams;
+    return &mSolverParams;
 }

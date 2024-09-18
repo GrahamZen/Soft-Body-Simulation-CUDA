@@ -39,3 +39,28 @@ struct SolverData {
     Query* queries() const;
     CollisionDetection<Scalar>* pCollisionDetection = nullptr;
 };
+
+struct SoftBodyAttribute {
+    float mass = 1.0f;
+    float mu = 20000.0f;
+    float lambda = 5000.0f;
+    indexType* DBC = nullptr;
+    size_t numDBC = 0;
+    bool jump = false;
+};
+
+template<typename Scalar>
+struct SolverParams {
+    SoftBodyAttribute softBodyAttr;
+    int numIterations = 1;
+    Scalar dt = 0.001f;
+    Scalar damp = 0.999f;
+    Scalar muN = 0.5f;
+    Scalar muT = 0.5f;
+    Scalar gravity = 9.8f;
+    // IPC
+    Scalar dhat = 1e-2;
+    Scalar kappa = 1e5;
+    Scalar tol = 1e-2;
+    bool handleCollision = true;
+};

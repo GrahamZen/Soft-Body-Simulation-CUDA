@@ -108,8 +108,19 @@ void RenderImGui()
     imguiData->Pause = ImGui::Button("Pause");
     ImGui::SameLine();
     imguiData->Step = ImGui::Button("Step");
-    bool dtChanged = ImGui::DragFloat("dt", &imguiData->Dt, 0.0001f, 0.0001f, 0.05f, "%.4f");
     float availWidth = ImGui::GetContentRegionAvail().x;
+    float dt = imguiData->solverParams->dt;
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    if (ImGui::DragFloat("dt", &dt, 0.0001f, 0.0001f, 0.05f, "%.4f"))
+        imguiData->solverParams->dt = dt;
+    ImGui::SameLine();
+    float tol = imguiData->solverParams->tol;
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    if (ImGui::DragFloat("tolerance", &tol, 0.0001f, 0.0001f, 0.05f, "%.4f"))
+        imguiData->solverParams->tol = tol;
+    float kappa = imguiData->solverParams->kappa;
+    if (ImGui::DragFloat("kappa", &kappa, 1000.f, 1e2, 1e5, "%.4f"))
+        imguiData->solverParams->kappa = kappa;
     ImGui::SetNextItemWidth(availWidth * 0.25f);
     bool cameraPhiChanged = ImGui::DragFloat("Camera Phi", &imguiData->phi, 0.1f, -PI, PI, "%.4f");
     ImGui::SameLine();
@@ -168,7 +179,7 @@ void RenderImGui()
         context->GetNumQueries());
     ImGui::End();
 
-    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged || contextChanged || globalSolverChanged) {
+    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || contextChanged || globalSolverChanged) {
         context->panelModified = true;
     }
 
