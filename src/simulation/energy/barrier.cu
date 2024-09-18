@@ -149,7 +149,7 @@ void BarrierEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, const 
 template<typename Scalar>
 Scalar BarrierEnergy<Scalar>::InitStepSize(const SolverData<Scalar>& solverData, Scalar* p, glm::tvec3<Scalar>* XTmp) const
 {
-    return 0.99 * solverData.pCollisionDetection->ComputeMinStepSize(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, XTmp, solverData.dev_TriFathers, true);
+    return solverData.pCollisionDetection->ComputeMinStepSize(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, XTmp, solverData.dev_TriFathers, true);
 }
 
 template class BarrierEnergy<float>;

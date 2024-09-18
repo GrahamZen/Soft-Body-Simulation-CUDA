@@ -156,9 +156,14 @@ void utilityCore::inspectHost(const T* host_ptr, int size, const char* str) {
         }
     }
     else {
-        for (int i = 0; i < size; i++) {
-            std::cout << host_ptr[i] << std::endl;
+        for (int i = 0; i < size / 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                if (i * 4 + j >= size) break;
+                std::cout << host_ptr[i * 4 + j] << " ";
+            }
+            std::cout << std::endl;
         }
+        std::cout << std::endl;
     }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
