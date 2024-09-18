@@ -241,7 +241,7 @@ Scalar ImplicitBarrierEnergy<Scalar>::InitStepSize(const SolverData<Scalar>& sol
     int numSpheres = solverData.pFixedBodies->numSpheres;
     int numCylinders = solverData.pFixedBodies->numCylinders;
     int numPlanes = solverData.pFixedBodies->numPlanes;
-    return thrust::transform_reduce(
+    return 0.9 * thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(solverData.numVerts),
         [=]__host__ __device__(indexType vertIdx) {

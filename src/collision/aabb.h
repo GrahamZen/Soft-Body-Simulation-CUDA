@@ -71,11 +71,11 @@ class Query {
 public:
     QueryType type;
     DistanceType dType;
-    float d;
     indexType v0;
     indexType v1;
     indexType v2;
     indexType v3;
+    float d;
     float toi = 0.f;
     glm::vec3 normal = glm::vec3(0.f);
 };
