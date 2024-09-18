@@ -2,14 +2,6 @@
 
 #include <def.h>
 
-/// @brief Closest pair between a point and edge.
-enum class PointEdgeDistanceType {
-    P_E0, ///< The point is closest to edge vertex zero.
-    P_E1, ///< The point is closest to edge vertex one.
-    P_E,  ///< The point is closest to the interior of the edge.
-    AUTO  ///< Automatically determine the closest pair.
-};
-
 /// @brief Closest pair between a point and triangle.
 enum class DistanceType {
     P_T0, ///< The point is closest to triangle vertex zero.
@@ -69,13 +61,13 @@ enum class QueryType {
 
 class Query {
 public:
-    QueryType type;
-    DistanceType dType;
+    QueryType type = QueryType::UNKNOWN;
+    DistanceType dType = DistanceType::AUTO;
     indexType v0;
     indexType v1;
     indexType v2;
     indexType v3;
-    float d;
-    float toi = 0.f;
-    glm::vec3 normal = glm::vec3(0.f);
+    double d;
+    double toi = 0.f;
+    glm::dvec3 normal = glm::dvec3(0.f);
 };

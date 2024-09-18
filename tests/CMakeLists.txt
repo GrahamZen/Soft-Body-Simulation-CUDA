@@ -28,6 +28,7 @@ file(GLOB_RECURSE TEST_DISTANCE_SOURCES "${CMAKE_SOURCE_DIR}/src/simulation/dist
 add_executable(tests
 ${TEST_SOURCES}
 ${TEST_DISTANCE_SOURCES}
+${CMAKE_SOURCE_DIR}/src/collision/intersections.cu
 ${CMAKE_SOURCE_DIR}/src/simulation/solver/linear/cg.cu
 ${CMAKE_SOURCE_DIR}/src/simulation/solver/linear/linear.cu
 )

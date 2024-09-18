@@ -192,7 +192,7 @@ struct getToi {
         return q.toi;
     }
 };
-
+#include <utilities.cuh>
 template<typename Scalar>
 Scalar CollisionDetection<Scalar>::NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde)
 {
@@ -203,6 +203,9 @@ Scalar CollisionDetection<Scalar>::NarrowPhase(const glm::tvec3<Scalar>* X, cons
     thrust::sort(dev_queriesPtr, dev_queriesPtr + numQueries, CompareQuery());
     auto new_end = thrust::unique(dev_queriesPtr, dev_queriesPtr + numQueries, EqualQuery());
     numQueries = new_end - dev_queriesPtr;
+    inspectGLM(X, 12, "199");
+    inspectGLM(XTilde, 12, "200");
+    inspectQuerys(dev_queries, numQueries);
     return thrust::transform_reduce(dev_queriesPtr, dev_queriesPtr + numQueries, getToi(), 1.0f, thrust::minimum<Scalar>());
 }
 

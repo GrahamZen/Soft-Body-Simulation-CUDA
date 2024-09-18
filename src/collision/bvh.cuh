@@ -12,7 +12,7 @@ __device__ AABB<Scalar> computeTriTrajBBoxCCD(const glm::tvec3<Scalar>& v0, cons
     const glm::tvec3<Scalar>& v4, const glm::tvec3<Scalar>& v5);
 
 template<typename Scalar>
-__device__ AABB<Scalar> computeTriTrajBBox(const glm::tvec3<Scalar>& v0, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2);
+__device__ AABB<Scalar> computeTriTrajBBox(const glm::tvec3<Scalar>& v0, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2, Scalar bound);
 
 template<typename Scalar>
 __device__ unsigned int genMortonCode(AABB<Scalar> bbox, glm::tvec3<Scalar> geoMin, glm::tvec3<Scalar> geoMax);

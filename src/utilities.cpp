@@ -209,6 +209,7 @@ void utilityCore::inspectHost(const AABB<Scalar>* aabb, int size) {
 void utilityCore::inspectHost(const Query* query, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size; i++) {
+        std::cout << "Query{";
         if (query[i].type == QueryType::EE)
             std::cout << "QueryType::EE,";
         else if (query[i].type == QueryType::VF)
@@ -219,7 +220,7 @@ void utilityCore::inspectHost(const Query* query, int size) {
 
         std::cout << "DistanceType::" << distanceTypeString[static_cast<int>(query[i].dType)] << ",";
         std::cout << query[i].v0 << "," << query[i].v1 << "," << query[i].v2 << "," << query[i].v3 << "," << query[i].toi << "," << query[i].d << ","
-            << glm::to_string(query[i].normal) << std::endl;
+            << glm::to_string(query[i].normal) << "}," << std::endl;
         }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }

@@ -24,7 +24,7 @@ public:
     void PrepareRenderData();
     const BVHNode<Scalar>* GetBVHNodes() const;
     void BuildBVHTreeCCD(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* tets);
-    void BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, const indexType* tets);
+    void BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, const indexType* tets, Scalar bound);
 private:
     void BuildBBoxes(BuildType buildType);
     BVHNode<Scalar>* dev_BVHNodes = nullptr;
@@ -68,7 +68,7 @@ public:
     int GetBuildType();
 private:
     SingleQueryDisplay& GetSQDisplay(int i, const glm::tvec3<Scalar>* Xs, Query* guiQuery);
-    bool BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers);
+    bool BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers, Scalar bound);
     bool BroadPhaseCCD(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers);
     void NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, Scalar*& tI, glm::vec3*& nors);
     Scalar NarrowPhase(const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde);
