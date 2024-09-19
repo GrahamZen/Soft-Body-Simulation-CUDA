@@ -26,8 +26,10 @@ IPCSolver::~IPCSolver()
 
 void IPCSolver::Update(SolverData<double>& solverData, const SolverParams<double>& solverParams)
 {
-    SolverStep(solverData, solverParams);
-    if (solverParams.handleCollision) {
+    if (failed) return;
+    if (!SolverStep(solverData, solverParams)) {
+        std::cout << "IPC Solver did not converge" << std::endl;
+        failed = true;
     }
 }
 
@@ -104,7 +106,6 @@ namespace IPC {
 
 bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<double>& solverParams)
 {
-    if (failed) return false;
     double h = solverParams.dt;
     double h2 = h * h;
     int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
@@ -119,8 +120,6 @@ bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
     int iter = 0;
     while (!EndCondition(h, solverParams.tol)) {
         if (++iter > maxIter) {
-            failed = true;
-            std::cout << "IPC Solver did not converge" << std::endl;
             return false;
         }
         IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, 1, solverData.numVerts);
