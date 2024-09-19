@@ -435,6 +435,8 @@ void Context::Update() {
     if (!pause) {
         iteration++;
         mcrpSimContext->Update();
+        if (iteration == guiData->PauseIter)
+            pause = true;
     }
     else if (guiData->Step) {
         iteration++;

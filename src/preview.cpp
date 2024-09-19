@@ -109,6 +109,11 @@ void RenderImGui()
     ImGui::SameLine();
     imguiData->Step = ImGui::Button("Step");
     float availWidth = ImGui::GetContentRegionAvail().x;
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    int pauseIter = imguiData->PauseIter;
+    ImGui::SameLine();
+    if (ImGui::DragInt("pause iter", &pauseIter, 1, 1, std::numeric_limits<int>().max()))
+        imguiData->PauseIter = pauseIter;
     float dt = imguiData->solverParams->dt;
     ImGui::SetNextItemWidth(availWidth * 0.25f);
     if (ImGui::DragFloat("dt", &dt, 0.0001f, 0.0001f, 0.05f, "%.4f"))

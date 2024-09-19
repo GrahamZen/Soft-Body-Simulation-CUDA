@@ -30,6 +30,7 @@ public:
     GuiDataContainer();
     ~GuiDataContainer();
     SolverParams<solverPrecision>* solverParams = nullptr;
+    size_t PauseIter = (size_t)-1;
     float PointSize = 5;
     float LineWidth = 1;
     bool WireFrame = false;
@@ -97,7 +98,7 @@ private:
     glm::vec3 ogLookAt; // for recentering the camera
     SurfaceShader* mpProgLambert;
     SurfaceShader* mpProgFlat;
-    int iteration = 0;
+    size_t iteration = 0;
     bool pause = false;
     bool logEnabled = false;
     std::vector<const char*> namesContexts;

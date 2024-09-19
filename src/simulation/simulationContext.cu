@@ -37,6 +37,9 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     if (json.contains("maxIterations")) {
         mSolverParams.maxIterations = json["maxIterations"].get<int>();
     }
+    if (json.contains("pauseIter")) {
+        context->guiData->PauseIter = json["pauseIter"].get<int>();
+    }
     if (json.contains("dhat")) {
         mSolverParams.dhat = json["dhat"].get<float>();
     }
