@@ -552,11 +552,11 @@ void CollisionDetection<Scalar>::UpdateQueries(int numVerts, int numTris, const 
     thrust::device_ptr<Query> queries_ptr(dev_queries);
     thrust::sort(queries_ptr, queries_ptr + numQueries, []__host__ __device__(const Query & a, const Query & b) { return a.dType < b.dType; });
     ComputeDistance<Scalar> << < (numQueries + 255) / 256, 256 >> > (X, dev_queries, numQueries);
+    remove(dev_queries, numQueries, [dhat]__host__ __device__(const Query & q) { return q.d > dhat; });
     thrust::sort(queries_ptr, queries_ptr + numQueries, []__host__ __device__(const Query & a, const Query & b) {
         if (a.d == b.d) return a.dType < b.dType;
         return a.d < b.d;
     });
-    remove(dev_queries, numQueries, [dhat]__host__ __device__(const Query & q) { return q.d > dhat; });
 }
 
 template class CollisionDetection<float>;

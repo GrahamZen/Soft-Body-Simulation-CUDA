@@ -27,7 +27,7 @@ void inspectGLM(const T* dev_ptr, int size, const char* str = "") {
 }
 
 template <typename T>
-void inspectSparseMatrix(T* dev_val, int* dev_rowIdx, int* dev_colIdx, int nnz, int size);
+void inspectSparseMatrix(T* dev_val, int* dev_rowIdx, int* dev_colIdx, int begin, int nnz, int size);
 void inspectMortonCodes(const int* dev_mortonCodes, int numTris);
 
 template<typename Scalar>

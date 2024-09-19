@@ -292,13 +292,13 @@ __host__ __device__ Scalar ccdCollisionTest(const Query& query, const glm::tvec3
     const Scalar a1 = stp(v01, x02, x03) + stp(x01, v02, x03) + stp(x01, x02, v03);
     const Scalar a2 = stp(x01, v02, v03) + stp(v01, x02, v03) + stp(v01, v02, x03);
     const Scalar a3 = stp(v01, v02, v03);
-    if (abs(a0) < 1e-6 * length(x01) * length(x02) * length(x03))
+    if (abs(a0) < 1e-12 * length(x01) * length(x02) * length(x03))
         return 1.0; // initially coplanar
     Scalar t[3];
     Scalar minRoot = FLT_MAX;
     int nsol = solveCubic<Scalar>(a3, a2, a1, a0, t);
     for (int i = 0; i < nsol; i++) {
-        if (t[i] < -1e-3 || t[i] > 1)
+        if (t[i] < -1e-12 || t[i] > 1)
             continue;
         glm::tvec3<Scalar> xt0 = x0 + t[i] * v0, xt1 = x1 + t[i] * v1,
             xt2 = x2 + t[i] * v2, xt3 = x3 + t[i] * v3;
