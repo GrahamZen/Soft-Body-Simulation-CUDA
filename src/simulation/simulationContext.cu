@@ -174,7 +174,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
 
         }
         dataLoader.AllocData(startIndices, mSolverData, softBodies);
-        mSolverData.pCollisionDetection->Init(mSolverData.numTris, mSolverData.numVerts, mSolverData.X, mSolverData.XTilde, maxThreads);
+        mSolverData.pCollisionDetection->Init(mSolverData.numTris, mSolverData.numVerts, maxThreads);
         cudaMalloc((void**)&mSolverData.dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(solverPrecision));
     }

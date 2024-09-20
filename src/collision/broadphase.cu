@@ -417,12 +417,24 @@ bool CollisionDetection<Scalar>::DetectCollisionCandidates(const BVHNode<Scalar>
 }
 
 template<typename Scalar>
-void CollisionDetection<Scalar>::Init(int numTris, int numVerts, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, int maxThreads)
+void CollisionDetection<Scalar>::Init(int numTris, int numVerts, int maxThreads)
 {
-    mpX = X;
-    mpXTilde = XTilde;
     createQueries(numVerts);
     m_bvh.Init(numTris, numVerts, maxThreads);
+    cudaMalloc(&mpP, sizeof(Scalar) * 3 * numVerts);
+    cudaMalloc(&mpX, sizeof(glm::tvec3<Scalar>) * numVerts);
+}
+
+template<typename Scalar>
+void CollisionDetection<Scalar>::UpdateDirection(const Scalar* p)
+{
+    cudaMemcpy(mpP, p, sizeof(Scalar) * 3 * numVerts, cudaMemcpyDeviceToDevice);
+}
+
+template<typename Scalar>
+void CollisionDetection<Scalar>::UpdateX(const glm::tvec3<Scalar>* X)
+{
+    cudaMemcpy(mpX, X, sizeof(glm::tvec3<Scalar>) * numVerts, cudaMemcpyDeviceToDevice);
 }
 
 __global__ void sortEachQuery(size_t numQueries, Query* query)
@@ -523,7 +535,7 @@ bool CollisionDetection<Scalar>::BroadPhaseCCD(int numVerts, int numTris, const 
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
     sortEachQuery << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries);
     removeDuplicates(dev_queries, numQueries);
-    count = numVerts;
+    count = numVerts * 2;
     return true;
 }
 
@@ -540,7 +552,7 @@ bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const ind
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
     sortEachQuery << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries);
     removeDuplicates(dev_queries, numQueries);
-    count = numVerts;
+    count = numVerts * 2;
     return true;
 }
 

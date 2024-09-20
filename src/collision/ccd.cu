@@ -118,15 +118,21 @@ CollisionDetection<Scalar>::~CollisionDetection<Scalar>()
     cudaFree(dev_queries);
     cudaFree(dev_numQueries);
     cudaFree(dev_overflowFlag);
+    cudaFree(mpX);
+    cudaFree(mpP);
 }
 
-__global__ void fillQueryColors(const Query* queries, int numQueries, glm::vec4* color) {
+__global__ void fillQueryColors(const Query* queries, int numQueries, int numVerts, glm::vec4* color) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx < numQueries) {
         Query q = queries[idx];
         atomicAdd(&color[q.v0].x, 0.05);
         atomicAdd(&color[q.v0].y, 0.05);
         atomicExch(&color[q.v0].w, 1);
+        glm::vec4* color2 = color + numVerts;
+        atomicAdd(&color2[q.v0].x, 0.05);
+        atomicAdd(&color2[q.v0].y, 0.05);
+        atomicExch(&color2[q.v0].w, 1);
     }
 }
 
@@ -137,16 +143,20 @@ void CollisionDetection<Scalar>::PrepareRenderData()
         glm::vec3* pos;
         glm::vec4* col;
         MapDevicePosPtr(&pos, &col);
-        thrust::device_ptr<const glm::tvec3<Scalar>> dvec3_ptr(mpX);
+        thrust::device_ptr<const glm::tvec3<Scalar>> XPtr(mpX);
+        thrust::device_ptr<const Scalar> pPtr(mpP);
         thrust::device_ptr<glm::vec3> vec3_ptr(pos);
 
-        thrust::transform(dvec3_ptr, dvec3_ptr + numVerts, vec3_ptr,
+        thrust::transform(XPtr, XPtr + numVerts, vec3_ptr,
             [] __host__ __device__(const glm::tvec3<Scalar> &d) {
             return glm::vec3(static_cast<float>(d.x), static_cast<float>(d.y), static_cast<float>(d.z));
         });
-        cudaMemset(col, 0, numVerts * sizeof(glm::vec4));
-        dim3 numBlocks((numQueries + threadsPerBlock - 1) / threadsPerBlock);
-        fillQueryColors << <numBlocks, threadsPerBlock >> > (dev_queries, numQueries, col);
+        thrust::transform(XPtr, XPtr + numVerts, thrust::make_counting_iterator<int>(0), vec3_ptr + numVerts,
+            [=] __device__(const glm::tvec3<Scalar>&v, int idx) {
+            return glm::vec3(v.x - pPtr[3 * idx],
+                v.y - pPtr[3 * idx + 1],
+                v.z - pPtr[3 * idx + 2]);
+        });
         UnMapDevicePtr();
     }
     if (mpContext->guiData->BVHVis) {
@@ -160,7 +170,8 @@ void CollisionDetection<Scalar>::Draw(SurfaceShader* flatShaderProgram)
     if (mpContext->guiData->BVHVis)
         flatShaderProgram->draw(m_bvh, 0);
     if (mpContext->guiData->QueryVis)
-        flatShaderProgram->drawPoints(*this);
+        glLineWidth(mpContext->guiData->LineWidth);
+        flatShaderProgram->drawLines(*this);
     if (mpContext->guiData->QueryDebugMode && mpX) {
         glLineWidth(mpContext->guiData->LineWidth);
         flatShaderProgram->drawSingleQuery(GetSQDisplay(mpContext->guiData->CurrQueryId, mpX,

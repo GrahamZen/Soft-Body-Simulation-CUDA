@@ -52,7 +52,9 @@ public:
     Scalar ComputeMinStepSize(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde,
         const indexType* TriFathers, bool ignoreSelfCollision = false);
     void UpdateQueries(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers, Scalar dhat);
-    void Init(int numTris, int numVerts, const glm::tvec3<Scalar>*, const glm::tvec3<Scalar>*, int maxThreads);
+    void Init(int numTris, int numVerts, int maxThreads);
+    void UpdateDirection(const Scalar*);
+    void UpdateX(const glm::tvec3<Scalar>*);
     void PrepareRenderData();
     void Draw(SurfaceShader*);
     size_t GetNumQueries() const {
@@ -82,8 +84,8 @@ private:
     bool ignoreSelfCollision = false;
     const int threadsPerBlock;
     const Context* mpContext;
-    const glm::tvec3<Scalar>* mpX = nullptr;
-    const glm::tvec3<Scalar>* mpXTilde = nullptr;
+    glm::tvec3<Scalar>* mpX = nullptr;
+    Scalar* mpP = nullptr;
     BVH<Scalar> m_bvh;
     typename BVH<Scalar>::BuildType buildType = BVH<Scalar>::BuildType::Atomic;
 };
