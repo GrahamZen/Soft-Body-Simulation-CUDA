@@ -116,6 +116,8 @@ bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
     E_last = energy.Val(solverData.X, solverData, solverParams, h2);
 
     SearchDirection(solverData, solverParams, h2);
+    solverData.pCollisionDetection->UpdateDirection(p);
+    solverData.pCollisionDetection->UpdateX(solverData.X);
     int maxIter = solverParams.maxIterations;
     int iter = 0;
     while (!EndCondition(h, solverParams.tol)) {
