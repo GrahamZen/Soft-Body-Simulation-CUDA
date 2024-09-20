@@ -32,9 +32,9 @@ private:
     cudaGraphicsResource* cuda_bufPos_resource = nullptr;
     cudaGraphicsResource* cuda_bufVertPos_resource = nullptr;
     cudaGraphicsResource* cuda_bufTriPos_resource = nullptr;
-    GLuint bufVertPos = -1; // A Vertex Buffer Object that we will use to store mesh vertices (vec4s)
-    GLuint bufTriPos = -1; // A Vertex Buffer Object that we will use to store mesh vertices (vec4s)
-    GLuint bufTriIdx = -1; // A Vertex Buffer Object that we will use to store triangle indices (GLuints)
+    GLuint bufVertPos = (GLuint)-1; // A Vertex Buffer Object that we will use to store mesh vertices (vec4s)
+    GLuint bufTriPos = (GLuint)-1; // A Vertex Buffer Object that we will use to store mesh vertices (vec4s)
+    GLuint bufTriIdx = (GLuint)-1; // A Vertex Buffer Object that we will use to store triangle indices (GLuints)
 
     bool vertPosBound = false;
     bool triIdxBound = false; // Set to TRUE by generateIdx(), returned by bindIdx().

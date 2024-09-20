@@ -1,21 +1,37 @@
 #pragma once
-#include <utilities.h>
-#include <collision/bvh.h>
+#include <def.h>
+#include <precision.h>
 #include <vector>
+#include <string>
 
 class SoftBody;
 class Camera;
 class SimulationCUDAContext;
 class SurfaceShader;
 
-using solverPrecision = double;
+
+struct SoftBodyAttr
+{
+    int currSoftBodyId = -1;
+    std::pair<float, bool> mu;
+    std::pair<float, bool> lambda;
+    std::pair<float, bool> damp;
+    std::pair<float, bool> muN;
+    std::pair<float, bool> muT;
+    void setJumpClean(bool& val);
+    void setJump(bool val);
+    bool getJumpDirty()const;
+private:
+    std::pair<bool, bool> jump;
+};
 
 class GuiDataContainer
 {
 public:
     GuiDataContainer();
     ~GuiDataContainer();
-    float Dt = 0.001;
+    SolverParams<solverPrecision>* solverParams = nullptr;
+    size_t PauseIter = (size_t)-1;
     float PointSize = 5;
     float LineWidth = 1;
     bool WireFrame = false;
@@ -36,20 +52,7 @@ public:
     int currSimContextId = -1;
     Query* mPQuery;
     bool QueryDirty = true;
-    struct SoftBodyAttr
-    {
-        int currSoftBodyId = -1;
-        std::pair<float, bool> mu;
-        std::pair<float, bool> lambda;
-        std::pair<float, bool> damp;
-        std::pair<float, bool> muN;
-        std::pair<float, bool> muT;
-        void setJumpClean(bool& val);
-        void setJump(bool val);
-        bool getJumpDirty()const;
-    private:
-        std::pair<bool, bool> jump;
-    }softBodyAttr;
+    SoftBodyAttr softBodyAttr;
 };
 
 
@@ -57,7 +60,6 @@ void cleanupCuda();
 
 class Context
 {
-    friend class SimulationCUDAContext;
 public:
     Context(const std::string& _filename);
     ~Context();
@@ -68,7 +70,7 @@ public:
     void Update();
     void ResetCamera();
     void Draw();
-    void SetBVHBuildType(BVH<solverPrecision>::BuildType buildType);
+    void SetBVHBuildType(int buildType);
     int& GetBVHBuildType();
     int GetNumQueries() const;
     int GetIteration() const { return iteration; }
@@ -96,7 +98,7 @@ private:
     glm::vec3 ogLookAt; // for recentering the camera
     SurfaceShader* mpProgLambert;
     SurfaceShader* mpProgFlat;
-    int iteration = 0;
+    size_t iteration = 0;
     bool pause = false;
     bool logEnabled = false;
     std::vector<const char*> namesContexts;

@@ -3,6 +3,8 @@
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/simulationContext.h>
 #include <simulation/softBody.h>
+#include <collision/bvh.h>
+#include <context.h>
 #include <spdlog/spdlog.h>
 #include <map>
 #include <chrono>
@@ -30,24 +32,24 @@ void measureExecutionTime(const Func& func, const std::string& message, bool pri
 
 void SimulationCUDAContext::Update()
 {
-    mSolverParams.handleCollision = (context->guiData->handleCollision && context->guiData->BVHEnabled);
+    mSolverParams.handleCollision = (contextGuiData->handleCollision && contextGuiData->BVHEnabled);
     mSolver->Update(mSolverData, mSolverParams);
-    if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
-        mSolverParams.pCollisionDetection->PrepareRenderData();
+    if (contextGuiData->handleCollision || contextGuiData->BVHEnabled) {
+        mSolverData.pCollisionDetection->PrepareRenderData();
     }
-    if (context->guiData->ObjectVis) {
+    if (contextGuiData->ObjectVis) {
         PrepareRenderData();
     }
 }
 
 
-void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {
-    softBodies[index]->SetAttributes(softBodyAttr);
+void SimulationCUDAContext::UpdateSingleSBAttr(int index, SoftBodyAttr* pSoftBodyAttr) {
+    softBodies[index]->SetAttributes(pSoftBodyAttr);
 }
 
-void SimulationCUDAContext::SetBVHBuildType(BVH<solverPrecision>::BuildType buildType)
+void SimulationCUDAContext::SetBVHBuildType(int buildType)
 {
-    mSolverParams.pCollisionDetection->SetBuildType(buildType);
+    mSolverData.pCollisionDetection->SetBuildType(buildType);
 }
 
 void SimulationCUDAContext::SetGlobalSolver(bool useEigen)
@@ -63,12 +65,13 @@ void SimulationCUDAContext::Reset()
     cudaMemcpy(mSolverData.X, mSolverData.X0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(mSolverData.XTilde, mSolverData.X0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
     cudaMemset(mSolverData.V, 0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts);
+    mSolver->Reset();
 }
 
 void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* flatShaderProgram)
 {
     glLineWidth(2);
-    if (context->guiData->ObjectVis) {
+    if (contextGuiData->ObjectVis) {
         shaderProgram->setModelMatrix(glm::mat4(1.f));
         for (auto softBody : softBodies)
             shaderProgram->draw(*softBody, 0);
@@ -77,11 +80,11 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
             shaderProgram->draw(*fixedBody, 0);
         }
     }
-    if (context->guiData->handleCollision && context->guiData->BVHEnabled) 
-        mSolverParams.pCollisionDetection->Draw(flatShaderProgram);
+    if (contextGuiData->handleCollision && contextGuiData->BVHEnabled)
+        mSolverData.pCollisionDetection->Draw(flatShaderProgram);
 }
 
-const SolverParams<solverPrecision>& SimulationCUDAContext::GetSolverParams() const
+SolverParams<solverPrecision>* SimulationCUDAContext::GetSolverParams()
 {
-    return mSolverParams;
+    return &mSolverParams;
 }

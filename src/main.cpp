@@ -1,11 +1,11 @@
 #include <sceneStructs.h>
 #include <main.h>
 #include <preview.h>
-#include <surfaceshader.h>
-#include <glm/glm.hpp>
+#include <context.h>
+#include <utilities.h>
 #include <glm/gtx/transform.hpp>
 #include <cuda_runtime.h>
-#include <cstring>
+#include <iostream>
 
 static std::string startTimeString;
 

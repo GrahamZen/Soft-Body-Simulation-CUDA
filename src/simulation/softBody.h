@@ -1,9 +1,10 @@
 #pragma once
 
 #include <mesh.h>
-#include <context.h>
-#include <simulation/solver/femSolver.h>
+#include <simulation/solver/solver.h>
 #include <vector>
+
+class SoftBodyAttr;
 
 class SoftBody : public Mesh {
 public:
@@ -11,11 +12,9 @@ public:
     ~SoftBody();
     SoftBody(const SoftBody&) = delete;
     SoftBody& operator=(const SoftBody&) = delete;
-    int GetNumTets()const;
     int GetNumTris()const;
-    void Reset();
     const SoftBodyData& GetSoftBodyData() const;
-    void SetAttributes(GuiDataContainer::SoftBodyAttr& softBodyAttr);
+    void SetAttributes(SoftBodyAttr* pSoftBodyAttr);
 private:
     SoftBodyData softBodyData;
     SoftBodyAttribute attrib;

@@ -1,12 +1,15 @@
 #include <sceneStructs.h>
 #include <surfaceshader.h>
 #include <context.h>
+#include <collision/aabb.h>
 #include <simulation/simulationContext.h>
+#include <utilities.h>
 #include <collision/rigid/sphere.h>
 #include <collision/rigid/cylinder.h>
 #include <collision/rigid/plane.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <iostream>
 #include <fstream>
 #include <sstream>
 
@@ -119,7 +122,7 @@ void Context::PollEvents() {
     if (attrs.currSoftBodyId == -1) return;
     bool result = attrs.mu.second || attrs.lambda.second || attrs.damp.second || attrs.muN.second || attrs.muT.second || attrs.getJumpDirty();
     if (result)
-        mcrpSimContext->UpdateSingleSBAttr(guiData->softBodyAttr.currSoftBodyId, guiData->softBodyAttr);
+        mcrpSimContext->UpdateSingleSBAttr(guiData->softBodyAttr.currSoftBodyId, &guiData->softBodyAttr);
     else
         return;
     attrs.mu.second = false;
@@ -287,7 +290,6 @@ SimulationCUDAContext* Context::LoadSimContext() {
         return nullptr;
     }
     int maxThreads = GetMaxCGThreads();
-    SolverParams<solverPrecision>::ExternalForce extForce;
     nlohmann::json json;
     fileStream >> json;
     fileStream.close();
@@ -307,13 +309,6 @@ SimulationCUDAContext* Context::LoadSimContext() {
     int numIterations = 10;
     if (json.contains("num of iterations")) {
         numIterations = json["num of iterations"].get<int>();
-    }
-    if (json.contains("external force")) {
-        auto& externalForceJson = json["external force"];
-        if (externalForceJson.contains("jump")) {
-            auto& jumpJson = externalForceJson["jump"];
-            extForce.jump = glm::vec3(jumpJson[0].get<float>(), jumpJson[1].get<float>(), jumpJson[2].get<float>());
-        }
     }
     if (json.contains("threads per block")) {
         threadsPerBlock = json["threads per block"].get<int>();
@@ -362,7 +357,7 @@ void Context::InitDataContainer() {
     guiData->theta = theta;
     guiData->cameraLookAt = ogLookAt;
     guiData->zoom = zoom;
-    guiData->Dt = mcrpSimContext->GetSolverParams().dt;
+    guiData->solverParams = mcrpSimContext->GetSolverParams();
     guiData->Pause = false;
     guiData->UseEigen = false;
     guiData->softBodyAttr.currSoftBodyId = 0;
@@ -382,7 +377,7 @@ void Context::Draw() {
     mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
 }
 
-void Context::SetBVHBuildType(BVH<solverPrecision>::BuildType buildType)
+void Context::SetBVHBuildType(int buildType)
 {
     mcrpSimContext->SetBVHBuildType(buildType);
 }
@@ -397,9 +392,9 @@ void Context::Update() {
     if (panelModified) {
         if (guiData->currSimContextId != -1) {
             mcrpSimContext = mpSimContexts[guiData->currSimContextId];
+            guiData->solverParams = mcrpSimContext->GetSolverParams();
         }
         mcrpSimContext->SetGlobalSolver(guiData->UseEigen);
-        mcrpSimContext->SetDt(guiData->Dt);
         phi = guiData->phi;
         theta = guiData->theta;
         mpCamera->lookAt = guiData->cameraLookAt;
@@ -442,6 +437,8 @@ void Context::Update() {
     if (!pause) {
         iteration++;
         mcrpSimContext->Update();
+        if (iteration == guiData->PauseIter)
+            pause = true;
     }
     else if (guiData->Step) {
         iteration++;
@@ -464,11 +461,11 @@ void cleanupCuda() {
 
 }
 
-void GuiDataContainer::SoftBodyAttr::setJump(bool val) {
+void SoftBodyAttr::setJump(bool val) {
     jump = { true, true };
 }
 
-void GuiDataContainer::SoftBodyAttr::setJumpClean(bool& val)
+void SoftBodyAttr::setJumpClean(bool& val)
 {
     if (jump.second) {
         val = jump.first;
@@ -481,12 +478,12 @@ void GuiDataContainer::SoftBodyAttr::setJumpClean(bool& val)
     }
 }
 
-bool GuiDataContainer::SoftBodyAttr::getJumpDirty()const {
+bool SoftBodyAttr::getJumpDirty()const {
     return jump.second;
 }
 
 GuiDataContainer::GuiDataContainer()
-    :mPQuery(new Query()), Dt(0.001), PointSize(15), LineWidth(10), WireFrame(false), BVHVis(false), BVHEnabled(true),
+    :mPQuery(new Query()), PointSize(15), LineWidth(10), WireFrame(false), BVHVis(false), BVHEnabled(true),
     handleCollision(true), QueryVis(false), QueryDebugMode(true), ObjectVis(true), Reset(false), Pause(false),
     Step(false), UseEigen(true), CurrQueryId(0)
 {

@@ -22,12 +22,12 @@ ExplicitSolver::~ExplicitSolver()
 }
 
 
-void ExplicitSolver::SolverPrepare(SolverData<float>& solverData, SolverParams<float>& solverParams)
+void ExplicitSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
 }
 
 
-void ExplicitSolver::SolverStep(SolverData<float>& solverData, SolverParams<float>& solverParams)
+bool ExplicitSolver::SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
     glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.softBodyAttr.mass, 0.0f };
     thrust::device_ptr<glm::vec3> dev_ptr(solverData.Force);
@@ -35,12 +35,12 @@ void ExplicitSolver::SolverStep(SolverData<float>& solverData, SolverParams<floa
     Laplacian_Smoothing(solverData, 0.5);
     ExplicitUtil::ComputeForcesSVD << <(solverData.numTets + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.Force, solverData.XTilde, solverData.Tet, solverData.numTets, solverData.DmInv, solverParams.softBodyAttr.mu, solverParams.softBodyAttr.lambda);
     ExplicitUtil::EulerMethod << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.XTilde, solverData.V, solverData.Force, solverData.numVerts, solverParams.softBodyAttr.mass, solverParams.dt);
+    return true;
 }
 
 
-void ExplicitSolver::Update(SolverData<float>& solverData, SolverParams<float>& solverParams)
+void ExplicitSolver::Update(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
-    AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, solverParams.softBodyAttr.jump, solverParams.softBodyAttr.mass, solverParams.extForce.jump);
     for (size_t i = 0; i < 10; i++)
     {
         SolverStep(solverData, solverParams);

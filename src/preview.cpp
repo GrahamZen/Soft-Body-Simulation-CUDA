@@ -1,6 +1,9 @@
 //#define _CRT_SECURE_NO_DEPRECATE
 #include <main.h>
+#include <collision/aabb.h>
+#include <context.h>
 #include <preview.h>
+#include <utilities.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -98,7 +101,7 @@ void RenderImGui()
     const std::vector<const char*> buildTypeNameItems = { "Serial", "Atomic", "Cooperative" };
     if (ImGui::Combo("BVH Build Type", &context->GetBVHBuildType(), buildTypeNameItems.data(), buildTypeNameItems.size()))
     {
-        context->SetBVHBuildType(static_cast<BVH<solverPrecision>::BuildType>(context->GetBVHBuildType()));
+        context->SetBVHBuildType(context->GetBVHBuildType());
     }
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
     bool globalSolverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
@@ -107,8 +110,31 @@ void RenderImGui()
     imguiData->Pause = ImGui::Button("Pause");
     ImGui::SameLine();
     imguiData->Step = ImGui::Button("Step");
-    bool dtChanged = ImGui::DragFloat("dt", &imguiData->Dt, 0.0001f, 0.0001f, 0.05f, "%.4f");
     float availWidth = ImGui::GetContentRegionAvail().x;
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    int pauseIter = imguiData->PauseIter;
+    ImGui::SameLine();
+    if (ImGui::DragInt("pause iter", &pauseIter, 1, 1, std::numeric_limits<int>().max()))
+        imguiData->PauseIter = pauseIter;
+    float dt = imguiData->solverParams->dt;
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    if (ImGui::DragFloat("dt", &dt, 0.0001f, 0.0001f, 0.05f, "%.4f"))
+        imguiData->solverParams->dt = dt;
+    ImGui::SameLine();
+    float tol = imguiData->solverParams->tol;
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    if (ImGui::DragFloat("tolerance", &tol, 0.0001f, 0.0001f, 0.05f, "%.4f"))
+        imguiData->solverParams->tol = tol;
+    float kappa = imguiData->solverParams->kappa;
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    if (ImGui::DragFloat("kappa", &kappa, 1000.f, 1e2, 1e5, "%.4f"))
+        imguiData->solverParams->kappa = kappa;
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    int maxIterations = imguiData->solverParams->maxIterations;
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    if (ImGui::DragInt("max iteration", &maxIterations, 1, 1, 1000))
+        imguiData->solverParams->maxIterations = maxIterations;
     ImGui::SetNextItemWidth(availWidth * 0.25f);
     bool cameraPhiChanged = ImGui::DragFloat("Camera Phi", &imguiData->phi, 0.1f, -PI, PI, "%.4f");
     ImGui::SameLine();
@@ -155,7 +181,8 @@ void RenderImGui()
     ImGui::DragFloat("Line Width", &imguiData->LineWidth, 1, 0.1f, 50.f, "%.2f");
     // context->guiData->QueryDirty = ImGui::SliderInt("Query Index", &imguiData->CurrQueryId, 0, context->GetNumQueries() - 1);
     context->guiData->QueryDirty = ImGui::DragInt("Query Index", &imguiData->CurrQueryId, 1, 0, context->GetNumQueries() - 1);
-    ImGui::Text("v0: %d, v1: %d, v2: %d, v3: %d", context->guiData->mPQuery->v0, context->guiData->mPQuery->v1, context->guiData->mPQuery->v2, context->guiData->mPQuery->v3);
+    ImGui::Text("%s, v0: %d, v1: %d, v2: %d, v3: %d, d:%f", distanceTypeString[static_cast<int>(context->guiData->mPQuery->dType)],
+        context->guiData->mPQuery->v0, context->guiData->mPQuery->v1, context->guiData->mPQuery->v2, context->guiData->mPQuery->v3, context->guiData->mPQuery->d);
     ImGui::Text("toi: %.4f, normal: (%.4f, %.4f, %.4f)", context->guiData->mPQuery->toi, context->guiData->mPQuery->normal.x, context->guiData->mPQuery->normal.y, context->guiData->mPQuery->normal.z);
 
     ImGui::Separator();
@@ -166,7 +193,7 @@ void RenderImGui()
         context->GetNumQueries());
     ImGui::End();
 
-    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || dtChanged || contextChanged || globalSolverChanged) {
+    if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || contextChanged || globalSolverChanged) {
         context->panelModified = true;
     }
 

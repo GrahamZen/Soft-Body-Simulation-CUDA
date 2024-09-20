@@ -24,18 +24,18 @@ void checkCUDAErrorFn(const char* msg, const char* file, int line) {
 }
 
 template <typename T>
-void inspectSparseMatrix(T* dev_val, int* dev_rowIdx, int* dev_colIdx, int nnz, int size) {
+void inspectSparseMatrix(T* dev_val, int* dev_rowIdx, int* dev_colIdx, int begin, int nnz, int size) {
     std::vector<T> host_val(nnz);
     std::vector<int> host_rowIdx(nnz);
     std::vector<int> host_colIdx(nnz);
-    cudaMemcpy(host_val.data(), dev_val, sizeof(T) * nnz, cudaMemcpyDeviceToHost);
-    cudaMemcpy(host_rowIdx.data(), dev_rowIdx, sizeof(int) * nnz, cudaMemcpyDeviceToHost);
-    cudaMemcpy(host_colIdx.data(), dev_colIdx, sizeof(int) * nnz, cudaMemcpyDeviceToHost);
+    cudaMemcpy(host_val.data(), dev_val + begin, sizeof(T) * nnz, cudaMemcpyDeviceToHost);
+    cudaMemcpy(host_rowIdx.data(), dev_rowIdx + begin, sizeof(int) * nnz, cudaMemcpyDeviceToHost);
+    cudaMemcpy(host_colIdx.data(), dev_colIdx + begin, sizeof(int) * nnz, cudaMemcpyDeviceToHost);
     utilityCore::inspectHost(host_val, host_rowIdx, host_colIdx, size);
 }
 
-template void inspectSparseMatrix(float* dev_val, int* dev_rowIdx, int* dev_colIdx, int nnz, int size);
-template void inspectSparseMatrix(double* dev_val, int* dev_rowIdx, int* dev_colIdx, int nnz, int size);
+template void inspectSparseMatrix(float* dev_val, int* dev_rowIdx, int* dev_colIdx, int begin, int nnz, int size);
+template void inspectSparseMatrix(double* dev_val, int* dev_rowIdx, int* dev_colIdx, int begin, int nnz, int size);
 
 template <typename T1, typename T2>
 bool compareDevVSHost(const T1* dev_ptr, const T2* host_ptr2, int size) {
@@ -108,19 +108,22 @@ template __global__ void PopulateTriPos(glm::vec3* vertices, glm::tvec3<float>* 
 template __global__ void PopulateTriPos(glm::vec3* vertices, glm::tvec3<double>* X, indexType* Tet, int numTris);
 
 
-void inspectMortonCodes(const int* dev_mortonCodes, int numTets) {
-    std::vector<unsigned int> hstMorton(numTets);
-    cudaMemcpy(hstMorton.data(), dev_mortonCodes, numTets * sizeof(unsigned int), cudaMemcpyDeviceToHost);
-    utilityCore::inspectHostMorton(hstMorton.data(), numTets);
+void inspectMortonCodes(const int* dev_mortonCodes, int numTris) {
+    std::vector<unsigned int> hstMorton(numTris);
+    cudaMemcpy(hstMorton.data(), dev_mortonCodes, numTris * sizeof(unsigned int), cudaMemcpyDeviceToHost);
+    utilityCore::inspectHostMorton(hstMorton.data(), numTris);
 }
 
 template<typename Scalar>
-void inspectBVHNode(const BVHNode<Scalar>* dev_BVHNodes, int numTets)
+void inspectBVHNode(const BVHNode<Scalar>* dev_BVHNodes, int numTris)
 {
-    std::vector<BVHNode<Scalar>> hstBVHNodes(2 * numTets - 1);
-    cudaMemcpy(hstBVHNodes.data(), dev_BVHNodes, sizeof(BVHNode<Scalar>) * (2 * numTets - 1), cudaMemcpyDeviceToHost);
-    utilityCore::inspectHost(hstBVHNodes.data(), 2 * numTets - 1);
+    std::vector<BVHNode<Scalar>> hstBVHNodes(2 * numTris - 1);
+    cudaMemcpy(hstBVHNodes.data(), dev_BVHNodes, sizeof(BVHNode<Scalar>) * (2 * numTris - 1), cudaMemcpyDeviceToHost);
+    utilityCore::inspectHost(hstBVHNodes.data(), 2 * numTris - 1);
 }
+
+template void inspectBVHNode(const BVHNode<float>* dev_BVHNodes, int numTris);
+template void inspectBVHNode(const BVHNode<double>* dev_BVHNodes, int numTris);
 
 template<typename Scalar>
 void inspectBVH(const AABB<Scalar>* dev_aabbs, int size)

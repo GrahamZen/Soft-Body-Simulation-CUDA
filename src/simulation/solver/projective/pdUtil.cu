@@ -1,4 +1,5 @@
 #include <def.h>
+#include <svd.cuh>
 #include <simulation/solver/projective/pdUtil.cuh>
 
 namespace PdUtil {

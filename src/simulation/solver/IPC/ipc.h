@@ -8,18 +8,19 @@ class LinearSolver;
 
 class IPCSolver : public FEMSolver<double> {
 public:
-    IPCSolver(int threadsPerBlock, const SolverData<double>&, double tolerance = 1e-2);
+    IPCSolver(int threadsPerBlock, const SolverData<double>&);
     ~IPCSolver();
-    virtual void Update(SolverData<double>& solverData, SolverParams<double>& solverParams) override;
-    bool EndCondition(double h);
+    virtual void Update(SolverData<double>& solverData, const SolverParams<double>& solverParams) override;
+    virtual void Reset() override;
+    bool EndCondition(double h, double tolerance);
 protected:
-    virtual void SolverPrepare(SolverData<double>& solverData, SolverParams<double>& solverParams) override;
-    virtual void SolverStep(SolverData<double>& solverData, SolverParams<double>& solverParams) override;
-    void SearchDirection(SolverData<double>& solverData, double h2);
+    virtual void SolverPrepare(SolverData<double>& solverData, const SolverParams<double>& solverParams) override;
+    virtual bool SolverStep(SolverData<double>& solverData, const SolverParams<double>& solverParams) override;
+    void SearchDirection(SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2);
     void DOFElimination(SolverData<double>& solverData);
 private:
+    bool failed = false;
     int numVerts = 0;
-    double tolerance;
     // Hessian(sparse)
     double* p = nullptr; // search direction
     glm::dvec3* xTmp = nullptr;

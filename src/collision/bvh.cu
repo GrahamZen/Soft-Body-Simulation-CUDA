@@ -2,13 +2,10 @@
 
 #include <collision/bvh.h>
 #include <utilities.cuh>
-#include <collision/bvh.cuh>
-#include <simulation/simulationContext.h>
 #include <cooperative_groups.h>
 #include <thrust/sort.h>
-#include <thrust/execution_policy.h>
-#include <thrust/device_vector.h>
 #include <thrust/reduce.h>
+#include <thrust/device_ptr.h>
 
 template<typename Scalar>
 __device__ void buildBBox(BVHNode<Scalar>& curr, const BVHNode<Scalar>& left, const BVHNode<Scalar>& right)
@@ -85,54 +82,54 @@ __global__ void buildBBoxesAtomic(int leafCount, BVHNode<Scalar>* nodes, BVH<Sca
 }
 
 template<typename Scalar>
-void BVH<Scalar>::Init(int _numTets, int _numVerts, int maxThreads)
+void BVH<Scalar>::Init(int _numTris, int _numVerts, int maxThreads)
 {
-    numTets = _numTets;
+    numTris = _numTris;
     int numVerts = _numVerts;
-    int numNodes = numTets * 2 - 1;
+    int numNodes = numTris * 2 - 1;
     cudaMalloc(&dev_BVHNodes, numNodes * sizeof(BVHNode<Scalar>));
     cudaMalloc((void**)&dev_tI, numVerts * sizeof(Scalar));
     cudaMemset(dev_tI, 0, numVerts * sizeof(Scalar));
     cudaMalloc((void**)&dev_indicesToReport, numVerts * sizeof(int));
     cudaMemset(dev_indicesToReport, -1, numVerts * sizeof(int));
-    cudaMalloc(&dev_mortonCodes, numTets * sizeof(unsigned int));
+    cudaMalloc(&dev_mortonCodes, numTris * sizeof(unsigned int));
     cudaMalloc(&dev_ready, numNodes * sizeof(ReadyFlagType));
     createBVH(numNodes);
-    cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
-    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(ReadyFlagType));
-    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
+    cudaMemset(dev_mortonCodes, 0, numTris * sizeof(unsigned int));
+    cudaMemset(dev_ready, 0, (numTris - 1) * sizeof(ReadyFlagType));
+    cudaMemset(&dev_ready[numTris - 1], 1, numTris * sizeof(ReadyFlagType));
     int minGridSize;
 
     cudaOccupancyMaxPotentialBlockSize(&minGridSize, &suggestedBlocksize, buildBBoxesCG<Scalar>, 0, 0);
 
-    if (numTets < maxThreads) {
+    if (numTris < maxThreads) {
         std::cout << "Using cooperative group." << std::endl;
         isBuildBBCG = true;
     }
     else {
         std::cout << "Not using cooperative group." << std::endl;
     }
-    numblocksTets = (numTets + threadsPerBlock - 1) / threadsPerBlock;
+    numblocksTets = (numTris + threadsPerBlock - 1) / threadsPerBlock;
     numblocksVerts = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    suggestedCGNumblocks = (numTets + suggestedBlocksize - 1) / suggestedBlocksize;
+    suggestedCGNumblocks = (numTris + suggestedBlocksize - 1) / suggestedBlocksize;
 }
 
 template<typename Scalar>
 void BVH<Scalar>::BuildBBoxes(BuildType buildType) {
     if (buildType == BuildType::Cooperative && isBuildBBCG) {
-        void* args[] = { &numTets, &dev_BVHNodes, &dev_ready };
+        void* args[] = { &numTris, &dev_BVHNodes, &dev_ready };
         cudaError_t error = cudaLaunchCooperativeKernel((void*)buildBBoxesCG<Scalar>, suggestedCGNumblocks, suggestedBlocksize, args);
         if (error != cudaSuccess) {
             std::cerr << "cudaLaunchCooperativeKernel failed: " << cudaGetErrorString(error) << std::endl;
         }
     }
     else if (buildType == BuildType::Atomic) {
-        buildBBoxesAtomic<Scalar> << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+        buildBBoxesAtomic<Scalar> << < numblocksTets, threadsPerBlock >> > (numTris, dev_BVHNodes, dev_ready);
     }
     else if (buildType == BuildType::Serial) {
         ReadyFlagType treeBuild = 0;
         while (treeBuild == 0) {
-            buildBBoxesSerial<Scalar> << < numblocksTets, threadsPerBlock >> > (numTets, dev_BVHNodes, dev_ready);
+            buildBBoxesSerial<Scalar> << < numblocksTets, threadsPerBlock >> > (numTris, dev_BVHNodes, dev_ready);
             cudaMemcpy(&treeBuild, dev_ready, sizeof(ReadyFlagType), cudaMemcpyDeviceToHost);
         }
     }
@@ -158,7 +155,7 @@ void BVH<Scalar>::PrepareRenderData()
 {
     glm::vec3* pos;
     Wireframe::MapDevicePosPtr(&pos);
-    int numNodes = numTets * 2 - 1;
+    int numNodes = numTris * 2 - 1;
     dim3 numThreadsPerBlock(numNodes / threadsPerBlock + 1);
     populateBVHNodeAABBPos << <numThreadsPerBlock, threadsPerBlock >> > (dev_BVHNodes, pos, numNodes);
     Wireframe::UnMapDevicePtr();
@@ -171,26 +168,37 @@ const BVHNode<Scalar>* BVH<Scalar>::GetBVHNodes() const
 }
 
 template<typename Scalar>
-void CollisionDetection<Scalar>::DetectCollision(Scalar* tI, glm::vec3* nors)
+void CollisionDetection<Scalar>::DetectCollision(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers, Scalar* tI, glm::vec3* nors, bool ignoreSelfCollision)
 {
+    this->ignoreSelfCollision = ignoreSelfCollision;
     thrust::device_ptr<Scalar> dev_ptr(tI);
     thrust::fill(dev_ptr, dev_ptr + numVerts, 1.0f);
-    if (BroadPhase()) {
+    if (BroadPhaseCCD(numVerts, numTris, Tri, X, XTilde, TriFathers)) {
         PrepareRenderData();
-        NarrowPhase(tI, nors);
+        NarrowPhase(X, XTilde, tI, nors);
     }
 }
 
 template<typename Scalar>
-void CollisionDetection<Scalar>::SetBuildType(typename BVH<Scalar>::BuildType _buildType)
+Scalar CollisionDetection<Scalar>::ComputeMinStepSize(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers, bool ignoreSelfCollision)
 {
-    buildType = _buildType;
+    this->ignoreSelfCollision = ignoreSelfCollision;
+    if (BroadPhaseCCD(numVerts, numTris, Tri, X, XTilde, TriFathers)) {
+        return NarrowPhase(X, XTilde);
+    }
+    return 1;
 }
 
 template<typename Scalar>
-typename BVH<Scalar>::BuildType CollisionDetection<Scalar>::GetBuildType()
+void CollisionDetection<Scalar>::SetBuildType(int _buildType)
 {
-    return buildType;
+    buildType = static_cast<typename BVH<Scalar>::BuildType>(_buildType);
+}
+
+template<typename Scalar>
+int CollisionDetection<Scalar>::GetBuildType()
+{
+    return static_cast<int>(buildType);
 }
 
 template class BVH<float>;

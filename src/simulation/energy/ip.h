@@ -4,24 +4,27 @@
 #include <energy/inertia.h>
 #include <energy/gravity.h>
 #include <energy/elasticity.h>
-#include <energy/barrier.h>
+#include <energy/implicitBarrier.h>
 
 class IPEnergy {
 public:
-    IPEnergy(const SolverData<double>& solverData, double dHat = 1e-2);
+    IPEnergy(const SolverData<double>& solverData);
     ~IPEnergy();
-    double Val(const glm::dvec3* Xs, const SolverData<double>& solverData, double h2) const;
-    void Gradient(const SolverData<double>& solverData, double h2) const;
-    void Hessian(const SolverData<double>& solverData, double h2) const;
-    double InitStepSize(const SolverData<double>& solverData, double* p) const;
+    double Val(const glm::dvec3* Xs, const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const;
+    void Gradient(const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const;
+    void Hessian(const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const;
+    double InitStepSize(SolverData<double>& solverData, const SolverParams<double>& solverParams, double* p, glm::tvec3<double>* XTmp) const;
+    int NNZ(const SolverData<double>& solverData) const;
     double* gradient = nullptr;
-    int nnz = 0;
+    // collision queries should be updated if dirty
     double* hessianVal = nullptr;
     int* hessianRowIdx = nullptr;
     int* hessianColIdx = nullptr;
 private:
+    int nnz = 0;
     InertiaEnergy<double> inertia;
     GravityEnergy<double> gravity;
-    BarrierEnergy<double> barrier;
+    ImplicitBarrierEnergy<double> implicitBarrier;
     ElasticEnergy<double>* elastic = nullptr;
+    BarrierEnergy<double> barrier;
 };

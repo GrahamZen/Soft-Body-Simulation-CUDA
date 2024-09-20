@@ -8,8 +8,8 @@ public:
     FEMSolver(int threadsPerBlock, const SolverData<Scalar>& solverData);
     virtual ~FEMSolver() = default;
 
-    virtual void Update(SolverData<Scalar>& solverData, SolverParams<Scalar>& solverParams) = 0;
+    virtual void Update(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
 protected:
-    virtual void SolverPrepare(SolverData<Scalar>& solverData, SolverParams<Scalar>& solverParams) = 0;
-    virtual void SolverStep(SolverData<Scalar>& solverData, SolverParams<Scalar>& solverParams) = 0;
+    virtual void SolverPrepare(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
+    virtual bool SolverStep(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
 };

@@ -25,7 +25,7 @@ public:
     virtual void setupMemberVars() override;
     // Draw the given object to our screen using this ShaderProgram's shaders
     virtual void draw(Drawable& d, int textureSlot = 0) override;
-    void drawPoints(Drawable& d);
+    void drawLines(Drawable& d);
     void drawSingleQuery(SingleQueryDisplay& d);
 
 
