@@ -191,14 +191,14 @@
             "damp": 0.999,
             "muN": 0.5,
             "muT": 0.5,
-            "tolerance": 0.05,
-            "kappa": 1e3,
+            "tolerance": 1e-2,
+            "kappa": 1e5,
             "dhat": 1e-2,
             "maxIterations": 100,
-            "pauseIter": 85,
+            "pauseIter": -1,
             "softBodies": [
                 { "name": "tet", "pos": [4.0, 150.0, 0.0], "rot": [30.0, 0.0, -30.0]},
-                { "name": "cube", "pos": [0.0, 50.0, 0.0], "rot": [0.0, 0.0, 0.0], "DBC":[0,1,2,3]}
+                { "name": "cube", "pos": [0.0, 50.0, 0.0], "rot": [0.0, 0.0, 0.0], "DBC":[0,1,2,3,4,5,6,7]}
             ],
             "fixedBodies": [
                 { "name": "bottom plane", "pos": [0.0, 0.0, 0.0]},

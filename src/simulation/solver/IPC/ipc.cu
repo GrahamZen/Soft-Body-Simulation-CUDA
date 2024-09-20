@@ -130,9 +130,9 @@ bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
             IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, alpha, solverData.numVerts);
             solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, xTmp, solverData.dev_TriFathers, solverParams.dhat);
             double E = energy.Val(xTmp, solverData, solverParams, h2);
-            if (E > E_last) 
+            if (E > E_last)
                 alpha /= 2;
-            else 
+            else
                 break;
         }
         cudaMemcpy(solverData.X, xTmp, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
