@@ -2,17 +2,16 @@
 
 #include <fixedBodyData.h>
 #include <simulation/solver/solver.h>
+#include <precision.h>
 #include <json.hpp>
 
 class SoftBody;
 class SurfaceShader;
 class Context;
+class GuiDataContainer;
 class SoftBodyAttr;
-using solverPrecision = double;
 
 class SimulationCUDAContext {
-    template<typename Scalar>
-    friend class CollisionDetection;
 public:
     SimulationCUDAContext(Context* ctx, const std::string& _name, nlohmann::json& json,
         const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>&, int threadsPerBlock, int _threadsPerBlockBVH, int _maxThreads, int _numIterations);
@@ -38,7 +37,7 @@ private:
     std::vector<FixedBody*> fixedBodies;
     std::vector<int> startIndices;
 
-    Context* context = nullptr;
+    GuiDataContainer* contextGuiData = nullptr;
     const std::string name;
     SolverParams<solverPrecision> mSolverParams;
     Solver<solverPrecision>* mSolver = nullptr;

@@ -32,12 +32,12 @@ void measureExecutionTime(const Func& func, const std::string& message, bool pri
 
 void SimulationCUDAContext::Update()
 {
-    mSolverParams.handleCollision = (context->guiData->handleCollision && context->guiData->BVHEnabled);
+    mSolverParams.handleCollision = (contextGuiData->handleCollision && contextGuiData->BVHEnabled);
     mSolver->Update(mSolverData, mSolverParams);
-    if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
+    if (contextGuiData->handleCollision || contextGuiData->BVHEnabled) {
         mSolverData.pCollisionDetection->PrepareRenderData();
     }
-    if (context->guiData->ObjectVis) {
+    if (contextGuiData->ObjectVis) {
         PrepareRenderData();
     }
 }
@@ -71,7 +71,7 @@ void SimulationCUDAContext::Reset()
 void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* flatShaderProgram)
 {
     glLineWidth(2);
-    if (context->guiData->ObjectVis) {
+    if (contextGuiData->ObjectVis) {
         shaderProgram->setModelMatrix(glm::mat4(1.f));
         for (auto softBody : softBodies)
             shaderProgram->draw(*softBody, 0);
@@ -80,7 +80,7 @@ void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* fl
             shaderProgram->draw(*fixedBody, 0);
         }
     }
-    if (context->guiData->handleCollision && context->guiData->BVHEnabled)
+    if (contextGuiData->handleCollision && contextGuiData->BVHEnabled)
         mSolverData.pCollisionDetection->Draw(flatShaderProgram);
 }
 

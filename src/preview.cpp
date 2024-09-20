@@ -1,7 +1,9 @@
 //#define _CRT_SECURE_NO_DEPRECATE
 #include <main.h>
 #include <collision/aabb.h>
+#include <context.h>
 #include <preview.h>
+#include <utilities.h>
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>

@@ -3,11 +3,13 @@
 #include <context.h>
 #include <collision/aabb.h>
 #include <simulation/simulationContext.h>
+#include <utilities.h>
 #include <collision/rigid/sphere.h>
 #include <collision/rigid/cylinder.h>
 #include <collision/rigid/plane.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <iostream>
 #include <fstream>
 #include <sstream>
 

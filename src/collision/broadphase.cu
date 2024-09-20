@@ -417,8 +417,10 @@ bool CollisionDetection<Scalar>::DetectCollisionCandidates(const BVHNode<Scalar>
 }
 
 template<typename Scalar>
-void CollisionDetection<Scalar>::Init(int numTris, int numVerts, int maxThreads)
+void CollisionDetection<Scalar>::Init(int numTris, int numVerts, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, int maxThreads)
 {
+    mpX = X;
+    mpXTilde = XTilde;
     createQueries(numVerts);
     m_bvh.Init(numTris, numVerts, maxThreads);
 }
@@ -539,7 +541,6 @@ bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const ind
     sortEachQuery << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries);
     removeDuplicates(dev_queries, numQueries);
     count = numVerts;
-    this->mpX = X;
     return true;
 }
 

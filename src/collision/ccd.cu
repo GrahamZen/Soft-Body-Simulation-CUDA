@@ -120,7 +120,7 @@ CollisionDetection<Scalar>::~CollisionDetection<Scalar>()
     cudaFree(dev_overflowFlag);
 }
 
-__global__ void processQueries(const Query* queries, int numQueries, glm::vec4* color) {
+__global__ void fillQueryColors(const Query* queries, int numQueries, glm::vec4* color) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     if (idx < numQueries) {
         Query q = queries[idx];
@@ -146,7 +146,7 @@ void CollisionDetection<Scalar>::PrepareRenderData()
         });
         cudaMemset(col, 0, numVerts * sizeof(glm::vec4));
         dim3 numBlocks((numQueries + threadsPerBlock - 1) / threadsPerBlock);
-        processQueries << <numBlocks, threadsPerBlock >> > (dev_queries, numQueries, col);
+        fillQueryColors << <numBlocks, threadsPerBlock >> > (dev_queries, numQueries, col);
         UnMapDevicePtr();
     }
     if (mpContext->guiData->BVHVis) {

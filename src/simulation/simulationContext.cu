@@ -21,7 +21,7 @@
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _name, nlohmann::json& json,
     const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads, int _numIterations)
-    :context(ctx), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
+    :contextGuiData(ctx->guiData), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
 {
     DataLoader<solverPrecision> dataLoader(threadsPerBlock);
     mSolverData.pCollisionDetection = new CollisionDetection<solverPrecision>{ ctx, _threadsPerBlockBVH, 1 << 16 };
@@ -38,7 +38,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         mSolverParams.maxIterations = json["maxIterations"].get<int>();
     }
     if (json.contains("pauseIter")) {
-        context->guiData->PauseIter = json["pauseIter"].get<int>();
+        contextGuiData->PauseIter = json["pauseIter"].get<int>();
     }
     if (json.contains("dhat")) {
         mSolverParams.dhat = json["dhat"].get<float>();
@@ -47,7 +47,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         mSolverParams.gravity = json["gravity"].get<float>();
     }
     if (json.contains("pause")) {
-        context->guiData->Pause = json["pause"].get<bool>();
+        contextGuiData->Pause = json["pause"].get<bool>();
     }
     if (json.contains("damp")) {
         float damp = json["damp"].get<float>();
@@ -174,7 +174,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
 
         }
         dataLoader.AllocData(startIndices, mSolverData, softBodies);
-        mSolverData.pCollisionDetection->Init(mSolverData.numTris, mSolverData.numVerts, maxThreads);
+        mSolverData.pCollisionDetection->Init(mSolverData.numTris, mSolverData.numVerts, mSolverData.X, mSolverData.XTilde, maxThreads);
         cudaMalloc((void**)&mSolverData.dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(solverPrecision));
     }

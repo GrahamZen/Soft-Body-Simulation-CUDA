@@ -156,16 +156,11 @@ void utilityCore::inspectHost(const T* host_ptr, int size, const char* str) {
         }
     }
     else {
-        for (int i = 0; i < size / 4; i++) {
-            for (int j = 0; j < 4; j++) {
-                if (i * 4 + j >= size) break;
-                std::cout << host_ptr[i * 4 + j] << " ";
-            }
-            std::cout << std::endl;
+        for (int i = 0; i < size; i++) {
+            std::cout << host_ptr[i] << std::endl;
         }
-        std::cout << std::endl;
+        std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
     }
-    std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
 template void utilityCore::inspectHost<glm::vec3>(const glm::vec3* dev_ptr, int size, const char* str);
@@ -179,7 +174,6 @@ template void utilityCore::inspectHost<glm::tmat4x4<double>>(const glm::tmat4x4<
 template void utilityCore::inspectHost<int>(const int*, int, const char* str);
 template void utilityCore::inspectHost<float>(const float*, int, const char* str);
 template void utilityCore::inspectHost<double>(const double*, int, const char* str);
-template void utilityCore::inspectHost<indexType>(const indexType*, int, const char* str);
 
 template<typename Scalar>
 void utilityCore::inspectHost(const BVHNode<Scalar>* hstBVHNodes, int size) {
@@ -221,7 +215,7 @@ void utilityCore::inspectHost(const Query* query, int size) {
         std::cout << "DistanceType::" << distanceTypeString[static_cast<int>(query[i].dType)] << ",";
         std::cout << query[i].v0 << "," << query[i].v1 << "," << query[i].v2 << "," << query[i].v3 << "," << query[i].toi << "," << query[i].d << ","
             << glm::to_string(query[i].normal) << "}," << std::endl;
-        }
+    }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }
 
@@ -269,7 +263,7 @@ bool utilityCore::compareHostVSHost(const T* host_ptr1, const T* host_ptr2, int 
 }
 template bool utilityCore::compareHostVSHost<glm::vec3>(const glm::vec3*, const glm::vec3*, int size);
 
-void utilityCore::inspectHost(const unsigned int* host_ptr, int size) {
+void utilityCore::inspectHost(const indexType* host_ptr, int size) {
     std::cout << "---------------------------inspectHost--------------------------------" << std::endl;
     for (int i = 0; i < size / 4; i++) {
         std::cout << host_ptr[i * 4] << " " << host_ptr[i * 4 + 1] << " " << host_ptr[i * 4 + 2] << " " << host_ptr[i * 4 + 3] << std::endl;

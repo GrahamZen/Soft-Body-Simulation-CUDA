@@ -1,13 +1,14 @@
 #pragma once
-#include <utilities.h>
+#include <def.h>
+#include <precision.h>
 #include <vector>
+#include <string>
 
 class SoftBody;
 class Camera;
 class SimulationCUDAContext;
 class SurfaceShader;
 
-using solverPrecision = double;
 
 struct SoftBodyAttr
 {
@@ -59,7 +60,6 @@ void cleanupCuda();
 
 class Context
 {
-    friend class SimulationCUDAContext;
 public:
     Context(const std::string& _filename);
     ~Context();
