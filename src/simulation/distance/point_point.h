@@ -31,7 +31,7 @@ namespace ipc {
     /// @param p1 The second point.
     /// @return The computed hessian.
     template<typename Scalar>
-    Matrix6<Scalar> point_point_distance_hessian(
+    __host__ __device__ Matrix6<Scalar> point_point_distance_hessian(
         const glm::tvec3<Scalar>& p0,
         const glm::tvec3<Scalar>& p1);
 

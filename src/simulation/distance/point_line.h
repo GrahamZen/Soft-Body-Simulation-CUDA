@@ -36,7 +36,7 @@ namespace ipc {
     /// @param e1 The second vertex of the edge defining the line.
     /// @return The hessian of the distance wrt p, e0, and e1.
     template<typename Scalar>
-    Matrix9<Scalar> point_line_distance_hessian(
+    __host__ __device__ Matrix9<Scalar> point_line_distance_hessian(
         const glm::tvec3<Scalar>& p,
         const glm::tvec3<Scalar>& e0,
         const glm::tvec3<Scalar>& e1);
@@ -44,7 +44,7 @@ namespace ipc {
     // Symbolically generated derivatives;
     namespace autogen {
         template<typename Scalar>
-        void point_line_distance_gradient_2D(
+        __host__ __device__ void point_line_distance_gradient_2D(
             Scalar v01,
             Scalar v02,
             Scalar v11,
@@ -54,7 +54,7 @@ namespace ipc {
             Scalar g[6]);
 
         template<typename Scalar>
-        void point_line_distance_gradient_3D(
+        __host__ __device__ void point_line_distance_gradient_3D(
             Scalar v01,
             Scalar v02,
             Scalar v03,
@@ -67,7 +67,7 @@ namespace ipc {
             Scalar g[9]);
 
         template<typename Scalar>
-        void point_line_distance_hessian_2D(
+        __host__ __device__ void point_line_distance_hessian_2D(
             Scalar v01,
             Scalar v02,
             Scalar v11,
@@ -77,7 +77,7 @@ namespace ipc {
             Scalar H[36]);
 
         template<typename Scalar>
-        void point_line_distance_hessian_3D(
+        __host__ __device__ void point_line_distance_hessian_3D(
             Scalar v01,
             Scalar v02,
             Scalar v03,

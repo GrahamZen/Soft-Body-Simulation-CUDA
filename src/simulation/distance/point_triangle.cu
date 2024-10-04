@@ -126,7 +126,7 @@ namespace ipc {
         const glm::tvec3<double>& t2,
         DistanceType dtype);
     template<typename Scalar>
-    Matrix12<Scalar> point_triangle_distance_hessian(
+    __host__ __device__ Matrix12<Scalar> point_triangle_distance_hessian(
         const glm::tvec3<Scalar>& p,
         const glm::tvec3<Scalar>& t0,
         const glm::tvec3<Scalar>& t1,
@@ -193,14 +193,14 @@ namespace ipc {
         return hess;
     }
 
-    template Matrix12<float> point_triangle_distance_hessian<float>(
+    template __host__ __device__ Matrix12<float> point_triangle_distance_hessian<float>(
         const glm::tvec3<float>& p,
         const glm::tvec3<float>& t0,
         const glm::tvec3<float>& t1,
         const glm::tvec3<float>& t2,
         DistanceType dtype);
 
-    template Matrix12<double> point_triangle_distance_hessian<double>(
+    template __host__ __device__ Matrix12<double> point_triangle_distance_hessian<double>(
         const glm::tvec3<double>& p,
         const glm::tvec3<double>& t0,
         const glm::tvec3<double>& t1,

@@ -147,7 +147,7 @@ namespace ipc {
         DistanceType dtype);
 
     template<typename Scalar>
-    Matrix12<Scalar> edge_edge_distance_hessian(
+    __host__ __device__ Matrix12<Scalar> edge_edge_distance_hessian(
         const glm::tvec3<Scalar>& ea0,
         const glm::tvec3<Scalar>& ea1,
         const glm::tvec3<Scalar>& eb0,
@@ -228,14 +228,14 @@ namespace ipc {
         return hess;
     }
 
-    template Matrix12<float> edge_edge_distance_hessian<float>(
+    template __host__ __device__  Matrix12<float> edge_edge_distance_hessian<float>(
         const glm::tvec3<float>& ea0,
         const glm::tvec3<float>& ea1,
         const glm::tvec3<float>& eb0,
         const glm::tvec3<float>& eb1,
         DistanceType dtype);
 
-    template Matrix12<double> edge_edge_distance_hessian<double>(
+    template __host__ __device__  Matrix12<double> edge_edge_distance_hessian<double>(
         const glm::tvec3<double>& ea0,
         const glm::tvec3<double>& ea1,
         const glm::tvec3<double>& eb0,

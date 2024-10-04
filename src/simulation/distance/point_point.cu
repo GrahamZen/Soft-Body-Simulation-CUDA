@@ -45,7 +45,7 @@ namespace ipc {
         const glm::tvec3<double>& p1);
 
     template<typename Scalar>
-    Matrix6<Scalar> point_point_distance_hessian(
+    Matrix6<Scalar> __host__ __device__ point_point_distance_hessian(
         const glm::tvec3<Scalar>& p0,
         const glm::tvec3<Scalar>& p1)
     {
@@ -57,11 +57,11 @@ namespace ipc {
         return hess;
     }
 
-    template Matrix6<float> point_point_distance_hessian<float>(
+    template Matrix6<float> __host__ __device__ point_point_distance_hessian<float>(
         const glm::tvec3<float>& p0,
         const glm::tvec3<float>& p1);
 
-    template Matrix6<double> point_point_distance_hessian<double>(
+    template Matrix6<double> __host__ __device__ point_point_distance_hessian<double>(
         const glm::tvec3<double>& p0,
         const glm::tvec3<double>& p1);
 

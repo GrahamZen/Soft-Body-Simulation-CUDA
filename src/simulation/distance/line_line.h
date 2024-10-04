@@ -44,7 +44,7 @@ namespace ipc {
     /// @param ea1 The second vertex of the edge defining the second line.
     /// @return The hessian of the distance wrt ea0, ea1, eb0, and eb1.
     template<typename Scalar>
-    Matrix12<Scalar> line_line_distance_hessian(
+    __host__ __device__ Matrix12<Scalar> line_line_distance_hessian(
         const glm::tvec3<Scalar>& ea0,
         const glm::tvec3<Scalar>& ea1,
         const glm::tvec3<Scalar>& eb0,
@@ -69,7 +69,7 @@ namespace ipc {
             Scalar g[12]);
 
         template<typename Scalar>
-        void line_line_distance_hessian(
+        __host__ __device__ void line_line_distance_hessian(
             Scalar v01,
             Scalar v02,
             Scalar v03,
