@@ -53,12 +53,10 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
     PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
-    // int* AIdxHost = (int*)malloc(sizeof(int) * len);
     std::vector<int>ARowIdxHost(len);
     std::vector<int>AColIdxHost(len);
     std::vector<float>tmpValHost(len);
 
-    // cudaMemcpy(AIdxHost, AIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
     cudaMemcpy(ARowIdxHost.data(), ARowIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
     cudaMemcpy(AColIdxHost.data(), AColIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
     cudaMemcpy(tmpValHost.data(), tmpVal, sizeof(float) * len, cudaMemcpyDeviceToHost);

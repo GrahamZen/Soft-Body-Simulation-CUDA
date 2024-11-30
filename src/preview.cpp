@@ -99,6 +99,7 @@ void RenderImGui()
     for (size_t i = 0; i < context->mpSimContexts.size(); i++) {
         auto simCtx = context->mpSimContexts[i];
         if (ImGui::TreeNode(simCtx->GetName().c_str())) {
+            ImGui::SameLine();
             if (ImGui::Button("Activate")) {
                 contextChanged = true;
                 imguiData->currSimContextId = i;
@@ -108,6 +109,10 @@ void RenderImGui()
                 for (size_t j = 0; j < simCtx->GetSoftBodies().size(); j++) {
                     auto softBody = simCtx->GetSoftBodies()[j];
                     if (ImGui::TreeNode(softBody->GetName().c_str())) {
+                        ImGui::SameLine();
+                        if (ImGui::Button("Highlight")) {
+                            imguiData->HighLightObjId = softBody->GetName();
+                        }
                         ImGui::Text("#DBC: %d", softBody->GetAttributes().numDBC);
                         ImGui::Text("#Triangle: %d", softBody->GetNumTris());
                         imguiData->softBodyAttr.mu = ImGui::DragFloat("mu", &softBody->GetAttributes().mu, 100.f, 0.0f, 100000.0f, "%.2f");
@@ -126,6 +131,10 @@ void RenderImGui()
             if (ImGui::TreeNode("Fixed Bodies")) {
                 for (const auto& fixedBody : simCtx->GetFixedBodies()) {
                     if (ImGui::TreeNode(fixedBody->name)) {
+                        ImGui::SameLine();
+                        if (ImGui::Button("Highlight")) {
+                            imguiData->HighLightObjId = fixedBody->name;
+                        }
                         ImGui::TreePop();
                     }
                 }

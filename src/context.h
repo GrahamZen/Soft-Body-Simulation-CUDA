@@ -46,6 +46,7 @@ public:
     bool Step = false;
     bool UseEigen = true;
     int CurrQueryId = 0;
+    std::string HighLightObjId;
     float theta, phi;
     glm::vec3 cameraLookAt;
     float zoom;
@@ -94,6 +95,7 @@ private:
     std::string filename = "context.json";
     SimulationCUDAContext* LoadSimContext();
     glm::vec3 ogLookAt; // for recentering the camera
+    SurfaceShader* mpProgHighLight;
     SurfaceShader* mpProgLambert;
     SurfaceShader* mpProgFlat;
     size_t iteration = 0;

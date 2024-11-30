@@ -347,7 +347,7 @@ void DataLoader<Scalar>::AllocData(std::vector<int>& startIndices, SolverData<Sc
         });
         cudaFree(softBodySolverData.X);
         cudaFree(softBodySolverData.Tet);
-        softbodies.push_back(new SoftBody(&softBodyData, softBodyAttr, { tetOffset / 4, tetOffset / 4 + softBodySolverData.numTets * 4 }, threadsPerBlock, namesSoftBodies[i]));
+        softbodies.push_back(new SoftBody(&softBodyData, softBodyAttr, { tetOffset / 4, tetOffset / 4 + softBodySolverData.numTets }, threadsPerBlock, namesSoftBodies[i]));
         vertOffset += softBodySolverData.numVerts;
         triOffset += softBodyData.numTris * 3;
         tetOffset += softBodySolverData.numTets * 4;

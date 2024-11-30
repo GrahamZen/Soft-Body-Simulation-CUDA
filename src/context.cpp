@@ -72,7 +72,7 @@ Camera& Camera::computeCameraParams()
     return *this;
 }
 
-Context::Context(const std::string& _filename) :filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()), mpProgFlat(new SurfaceShader()),
+Context::Context(const std::string& _filename) :filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()), mpProgHighLight(new SurfaceShader()), mpProgFlat(new SurfaceShader()),
 width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer())
 {
     glm::vec3 view = mpCamera->view;
@@ -93,6 +93,7 @@ width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera
 
 Context::~Context()
 {
+    delete mpProgHighLight;
     delete mpProgLambert;
     delete mpProgFlat;
     delete mcrpSimContext;
@@ -143,6 +144,9 @@ void Context::LoadShaders(const std::string& vertShaderFilename, const std::stri
         std::string vertShaderPath = shadersFolder + "/" + "lambert.vert.glsl";
         std::string fragShaderPath = shadersFolder + "/" + "lambert.frag.glsl";
         mpProgLambert->create(vertShaderPath.c_str(), fragShaderPath.c_str());
+        vertShaderPath = shadersFolder + "/" + "highLight.vert.glsl";
+        fragShaderPath = shadersFolder + "/" + "highLight.frag.glsl";
+        mpProgHighLight->create(vertShaderPath.c_str(), fragShaderPath.c_str());
     }
     else {
         mpProgLambert->create(vertShaderFilename.c_str(), fragShaderFilename.c_str());
@@ -150,6 +154,9 @@ void Context::LoadShaders(const std::string& vertShaderFilename, const std::stri
     mpProgLambert->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
     mpProgLambert->setCameraPos(cameraPosition);
     mpProgLambert->setModelMatrix(glm::mat4(1.f));
+    mpProgHighLight->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
+    mpProgHighLight->setCameraPos(cameraPosition);
+    mpProgHighLight->setModelMatrix(glm::mat4(1.f));
 }
 
 void Context::LoadFlatShaders(const std::string& vertShaderFilename, const std::string& fragShaderFilename)
@@ -368,7 +375,7 @@ void Context::InitCuda() {
 void Context::Draw() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    mcrpSimContext->Draw(mpProgLambert, mpProgFlat);
+    mcrpSimContext->Draw(mpProgHighLight, mpProgLambert, mpProgFlat, guiData->HighLightObjId);
 }
 
 void Context::SetBVHBuildType(int buildType)
@@ -416,6 +423,8 @@ void Context::Update() {
         camchanged = false;
         mpProgLambert->setCameraPos(cameraPosition);
         mpProgLambert->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
+        mpProgHighLight->setCameraPos(cameraPosition);
+        mpProgHighLight->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
         mpProgFlat->setCameraPos(cameraPosition);
         mpProgFlat->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
     }

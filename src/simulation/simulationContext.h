@@ -21,7 +21,7 @@ public:
     void UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr);
     void SetBVHBuildType(int);
     void SetGlobalSolver(bool useEigen);
-    void Draw(SurfaceShader*, SurfaceShader*);
+    void Draw(SurfaceShader*, SurfaceShader*, SurfaceShader*, std::string highLightName = "");
     SolverParams<solverPrecision>* GetSolverParams();
     int GetTetCnt() const;
     int GetVertCnt() const;
