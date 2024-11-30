@@ -25,13 +25,13 @@ FixedBodyData::FixedBodyData(int _threadsPerBlock, const std::vector<FixedBody*>
         }
     }
     if (numSpheres > 0) {
-        cudaMalloc(&dev_spheres, numSpheres * sizeof(Sphere));
+        cudaMalloc((void**)&dev_spheres, numSpheres * sizeof(Sphere));
     }
     if (numPlanes > 0) {
-        cudaMalloc(&dev_planes, numPlanes * sizeof(Plane));
+        cudaMalloc((void**)&dev_planes, numPlanes * sizeof(Plane));
     }
     if (numCylinders > 0) {
-        cudaMalloc(&dev_cylinders, numCylinders * sizeof(Cylinder));
+        cudaMalloc((void**)&dev_cylinders, numCylinders * sizeof(Cylinder));
     }
     int sphereIdx = 0;
     int floorIdx = 0;
@@ -115,7 +115,7 @@ __global__ void handleCylinderCollision(glm::tvec3<Scalar>* X, glm::tvec3<Scalar
     for (int j = 0; j < numCylinders; j++) {
         const Cylinder cy = cylinders[j];
         glm::tvec3<Scalar> axis = glm::tvec3<Scalar>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
-        glm::tmat3x3<Scalar> nnT =glm::tmat3x3<Scalar>(1.f) - glm::outerProduct(axis, axis);
+        glm::tmat3x3<Scalar> nnT = glm::tmat3x3<Scalar>(1.f) - glm::outerProduct(axis, axis);
         glm::tvec3<Scalar> cylinderCenter = glm::tvec3<Scalar>(cy.m_model[3]);
         Scalar cylinderRadius = cy.m_radius;
         glm::tvec3<Scalar> n = nnT * (X[i] - cylinderCenter);

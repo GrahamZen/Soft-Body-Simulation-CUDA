@@ -1,7 +1,9 @@
 //#define _CRT_SECURE_NO_DEPRECATE
 #include <main.h>
 #include <collision/aabb.h>
+#include <simulationContext.h>
 #include <context.h>
+#include <softbody.h>
 #include <preview.h>
 #include <utilities.h>
 #include <imgui.h>
@@ -92,6 +94,49 @@ void RenderImGui()
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     static float f = 0.0f;
     static int counter = 0;
+    ImGui::Begin("Scene Hierarchy");
+    bool contextChanged = false;
+    for (size_t i = 0; i < context->mpSimContexts.size(); i++) {
+        auto simCtx = context->mpSimContexts[i];
+        if (ImGui::TreeNode(simCtx->GetName().c_str())) {
+            if (ImGui::Button("Activate")) {
+                contextChanged = true;
+                imguiData->currSimContextId = i;
+            }
+            // SoftBodies
+            if (ImGui::TreeNode("Soft Bodies")) {
+                for (size_t j = 0; j < simCtx->GetSoftBodies().size(); j++) {
+                    auto softBody = simCtx->GetSoftBodies()[j];
+                    if (ImGui::TreeNode(softBody->GetName().c_str())) {
+                        ImGui::Text("#DBC: %d", softBody->GetAttributes().numDBC);
+                        ImGui::Text("#Triangle: %d", softBody->GetNumTris());
+                        imguiData->softBodyAttr.mu = ImGui::DragFloat("mu", &softBody->GetAttributes().mu, 100.f, 0.0f, 100000.0f, "%.2f");
+                        imguiData->softBodyAttr.lambda = ImGui::DragFloat("lambda", &softBody->GetAttributes().lambda, 100.f, 0.0f, 100000.0f, "%.2f");
+                        if (imguiData->softBodyAttr.mu || imguiData->softBodyAttr.lambda) {
+                            imguiData->softBodyAttr.currSoftBodyId = j;
+                        }
+                        ImGui::Text("mass: %.2f", softBody->GetAttributes().mass);
+                        ImGui::TreePop();
+                    }
+                }
+                ImGui::TreePop();
+            }
+
+            // FixedBodies
+            if (ImGui::TreeNode("Fixed Bodies")) {
+                for (const auto& fixedBody : simCtx->GetFixedBodies()) {
+                    if (ImGui::TreeNode(fixedBody->name)) {
+                        ImGui::TreePop();
+                    }
+                }
+                ImGui::TreePop();
+            }
+
+            ImGui::TreePop();
+        }
+    }
+
+    ImGui::End();
 
     ImGui::Begin("Simulator Analytics");                  // Create a window called "Hello, world!" and append into it.
     ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
@@ -142,20 +187,9 @@ void RenderImGui()
     bool cameraThetaChanged = ImGui::DragFloat("Camera Theta", &imguiData->theta, 0.1f, 0.001f, PI - 0.001f, "%.4f");
     bool cameraLookAtChanged = ImGui::DragFloat3("Camera Look At", &imguiData->cameraLookAt.x, 1.0f, -200.0f, 200.0f, "%.4f");
     bool zoomChanged = ImGui::DragFloat("Zoom", &imguiData->zoom, 10.f, 0.01f, 10000.0f, "%.4f");
-    ImGui::Separator();
-    ImGui::Text("Soft body Attributes");
-    imguiData->softBodyAttr.mu.second = ImGui::DragFloat("Stiffness 0", &imguiData->softBodyAttr.mu.first, 100.f, 0.0f, 100000.0f, "%.2f");
-    imguiData->softBodyAttr.lambda.second = ImGui::DragFloat("Stiffness 1", &imguiData->softBodyAttr.lambda.first, 100.f, 0.0f, 100000.0f, "%.2f");
-    imguiData->softBodyAttr.damp.second = ImGui::DragFloat("Damp", &imguiData->softBodyAttr.damp.first, 0.01f, 0.0f, 1.0f, "%.4f");
-    imguiData->softBodyAttr.muN.second = ImGui::DragFloat("muN", &imguiData->softBodyAttr.muN.first, 0.01f, 0.0f, 100.0f, "%.4f");
-    imguiData->softBodyAttr.muT.second = ImGui::DragFloat("muT", &imguiData->softBodyAttr.muT.first, 0.01f, 0.0f, 100.0f, "%.4f");
-    ImGui::Separator();
-    const auto& nameItems = context->GetNamesSoftBodies();
-    if (ImGui::Combo("Soft Bodies", &imguiData->softBodyAttr.currSoftBodyId, nameItems.data(), nameItems.size()))
-    {
-    }
-    const auto& nameContextItems = context->GetNamesContexts();
-    bool contextChanged = ImGui::Combo("Contexts", &imguiData->currSimContextId, nameContextItems.data(), nameContextItems.size());
+    //imguiData->softBodyAttr.damp = ImGui::DragFloat("Damp", &imguiData->softBodyAttr.damp, 0.01f, 0.0f, 1.0f, "%.4f");
+    //imguiData->softBodyAttr.muN = ImGui::DragFloat("muN", &imguiData->softBodyAttr.muN, 0.01f, 0.0f, 100.0f, "%.4f");
+    //imguiData->softBodyAttr.muT = ImGui::DragFloat("muT", &imguiData->softBodyAttr.muT, 0.01f, 0.0f, 100.0f, "%.4f");
 
     // LOOK: Un-Comment to check the output window and usage
     //ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
@@ -179,7 +213,6 @@ void RenderImGui()
     ImGui::SameLine();
     ImGui::SetNextItemWidth(availWidth * 0.25f);
     ImGui::DragFloat("Line Width", &imguiData->LineWidth, 1, 0.1f, 50.f, "%.2f");
-    // context->guiData->QueryDirty = ImGui::SliderInt("Query Index", &imguiData->CurrQueryId, 0, context->GetNumQueries() - 1);
     context->guiData->QueryDirty = ImGui::DragInt("Query Index", &imguiData->CurrQueryId, 1, 0, context->GetNumQueries() - 1);
     ImGui::Text("%s, v0: %d, v1: %d, v2: %d, v3: %d, d:%f", distanceTypeString[static_cast<int>(context->guiData->mPQuery->dType)],
         context->guiData->mPQuery->v0, context->guiData->mPQuery->v1, context->guiData->mPQuery->v2, context->guiData->mPQuery->v3, context->guiData->mPQuery->d);

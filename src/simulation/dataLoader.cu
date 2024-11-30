@@ -285,7 +285,7 @@ void DataLoader<Scalar>::CollectData(const char* mshFileName, const glm::vec3& p
 }
 
 template<typename Scalar>
-void DataLoader<Scalar>::AllocData(std::vector<int>& startIndices, SolverData<Scalar>& solverData, std::vector<SoftBody*>& softbodies)
+void DataLoader<Scalar>::AllocData(std::vector<int>& startIndices, SolverData<Scalar>& solverData, std::vector<SoftBody*>& softbodies, const std::vector<const char*>& namesSoftBodies)
 {
     solverData.numVerts = totalNumVerts;
     solverData.numTets = totalNumTets;
@@ -347,16 +347,22 @@ void DataLoader<Scalar>::AllocData(std::vector<int>& startIndices, SolverData<Sc
         });
         cudaFree(softBodySolverData.X);
         cudaFree(softBodySolverData.Tet);
+        softbodies.push_back(new SoftBody(&softBodyData, softBodyAttr, { tetOffset / 4, tetOffset / 4 + softBodySolverData.numTets * 4 }, threadsPerBlock, namesSoftBodies[i]));
         vertOffset += softBodySolverData.numVerts;
         triOffset += softBodyData.numTris * 3;
         tetOffset += softBodySolverData.numTets * 4;
         edgeOffset += m_impl->m_edges[i].size();
         dbcOffset += softBodyAttr.numDBC;
         delete[] softBodyAttr.DBC;
-        softbodies.push_back(new SoftBody(&softBodyData, softBodyAttr, threadsPerBlock));
     }
     cudaMemcpy(solverData.X0, solverData.X, sizeof(glm::tvec3<Scalar>) * totalNumVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(solverData.XTilde, solverData.X, sizeof(glm::tvec3<Scalar>) * totalNumVerts, cudaMemcpyDeviceToDevice);
+}
+
+template<typename Scalar>
+void DataLoader<Scalar>::FillData(Scalar* X, Scalar val, indexType* Tet, std::pair<size_t, size_t> tetIdxRange)
+{
+    thrust::fill(thrust::device_pointer_cast(X) + tetIdxRange.first, thrust::device_pointer_cast(X) + tetIdxRange.second, val);
 }
 
 template class DataLoader<double>;

@@ -70,7 +70,7 @@ namespace PdUtil {
         }
     }
 
-    __global__ void computeLocal(const float* V0, const float wi, float* xProj, const glm::mat3* DmInvs, const float* qn, const indexType* Tets, int numTets)
+    __global__ void computeLocal(const float* V0, const float* wi, float* xProj, const glm::mat3* DmInvs, const float* qn, const indexType* Tets, int numTets)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numTets)
@@ -98,7 +98,7 @@ namespace PdUtil {
                 R[2] = -R[2];
             }
 
-            const glm::mat4x3 piTAiSi = glm::abs(V0[index]) * wi * R * glm::transpose(DmInv)
+            const glm::mat4x3 piTAiSi = glm::abs(V0[index]) * wi[index] * R * glm::transpose(DmInv)
                 * glm::mat4x3{ -1, -1, -1, 1, 0, 0, 0, 1, 0, 0, 0, 1 };
 
             atomicAdd(&(xProj[v0Ind + 0]), piTAiSi[0][0]);

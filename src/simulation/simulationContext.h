@@ -18,8 +18,7 @@ public:
     ~SimulationCUDAContext();
     void Update();
     void Reset();
-    const std::vector<const char*>& GetNamesSoftBodies() const { return namesSoftBodies; }
-    void UpdateSingleSBAttr(int index, SoftBodyAttr* pSoftBodyAttr);
+    void UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr);
     void SetBVHBuildType(int);
     void SetGlobalSolver(bool useEigen);
     void Draw(SurfaceShader*, SurfaceShader*);
@@ -28,11 +27,13 @@ public:
     int GetVertCnt() const;
     int GetThreadsPerBlock() const { return threadsPerBlock; }
     int GetNumQueries() const;
+    const std::vector<SoftBody*>& GetSoftBodies() const { return softBodies; }
+    const std::vector<FixedBody*>& GetFixedBodies() const { return fixedBodies; }
+    std::string GetName() const { return name; }
 private:
     void PrepareRenderData();
     int threadsPerBlock = 64;
     SolverData<solverPrecision> mSolverData;
-    std::vector<const char*> namesSoftBodies;
     std::vector<SoftBody*> softBodies;
     std::vector<FixedBody*> fixedBodies;
     std::vector<int> startIndices;

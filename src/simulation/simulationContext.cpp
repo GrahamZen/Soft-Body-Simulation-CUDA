@@ -42,11 +42,6 @@ void SimulationCUDAContext::Update()
     }
 }
 
-
-void SimulationCUDAContext::UpdateSingleSBAttr(int index, SoftBodyAttr* pSoftBodyAttr) {
-    softBodies[index]->SetAttributes(pSoftBodyAttr);
-}
-
 void SimulationCUDAContext::SetBVHBuildType(int buildType)
 {
     mSolverData.pCollisionDetection->SetBuildType(buildType);

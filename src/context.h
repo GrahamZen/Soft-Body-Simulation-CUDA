@@ -13,11 +13,11 @@ class SurfaceShader;
 struct SoftBodyAttr
 {
     int currSoftBodyId = -1;
-    std::pair<float, bool> mu;
-    std::pair<float, bool> lambda;
-    std::pair<float, bool> damp;
-    std::pair<float, bool> muN;
-    std::pair<float, bool> muT;
+    bool mu;
+    bool lambda;
+    bool damp;
+    bool muN;
+    bool muT;
     void setJumpClean(bool& val);
     void setJump(bool val);
     bool getJumpDirty()const;
@@ -76,8 +76,6 @@ public:
     int GetIteration() const { return iteration; }
     const std::vector<int>& GetDOFs() const { return DOFs; }
     const std::vector<int>& GetEles() const { return Eles; }
-    const std::vector<const char*>& GetNamesSoftBodies() const;
-    const std::vector<const char*>& GetNamesContexts() const { return namesContexts; }
     Camera* mpCamera = nullptr;
     const int width = 1024;
     const int height = 1024;
@@ -101,7 +99,6 @@ private:
     size_t iteration = 0;
     bool pause = false;
     bool logEnabled = false;
-    std::vector<const char*> namesContexts;
     std::vector<int> DOFs;
     std::vector<int> Eles;
 };

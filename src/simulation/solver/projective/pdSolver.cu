@@ -135,7 +135,7 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
     for (int i = 0; i < solverParams.numIterations; i++)
     {
         cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
-        PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverParams.softBodyAttr.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
+        PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
         PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
 
         if (useEigen)

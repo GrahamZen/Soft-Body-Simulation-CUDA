@@ -93,9 +93,6 @@ width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera
 
 Context::~Context()
 {
-    for (auto name : namesContexts) {
-        delete[]name;
-    }
     delete mpProgLambert;
     delete mpProgFlat;
     delete mcrpSimContext;
@@ -120,16 +117,16 @@ int Context::GetMaxCGThreads()
 void Context::PollEvents() {
     auto& attrs = guiData->softBodyAttr;
     if (attrs.currSoftBodyId == -1) return;
-    bool result = attrs.mu.second || attrs.lambda.second || attrs.damp.second || attrs.muN.second || attrs.muT.second || attrs.getJumpDirty();
+    bool result = attrs.mu || attrs.lambda || attrs.damp || attrs.muN || attrs.muT || attrs.getJumpDirty();
     if (result)
-        mcrpSimContext->UpdateSingleSBAttr(guiData->softBodyAttr.currSoftBodyId, &guiData->softBodyAttr);
+        mcrpSimContext->UpdateSoftBodyAttr(guiData->softBodyAttr.currSoftBodyId, &guiData->softBodyAttr);
     else
         return;
-    attrs.mu.second = false;
-    attrs.lambda.second = false;
-    attrs.damp.second = false;
-    attrs.muN.second = false;
-    attrs.muT.second = false;
+    attrs.mu = false;
+    attrs.lambda = false;
+    attrs.damp = false;
+    attrs.muN = false;
+    attrs.muT = false;
 }
 
 void Context::LoadShaders(const std::string& vertShaderFilename, const std::string& fragShaderFilename)
@@ -176,10 +173,6 @@ void Context::LoadFlatShaders(const std::string& vertShaderFilename, const std::
     mpProgFlat->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
     mpProgFlat->setCameraPos(cameraPosition);
     mpProgFlat->setModelMatrix(glm::mat4(1.f));
-}
-
-const std::vector<const char*>& Context::GetNamesSoftBodies() const {
-    return mcrpSimContext->GetNamesSoftBodies();
 }
 
 int Context::GetNumQueries() const {
@@ -273,6 +266,8 @@ std::vector<FixedBody*> ReadFixedBodies(const nlohmann::json& json, const std::m
         if (fbDefJson["type"] == "plane") {
             fixedBodies.push_back(new Plane(utilityCore::modelMatrix(pos, rot, scale)));
         }
+        fixedBodies.back()->name = new char[std::string(fbJson["name"]).size() + 1];
+        strcpy(fixedBodies.back()->name, std::string(fbJson["name"]).c_str());
     }
 
     for (auto& fixedBody : fixedBodies) {
@@ -336,7 +331,6 @@ SimulationCUDAContext* Context::LoadSimContext() {
             std::string baseName = contextJson["name"];
             char* name = new char[baseName.size() + 1];
             strcpy(name, baseName.c_str());
-            namesContexts.push_back(name);
             std::vector<FixedBody*> fixBodies;
             if (contextJson.contains("fixedBodies")) {
                 fixBodies = ReadFixedBodies(contextJson["fixedBodies"], fixedBodyDefs);
@@ -360,7 +354,7 @@ void Context::InitDataContainer() {
     guiData->solverParams = mcrpSimContext->GetSolverParams();
     guiData->Pause = false;
     guiData->UseEigen = false;
-    guiData->softBodyAttr.currSoftBodyId = 0;
+    guiData->softBodyAttr.currSoftBodyId = -1;
     guiData->currSimContextId = 0;
 }
 

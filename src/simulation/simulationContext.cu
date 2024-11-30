@@ -24,6 +24,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     :contextGuiData(ctx->guiData), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
 {
     DataLoader<solverPrecision> dataLoader(threadsPerBlock);
+    std::vector<const char*> namesSoftBodies;
     mSolverData.pCollisionDetection = new CollisionDetection<solverPrecision>{ ctx, _threadsPerBlockBVH, 1 << 16 };
     if (json.contains("dt")) {
         mSolverParams.dt = json["dt"].get<float>();
@@ -173,7 +174,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
             }
 
         }
-        dataLoader.AllocData(startIndices, mSolverData, softBodies);
+        dataLoader.AllocData(startIndices, mSolverData, softBodies, namesSoftBodies);
         mSolverData.pCollisionDetection->Init(mSolverData.numTris, mSolverData.numVerts, maxThreads);
         cudaMalloc((void**)&mSolverData.dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(solverPrecision));
@@ -184,9 +185,6 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
 
 SimulationCUDAContext::~SimulationCUDAContext()
 {
-    for (auto name : namesSoftBodies) {
-        delete[]name;
-    }
     cudaFree(mSolverData.X);
     cudaFree(mSolverData.Tet);
     cudaFree(mSolverData.V);
@@ -206,6 +204,16 @@ SimulationCUDAContext::~SimulationCUDAContext()
     }
     cudaFree(mSolverData.dev_Normals);
     delete mSolver;
+}
+
+void SimulationCUDAContext::UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr)
+{
+    if (pSoftBodyAttr->mu) {
+        DataLoader<solverPrecision>::FillData(mSolverData.mu, softBodies[index]->GetAttributes().mu, mSolverData.Tet, softBodies[index]->GetTetIdxRange());
+    }
+    if (pSoftBodyAttr->lambda) {
+        DataLoader<solverPrecision>::FillData(mSolverData.lambda, softBodies[index]->GetAttributes().lambda, mSolverData.Tet, softBodies[index]->GetTetIdxRange());
+    }
 }
 
 int SimulationCUDAContext::GetVertCnt() const {
