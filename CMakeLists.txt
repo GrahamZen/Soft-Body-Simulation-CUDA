@@ -40,7 +40,7 @@ if(UNIX)
     find_package(glfw3 REQUIRED)
     find_package(GLEW REQUIRED)
     set(LIBRARIES glfw ${GLEW_LIBRARIES} ${OPENGL_gl_LIBRARY})
-else(UNIX)
+else()
     set(EXTERNAL "external")
 
     set(GLFW_ROOT_DIR ${EXTERNAL})
@@ -54,7 +54,7 @@ else(UNIX)
     add_definitions(${GLEW_DEFINITIONS})
     include_directories(${GLEW_INCLUDE_DIR} ${GLFW_INCLUDE_DIR})
     set(LIBRARIES ${GLEW_LIBRARY} ${GLFW_LIBRARY} ${OPENGL_LIBRARY})
-endif(UNIX)
+endif()
 
 set(GLM_ROOT_DIR "external")
 find_package(GLM REQUIRED)
@@ -127,5 +127,5 @@ set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
     CUDA_RESOLVE_DEVICE_SYMBOLS ON
 )
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda -lineinfo --expt-relaxed-constexpr -Xcompiler "/wd 4819 /wd 4068 /wd 4661" -Xcudafe "--display_error_number --diag_suppress=20012 --diag_suppress=20011 --diag_suppress=20014">
+    $<$<COMPILE_LANGUAGE:CUDA>:-Xptxas -v --extended-lambda -lineinfo --expt-relaxed-constexpr -Xcompiler "/wd 4819 /wd 4068 /wd 4661" -Xcudafe "--display_error_number --diag_suppress=20012 --diag_suppress=20011 --diag_suppress=20014">
 )

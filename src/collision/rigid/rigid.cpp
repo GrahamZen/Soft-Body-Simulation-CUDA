@@ -6,6 +6,7 @@ FixedBody::FixedBody(const glm::mat4& model) : m_model(model), m_inverseModel(gl
 
 FixedBody::~FixedBody()
 {
+    // an error occurs when name is overwritten
     if(name)
         delete []name;
 }

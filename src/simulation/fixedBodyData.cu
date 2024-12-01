@@ -97,7 +97,7 @@ __global__ void handleSphereCollision(glm::tvec3<Scalar>* X, glm::tvec3<Scalar>*
         Scalar d = glm::length(toCenter);
         if (d < sphereRadius) {
             glm::tvec3<Scalar> normal = glm::normalize(toCenter);
-            X[i] += d * normal;
+            X[i] += (sphereRadius - d) * normal;
             glm::tvec3<Scalar> vN = glm::dot(V[i], normal) * normal;
             glm::tvec3<Scalar> vT = V[i] - vN;
             Scalar mag_vT = glm::length(vT);
@@ -113,13 +113,13 @@ __global__ void handleCylinderCollision(glm::tvec3<Scalar>* X, glm::tvec3<Scalar
     if (i >= numVerts) return;
 
     for (int j = 0; j < numCylinders; j++) {
-        const Cylinder cy = cylinders[j];
-        glm::tvec3<Scalar> axis = glm::tvec3<Scalar>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
-        glm::tmat3x3<Scalar> nnT = glm::tmat3x3<Scalar>(1.f) - glm::outerProduct(axis, axis);
-        glm::tvec3<Scalar> cylinderCenter = glm::tvec3<Scalar>(cy.m_model[3]);
-        Scalar cylinderRadius = cy.m_radius;
-        glm::tvec3<Scalar> n = nnT * (X[i] - cylinderCenter);
-        Scalar d = glm::length(n);
+        const glm::mat4 model = cylinders[j].m_model;
+        const Scalar cylinderRadius = cylinders[j].m_radius;
+        const glm::tvec3<Scalar> axis = glm::tvec3<Scalar>(glm::normalize(model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
+        const glm::tmat3x3<Scalar> nnT = glm::tmat3x3<Scalar>(1.f) - glm::outerProduct(axis, axis);
+        const glm::tvec3<Scalar> cylinderCenter = glm::tvec3<Scalar>(model[3]);
+        const glm::tvec3<Scalar> n = nnT * (X[i] - cylinderCenter);
+        const Scalar d = glm::length(n);
 
         if (d < cylinderRadius) {
             glm::tvec3<Scalar> normal = glm::normalize(n);

@@ -138,6 +138,8 @@ void RenderImGui()
                         if (ImGui::Button("Highlight")) {
                             imguiData->HighLightObjId = uniqueId;
                         }
+                        const glm::vec4 &pos = fixedBody->m_model[3];
+                        ImGui::Text("pos: [%.2f, %.2f, %.2f]", pos.x, pos.y, pos.z);
                         ImGui::TreePop();
                     }
                 }
