@@ -28,7 +28,7 @@ This project is originally a final project for CIS5650 at UPenn and is still und
 * FEM
   * [x] projective dynamics
   * [x] explicit euler
-  * [ ] incremental potential
+  * [x] incremental potential
     *  materials
          * [x] corotational
          * [ ] neo-hookean
@@ -53,3 +53,8 @@ Below are included in the project:
 * Eigen
 * glfw
 * catch2
+
+## Screenshots
+
+<p align="center">
+<img src="image/showcase1.png" width="600">

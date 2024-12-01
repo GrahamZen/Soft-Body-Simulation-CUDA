@@ -1,6 +1,6 @@
 #include <simulation/solver/explicit/explicitSolver.h>
 #include <simulation/solver/solverUtil.cuh>
-#include <simulation/simulationContext.h>
+#include <svd.cuh>
 
 namespace ExplicitUtil
 {

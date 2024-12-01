@@ -1,5 +1,7 @@
 #pragma once
 
+class GuiDataContainer;
+
 std::string currentTimeString();
 bool initOpenGL();
 void mainLoop();

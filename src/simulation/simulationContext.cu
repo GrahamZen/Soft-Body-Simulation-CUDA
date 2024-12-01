@@ -1,10 +1,11 @@
 #include <utilities.cuh>
+#include <collision/bvh.h>
 #include <simulation/solver/IPC/ipc.h>
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/softBody.h>
 #include <simulation/dataLoader.h>
 #include <simulation/simulationContext.h>
-
+#include <context.h>
 
 #define ERRORCHECK 1
 
@@ -20,18 +21,34 @@
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _name, nlohmann::json& json,
     const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads, int _numIterations)
-    :context(ctx), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
+    :contextGuiData(ctx->guiData), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
 {
     DataLoader<solverPrecision> dataLoader(threadsPerBlock);
-    mSolverParams.pCollisionDetection = new CollisionDetection<solverPrecision>{ &mSolverData, ctx, _threadsPerBlockBVH, 1 << 16 };
+    std::vector<const char*> namesSoftBodies;
+    mSolverData.pCollisionDetection = new CollisionDetection<solverPrecision>{ ctx, _threadsPerBlockBVH, 1 << 16 };
     if (json.contains("dt")) {
         mSolverParams.dt = json["dt"].get<float>();
+    }
+    if (json.contains("kappa")) {
+        mSolverParams.kappa = json["kappa"].get<float>();
+    }
+    if (json.contains("tolerance")) {
+        mSolverParams.tol = json["tolerance"].get<float>();
+    }
+    if (json.contains("maxIterations")) {
+        mSolverParams.maxIterations = json["maxIterations"].get<int>();
+    }
+    if (json.contains("pauseIter")) {
+        contextGuiData->PauseIter = json["pauseIter"].get<int>();
+    }
+    if (json.contains("dhat")) {
+        mSolverParams.dhat = json["dhat"].get<float>();
     }
     if (json.contains("gravity")) {
         mSolverParams.gravity = json["gravity"].get<float>();
     }
     if (json.contains("pause")) {
-        context->guiData->Pause = json["pause"].get<bool>();
+        contextGuiData->Pause = json["pause"].get<bool>();
     }
     if (json.contains("damp")) {
         float damp = json["damp"].get<float>();
@@ -157,20 +174,17 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
             }
 
         }
-        dataLoader.AllocData(startIndices, mSolverData, softBodies);
-        mSolverParams.pCollisionDetection->Init(mSolverData.numTets, mSolverData.numVerts, maxThreads);
+        dataLoader.AllocData(startIndices, mSolverData, softBodies, namesSoftBodies);
+        mSolverData.pCollisionDetection->Init(mSolverData.numTris, mSolverData.numVerts, maxThreads);
         cudaMalloc((void**)&mSolverData.dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(solverPrecision));
     }
     mSolverData.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
-    mSolver = new IPCSolver{ threadsPerBlock, mSolverData, 5e-2 };
+    mSolver = new IPCSolver{ threadsPerBlock, mSolverData };
 }
 
 SimulationCUDAContext::~SimulationCUDAContext()
 {
-    for (auto name : namesSoftBodies) {
-        delete[]name;
-    }
     cudaFree(mSolverData.X);
     cudaFree(mSolverData.Tet);
     cudaFree(mSolverData.V);
@@ -183,7 +197,7 @@ SimulationCUDAContext::~SimulationCUDAContext()
     cudaFree(mSolverData.mu);
     cudaFree(mSolverData.lambda);
     cudaFree(mSolverData.dev_Edges);
-    cudaFree(mSolverData.dev_TetFathers);
+    cudaFree(mSolverData.dev_TriFathers);
 
     for (auto softbody : softBodies) {
         delete softbody;
@@ -192,12 +206,22 @@ SimulationCUDAContext::~SimulationCUDAContext()
     delete mSolver;
 }
 
+void SimulationCUDAContext::UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr)
+{
+    if (pSoftBodyAttr->mu) {
+        DataLoader<solverPrecision>::FillData(mSolverData.mu, softBodies[index]->GetAttributes().mu, mSolverData.Tet, softBodies[index]->GetTetIdxRange());
+    }
+    if (pSoftBodyAttr->lambda) {
+        DataLoader<solverPrecision>::FillData(mSolverData.lambda, softBodies[index]->GetAttributes().lambda, mSolverData.Tet, softBodies[index]->GetTetIdxRange());
+    }
+}
+
 int SimulationCUDAContext::GetVertCnt() const {
     return mSolverData.numVerts;
 }
 
 int SimulationCUDAContext::GetNumQueries() const {
-    return mSolverParams.pCollisionDetection->GetNumQueries();
+    return mSolverData.pCollisionDetection->GetNumQueries();
 }
 
 int SimulationCUDAContext::GetTetCnt() const {
@@ -209,17 +233,9 @@ void SimulationCUDAContext::PrepareRenderData() {
         glm::vec3* pos;
         glm::vec4* nor;
         softbody->Mesh::MapDevicePtr(&pos, &nor);
-        if (softbody->GetNumTris() == 0) {
-            dim3 numThreadsPerBlock(softbody->GetNumTets() / threadsPerBlock + 1);
-            PopulatePos << <numThreadsPerBlock, threadsPerBlock >> > (pos, mSolverData.X, softbody->GetSoftBodyData().Tet, softbody->GetNumTets());
-            RecalculateNormals << <softbody->GetNumTets() * 4 / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, 4 * softbody->GetNumTets());
-            softbody->Mesh::UnMapDevicePtr();
-        }
-        else {
-            dim3 numThreadsPerBlock(softbody->GetNumTris() / threadsPerBlock + 1);
-            PopulateTriPos << <numThreadsPerBlock, threadsPerBlock >> > (pos, mSolverData.X, softbody->GetSoftBodyData().Tri, softbody->GetNumTris());
-            RecalculateNormals << <softbody->GetNumTris() / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, softbody->GetNumTris());
-            softbody->Mesh::UnMapDevicePtr();
-        }
+        dim3 numThreadsPerBlock(softbody->GetNumTris() / threadsPerBlock + 1);
+        PopulateTriPos << <numThreadsPerBlock, threadsPerBlock >> > (pos, mSolverData.X, softbody->GetSoftBodyData().Tri, softbody->GetNumTris());
+        RecalculateNormals << <softbody->GetNumTris() / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, softbody->GetNumTris());
+        softbody->Mesh::UnMapDevicePtr();
     }
 }

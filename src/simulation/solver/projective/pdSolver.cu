@@ -24,7 +24,7 @@ PdSolver::~PdSolver() {
     free(bHost);
 }
 
-void PdSolver::SolverPrepare(SolverData<float>& solverData, SolverParams<float>& solverParams)
+void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
@@ -53,12 +53,10 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, SolverParams<float>&
     PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, tmpVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
-    // int* AIdxHost = (int*)malloc(sizeof(int) * len);
     std::vector<int>ARowIdxHost(len);
     std::vector<int>AColIdxHost(len);
     std::vector<float>tmpValHost(len);
 
-    // cudaMemcpy(AIdxHost, AIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
     cudaMemcpy(ARowIdxHost.data(), ARowIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
     cudaMemcpy(AColIdxHost.data(), AColIdx, sizeof(int) * len, cudaMemcpyDeviceToHost);
     cudaMemcpy(tmpValHost.data(), tmpVal, sizeof(float) * len, cudaMemcpyDeviceToHost);
@@ -117,7 +115,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, SolverParams<float>&
 }
 
 
-void PdSolver::SolverStep(SolverData<float>& solverData, SolverParams<float>& solverParams)
+bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
     float dt = solverParams.dt;
     float const dtInv = 1.0f / dt;
@@ -135,7 +133,7 @@ void PdSolver::SolverStep(SolverData<float>& solverData, SolverParams<float>& so
     for (int i = 0; i < solverParams.numIterations; i++)
     {
         cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
-        PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverParams.softBodyAttr.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
+        PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
         PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
 
         if (useEigen)
@@ -152,11 +150,11 @@ void PdSolver::SolverStep(SolverData<float>& solverData, SolverParams<float>& so
     }
 
     PdUtil::updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilde, solverData.V, solverData.numVerts);
+    return true;
 }
 
-void PdSolver::Update(SolverData<float>& solverData, SolverParams<float>& solverParams)
+void PdSolver::Update(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
-    AddExternal << <(solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (solverData.V, solverData.numVerts, solverParams.softBodyAttr.jump, solverParams.softBodyAttr.mass, solverParams.extForce.jump);
     if (!solverReady)
     {
         SolverPrepare(solverData, solverParams);
@@ -164,9 +162,9 @@ void PdSolver::Update(SolverData<float>& solverData, SolverParams<float>& solver
     }
     SolverStep(solverData, solverParams);
     if (solverParams.handleCollision) {
-        solverParams.pCollisionDetection->DetectCollision(solverData.dev_tIs, solverData.dev_Normals);
+        solverData.pCollisionDetection->DetectCollision(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.XTilde, solverData.dev_TriFathers, solverData.dev_tIs, solverData.dev_Normals, true);
         int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-        CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts);
+        CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts, solverParams.dt);
     }
     else
         cudaMemcpy(solverData.X, solverData.XTilde, sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);

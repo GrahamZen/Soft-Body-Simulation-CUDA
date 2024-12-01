@@ -3,6 +3,8 @@
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/simulationContext.h>
 #include <simulation/softBody.h>
+#include <collision/bvh.h>
+#include <context.h>
 #include <spdlog/spdlog.h>
 #include <map>
 #include <chrono>
@@ -30,24 +32,19 @@ void measureExecutionTime(const Func& func, const std::string& message, bool pri
 
 void SimulationCUDAContext::Update()
 {
-    mSolverParams.handleCollision = (context->guiData->handleCollision && context->guiData->BVHEnabled);
+    mSolverParams.handleCollision = (contextGuiData->handleCollision && contextGuiData->BVHEnabled);
     mSolver->Update(mSolverData, mSolverParams);
-    if (context->guiData->handleCollision || context->guiData->BVHEnabled) {
-        mSolverParams.pCollisionDetection->PrepareRenderData();
+    if (contextGuiData->handleCollision || contextGuiData->BVHEnabled) {
+        mSolverData.pCollisionDetection->PrepareRenderData();
     }
-    if (context->guiData->ObjectVis) {
+    if (contextGuiData->ObjectVis) {
         PrepareRenderData();
     }
 }
 
-
-void SimulationCUDAContext::UpdateSingleSBAttr(int index, GuiDataContainer::SoftBodyAttr& softBodyAttr) {
-    softBodies[index]->SetAttributes(softBodyAttr);
-}
-
-void SimulationCUDAContext::SetBVHBuildType(BVH<solverPrecision>::BuildType buildType)
+void SimulationCUDAContext::SetBVHBuildType(int buildType)
 {
-    mSolverParams.pCollisionDetection->SetBuildType(buildType);
+    mSolverData.pCollisionDetection->SetBuildType(buildType);
 }
 
 void SimulationCUDAContext::SetGlobalSolver(bool useEigen)
@@ -63,25 +60,39 @@ void SimulationCUDAContext::Reset()
     cudaMemcpy(mSolverData.X, mSolverData.X0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(mSolverData.XTilde, mSolverData.X0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
     cudaMemset(mSolverData.V, 0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts);
+    mSolver->Reset();
 }
 
-void SimulationCUDAContext::Draw(SurfaceShader* shaderProgram, SurfaceShader* flatShaderProgram)
+void SimulationCUDAContext::Draw(SurfaceShader* highLightShaderProgram, SurfaceShader* shaderProgram, SurfaceShader* flatShaderProgram, std::string highLightName)
 {
     glLineWidth(2);
-    if (context->guiData->ObjectVis) {
+    if (contextGuiData->ObjectVis) {
         shaderProgram->setModelMatrix(glm::mat4(1.f));
-        for (auto softBody : softBodies)
-            shaderProgram->draw(*softBody, 0);
-        for (auto fixedBody : fixedBodies) {
-            shaderProgram->setModelMatrix(fixedBody->m_model);
-            shaderProgram->draw(*fixedBody, 0);
+        highLightShaderProgram->setModelMatrix(glm::mat4(1.f));
+        for (int i = 0; i < softBodies.size(); i++) {
+            auto softBody = softBodies[i];
+            if (utilityCore::compareHighlightID(softBody->GetName(), highLightName, i))
+                highLightShaderProgram->draw(*softBody, 0);
+            else
+                shaderProgram->draw(*softBody, 0);
         }
+        for (int i = 0; i < fixedBodies.size(); i++) {
+            auto fixedBody = fixedBodies[i];
+            if (utilityCore::compareHighlightID(fixedBody->name, highLightName, i)) {
+                highLightShaderProgram->setModelMatrix(fixedBody->m_model);
+                highLightShaderProgram->draw(*fixedBody, 0);
+            }
+            else {
+                shaderProgram->setModelMatrix(fixedBody->m_model);
+                shaderProgram->draw(*fixedBody, 0);
+            }
+        }
+        if (contextGuiData->handleCollision && contextGuiData->BVHEnabled)
+            mSolverData.pCollisionDetection->Draw(flatShaderProgram);
     }
-    if (context->guiData->handleCollision && context->guiData->BVHEnabled) 
-        mSolverParams.pCollisionDetection->Draw(flatShaderProgram);
 }
 
-const SolverParams<solverPrecision>& SimulationCUDAContext::GetSolverParams() const
+SolverParams<solverPrecision>* SimulationCUDAContext::GetSolverParams()
 {
-    return mSolverParams;
+    return &mSolverParams;
 }

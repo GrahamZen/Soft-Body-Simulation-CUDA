@@ -1,218 +1,125 @@
 #include <energy/barrier.h>
-#include <solver/solverUtil.cuh>
-#include <fixedBodyData.h>
-#include <plane.h>
-#include <cylinder.h>
-#include <sphere.h>
-#include <glm/glm.hpp>
+#include <collision/bvh.h>
+#include <solverUtil.cuh>
+#include <matrix.h>
+#include <distance/distance_type.h>
 #include <thrust/transform_reduce.h>
 #include <thrust/iterator/counting_iterator.h>
 
 namespace Barrier {
     template <typename Scalar>
-    __global__ void hessianKern(Scalar* hessianVal, int* hessianRowIdx, int* hessianColIdx, glm::tvec3<Scalar>* X, int numVerts,
-        Plane* planes, int numPlanes, Cylinder* cylinders, int numCylinders, Sphere* spheres, int numSpheres,
-        Scalar dhat, Scalar* contact_area, Scalar coef) {
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx >= numVerts)
-            return;
-        glm::tvec3<Scalar> x = X[idx];
-        for (int j = 0; j < numPlanes; j++) {
-            const Plane& plane = planes[j];
-            glm::tvec3<Scalar> floorPos = glm::tvec3<Scalar>(plane.m_model[3]);
-            glm::tvec3<Scalar> floorUp = plane.m_floorUp;
-            Scalar d = glm::dot(x - floorPos, floorUp);
-            if (d < dhat)
-            {
-                glm::tmat3x3<Scalar> hess = coef * contact_area[idx] * dhat * plane.kappa / (2 * d * d * dhat) * (d + dhat) * glm::outerProduct(floorUp, floorUp);
-                for (int k = 0; k < 3; k++)
-                {
-                    for (int l = 0; l < 3; l++)
-                    {
-                        int rowIdx = idx * 3 + k;
-                        int colIdx = idx * 3 + l;
-                        int index = idx * 9 + k * 3 + l;
-                        hessianVal[index] = hess[k][l];
-                        hessianRowIdx[index] = rowIdx;
-                        hessianColIdx[index] = colIdx;
-                    }
-                }
-            }
-        }
-        for (int j = 0; j < numCylinders; j++) {
-            const Cylinder cy = cylinders[j];
-            glm::tvec3<Scalar> axis = glm::tvec3<Scalar>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
-            glm::tmat3x3<Scalar> nnT = glm::tmat3x3<Scalar>(1.f) - glm::outerProduct(axis, axis);
-            glm::tvec3<Scalar> cylinderCenter = glm::tvec3<Scalar>(cy.m_model[3]);
-            Scalar cylinderRadius = cy.m_radius;
-            glm::tvec3<Scalar> n = nnT * (x - cylinderCenter);
-            Scalar d = glm::length(n) - cylinderRadius;
-            glm::tvec3<Scalar> normal = glm::normalize(n);
-            if (d < dhat)
-            {
-                glm::tmat3x3<Scalar> hess = coef * contact_area[idx] * dhat * cy.kappa / (2 * d * d * dhat) * (d + dhat) * glm::outerProduct(normal, normal);
-                for (int k = 0; k < 3; k++)
-                {
-                    for (int l = 0; l < 3; l++)
-                    {
-                        int rowIdx = idx * 3 + k;
-                        int colIdx = idx * 3 + l;
-                        int index = idx * 9 + k * 3 + l;
-                        hessianVal[index] += hess[k][l];
-                        hessianRowIdx[index] = rowIdx;
-                        hessianColIdx[index] = colIdx;
-                    }
-                }
-            }
-        }
-        for (int j = 0; j < numSpheres; j++) {
-            const Sphere& sphere = spheres[j];
-            glm::tvec3<Scalar> sphereCenter = glm::tvec3<Scalar>(sphere.m_model[3]);
-            Scalar sphereRadius = sphere.m_radius;
-            glm::tvec3<Scalar> n = x - sphereCenter;
-            Scalar d = glm::length(n) - sphereRadius;
-            glm::tvec3<Scalar> normal = glm::normalize(n);
-            if (d < dhat)
-            {
-                glm::tmat3x3<Scalar> hess = coef * contact_area[idx] * dhat * sphere.kappa / (2 * d * d * dhat) * (d + dhat) * glm::outerProduct(normal, normal);
-                for (int k = 0; k < 3; k++)
-                {
-                    for (int l = 0; l < 3; l++)
-                    {
-                        int rowIdx = idx * 3 + k;
-                        int colIdx = idx * 3 + l;
-                        int index = idx * 9 + k * 3 + l;
-                        hessianVal[index] += hess[k][l];
-                        hessianRowIdx[index] = rowIdx;
-                        hessianColIdx[index] = colIdx;
-                    }
-                }
-            }
-        }
+    __forceinline__ __host__ __device__ Scalar barrierSquareFunc(Scalar d_sqr, Scalar dhat, Scalar kappa) {
+        Scalar s = d_sqr / (dhat * dhat);
+        return 0.5 * dhat * kappa * 0.125 * (s - 1) * log(s);
     }
 
     template <typename Scalar>
-    __global__ void gradientKern(Scalar* grad, glm::tvec3<Scalar>* X, int numVerts, Plane* planes, int numPlanes, Cylinder* cylinders, int numCylinders, Sphere* spheres, int numSpheres,
-        Scalar dhat, Scalar* contact_area, Scalar coef) {
-        int idx = blockIdx.x * blockDim.x + threadIdx.x;
-        if (idx >= numVerts)
-            return;
-        const glm::tvec3<Scalar> x = X[idx];
-        for (int j = 0; j < numPlanes; j++) {
-            const Plane& plane = planes[j];
-            glm::tvec3<Scalar> floorPos = glm::tvec3<Scalar>(plane.m_model[3]);
-            glm::tvec3<Scalar> floorUp = plane.m_floorUp;
-            Scalar d = glm::dot(x - floorPos, floorUp);
-            if (d < dhat)
-            {
-                Scalar s = d / dhat;
-                glm::tvec3<Scalar> gradient = coef * contact_area[idx] * dhat * (plane.kappa / 2 * (log(s) / dhat + (s - 1) / d)) * floorUp;
-                grad[idx * 3] += gradient.x;
-                grad[idx * 3 + 1] += gradient.y;
-                grad[idx * 3 + 2] += gradient.z;
-            }
+    __forceinline__ __host__ __device__ Scalar barrierSquareFuncDerivative(Scalar d_sqr, Scalar dhat, Scalar kappa) {
+        Scalar dhat_sqr = dhat * dhat;
+        Scalar s = d_sqr / dhat_sqr;
+        return 0.5 * dhat * (kappa / 8 * (log(s) / dhat_sqr + (s - 1) / d_sqr));
+    }
+
+    template <typename Scalar>
+    __forceinline__ __host__ __device__ Matrix12<Scalar> barrierSquareFuncHess(Scalar d_sqr, Scalar dhat, Scalar kappa, const Vector12<Scalar>& d_sqr_grad, const Matrix12<Scalar>& d_sqr_hess) {
+        Scalar dhat_sqr = dhat * dhat;
+        Scalar s = d_sqr / dhat_sqr;
+        return 0.5 * dhat * (kappa / (8 * d_sqr * d_sqr * dhat_sqr) * (d_sqr + dhat_sqr) * Matrix12<Scalar>(d_sqr_grad, d_sqr_grad)
+            + (kappa / 8 * (log(s) / dhat_sqr + (s - 1) / d_sqr)) * d_sqr_hess);
+    }
+
+    template <typename Scalar>
+    __global__ void GradientKern(Scalar* grad, const glm::tvec3<Scalar>* Xs, const Query* queries, int numQueries, Scalar dhat, Scalar kappa, Scalar coef) {
+        int qIdx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (qIdx >= numQueries) return;
+        const Query& q = queries[qIdx];
+        if (q.d > dhat) return;
+        glm::tvec3<Scalar> x0 = Xs[q.v0], x1 = Xs[q.v1], x2 = Xs[q.v2], x3 = Xs[q.v3];
+        Vector12<Scalar> localGrad;
+        if (q.type == QueryType::EE) {
+            localGrad = ipc::edge_edge_distance_gradient(x0, x1, x2, x3, q.dType);
         }
-        for (int j = 0; j < numCylinders; j++) {
-            const Cylinder cy = cylinders[j];
-            glm::tvec3<Scalar> axis = glm::tvec3<Scalar>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
-            glm::tmat3x3<Scalar> nnT = glm::tmat3x3<Scalar>(1.f) - glm::outerProduct(axis, axis);
-            glm::tvec3<Scalar> cylinderCenter = glm::tvec3<Scalar>(cy.m_model[3]);
-            Scalar cylinderRadius = cy.m_radius;
-            glm::tvec3<Scalar> n = nnT * (x - cylinderCenter);
-            Scalar d = glm::length(n) - cylinderRadius;
-            glm::tvec3<Scalar> normal = glm::normalize(n);
-            if (d < dhat)
-            {
-                Scalar s = d / dhat;
-                glm::tvec3<Scalar> gradient = coef * contact_area[idx] * dhat * (cy.kappa / 2 * (log(s) / dhat + (s - 1) / d)) * normal;
-                grad[idx * 3] += gradient.x;
-                grad[idx * 3 + 1] += gradient.y;
-                grad[idx * 3 + 2] += gradient.z;
-            }
+        else if (q.type == QueryType::VF) {
+            localGrad = ipc::point_triangle_distance_gradient(x0, x1, x2, x3, q.dType);
         }
-        for (int j = 0; j < numSpheres; j++) {
-            const Sphere& sphere = spheres[j];
-            glm::tvec3<Scalar> sphereCenter = glm::tvec3<Scalar>(sphere.m_model[3]);
-            Scalar sphereRadius = sphere.m_radius;
-            glm::tvec3<Scalar> n = x - sphereCenter;
-            Scalar d = glm::length(n) - sphereRadius;
-            glm::tvec3<Scalar> normal = glm::normalize(n);
-            if (d < dhat)
-            {
-                Scalar s = d / dhat;
-                glm::tvec3<Scalar> gradient = coef * contact_area[idx] * dhat * (sphere.kappa / 2 * (log(s) / dhat + (s - 1) / d)) * normal;
-                grad[idx * 3] += gradient.x;
-                grad[idx * 3 + 1] += gradient.y;
-                grad[idx * 3 + 2] += gradient.z;
+        localGrad = coef * barrierSquareFuncDerivative((Scalar)q.d, dhat, kappa) * localGrad;
+        atomicAdd(&grad[q.v0 * 3 + 0], localGrad[0]);
+        atomicAdd(&grad[q.v0 * 3 + 1], localGrad[1]);
+        atomicAdd(&grad[q.v0 * 3 + 2], localGrad[2]);
+        atomicAdd(&grad[q.v1 * 3 + 0], localGrad[3]);
+        atomicAdd(&grad[q.v1 * 3 + 1], localGrad[4]);
+        atomicAdd(&grad[q.v1 * 3 + 2], localGrad[5]);
+        atomicAdd(&grad[q.v2 * 3 + 0], localGrad[6]);
+        atomicAdd(&grad[q.v2 * 3 + 1], localGrad[7]);
+        atomicAdd(&grad[q.v2 * 3 + 2], localGrad[8]);
+        atomicAdd(&grad[q.v3 * 3 + 0], localGrad[9]);
+        atomicAdd(&grad[q.v3 * 3 + 1], localGrad[10]);
+        atomicAdd(&grad[q.v3 * 3 + 2], localGrad[11]);
+    }
+    template <typename Scalar>
+    __global__ void hessianKern(Scalar* hessianVal, int* hessianRowIdx, int* hessianColIdx, const glm::tvec3<Scalar>* Xs, const Query* queries, int numQueries, Scalar dhat, Scalar kappa, Scalar coef) {
+        int qIdx = blockIdx.x * blockDim.x + threadIdx.x;
+        if (qIdx >= numQueries) return;
+        const Query& q = queries[qIdx];
+        if (q.d > dhat) return;
+        glm::tvec3<Scalar> x0 = Xs[q.v0], x1 = Xs[q.v1], x2 = Xs[q.v2], x3 = Xs[q.v3];
+        Vector12<Scalar> localGrad;
+        Matrix12<Scalar> localHess;
+        if (q.type == QueryType::EE) {
+            localGrad = ipc::edge_edge_distance_gradient(x0, x1, x2, x3, q.dType);
+            localHess = ipc::edge_edge_distance_hessian(x0, x1, x2, x3, q.dType);
+        }
+        else if (q.type == QueryType::VF) {
+            localGrad = ipc::point_triangle_distance_gradient(x0, x1, x2, x3, q.dType);
+            localHess = ipc::point_triangle_distance_hessian(x0, x1, x2, x3, q.dType);
+        }
+        localHess = coef * barrierSquareFuncHess((Scalar)q.d, dhat, kappa, localGrad, localHess);
+        indexType v[4] = { q.v0, q.v1, q.v2, q.v3 };
+        for (int i = 0; i < 4; i++) {
+            int row = v[i] * 3;
+            for (int j = 0; j < 4; j++) {
+                int col = v[j] * 3;
+                for (int k = 0; k < 3; k++) {
+                    for (int l = 0; l < 3; l++) {
+                        int idx = qIdx * 144 + (i * 4 + j) * 9 + k * 3 + l;
+                        hessianVal[idx] = localHess[i * 3 + k][j * 3 + l];
+                        hessianRowIdx[idx] = row + k;
+                        hessianColIdx[idx] = col + l;
+                    }
+                }
             }
         }
     }
 }
 
 template <typename Scalar>
-int BarrierEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const { return solverData.numVerts * 9; }
-
-template <typename Scalar>
-BarrierEnergy<Scalar>::BarrierEnergy(const SolverData<Scalar>& solverData, int& hessianIdxOffset, Scalar dhat) :dhat(dhat), Energy<Scalar>(hessianIdxOffset)
-{
-    hessianIdxOffset += NNZ(solverData);
+int BarrierEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const {
+    return solverData.numQueries() * 144;
 }
 
 template <typename Scalar>
-Scalar BarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData) const {
-    const Plane* planes = solverData.pFixedBodies->dev_planes;
-    const Cylinder* cylinders = solverData.pFixedBodies->dev_cylinders;
-    const Sphere* spheres = solverData.pFixedBodies->dev_spheres;
-    int numSpheres = solverData.pFixedBodies->numSpheres;
-    int numCylinders = solverData.pFixedBodies->numCylinders;
-    int numPlanes = solverData.pFixedBodies->numPlanes;
-    Scalar dhat = this->dhat;
+BarrierEnergy<Scalar>::BarrierEnergy(const SolverData<Scalar>& solverData, int& hessianIdxOffset) : Energy<Scalar>(hessianIdxOffset)
+{
+    hessianIdxOffset += solverData.pCollisionDetection->GetMaxNumQueries() * 144;
+}
+
+template <typename Scalar>
+Scalar BarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) const {
+    int num_queries = solverData.numQueries();
+    if (num_queries == 0)return 0;
+    Query* queries = solverData.queries();
+    Scalar dhat = solverParams.dhat;
+    Scalar kappa = solverParams.kappa;
     Scalar sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
-        thrust::counting_iterator<indexType>(solverData.numVerts),
-        [=]__host__ __device__(indexType vertIdx) {
-        const glm::tvec3<Scalar> x = Xs[vertIdx];
-        Scalar sum = 0.0;
-        for (int j = 0; j < numPlanes; j++)
-        {
-            const Plane& plane = planes[j];
-            glm::tvec3<Scalar> floorPos = glm::tvec3<Scalar>(plane.m_model[3]);
-            glm::tvec3<Scalar> floorUp = plane.m_floorUp;
-            Scalar d = glm::dot(x - floorPos, floorUp);
-            if (d < dhat)
-            {
-                Scalar s = d / dhat;
-                sum += solverData.contact_area[vertIdx] * dhat * plane.kappa * 0.5 * (s - 1) * log(s);
-            }
+        thrust::counting_iterator<indexType>(num_queries),
+        [=] __host__ __device__(indexType qIdx) {
+        Scalar d = queries[qIdx].d;
+        if (d < dhat) {
+            return Barrier::barrierSquareFunc(d, dhat, kappa);
         }
-        for (int j = 0; j < numCylinders; j++) {
-            const Cylinder cy = cylinders[j];
-            glm::tvec3<Scalar> axis = glm::tvec3<Scalar>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
-            glm::tmat3x3<Scalar> nnT = glm::tmat3x3<Scalar>(1.f) - glm::outerProduct(axis, axis);
-            glm::tvec3<Scalar> cylinderCenter = glm::tvec3<Scalar>(cy.m_model[3]);
-            Scalar cylinderRadius = cy.m_radius;
-            glm::tvec3<Scalar> n = nnT * (x - cylinderCenter);
-            Scalar d = glm::length(n) - cylinderRadius;
-            if (d < dhat)
-            {
-                Scalar s = d / dhat;
-                sum += solverData.contact_area[vertIdx] * dhat * cy.kappa * 0.5 * (s - 1) * log(s);
-            }
-        }
-        for (int j = 0; j < numSpheres; j++) {
-            const Sphere& sphere = spheres[j];
-            glm::tvec3<Scalar> sphereCenter = glm::tvec3<Scalar>(sphere.m_model[3]);
-            Scalar sphereRadius = sphere.m_radius;
-            glm::tvec3<Scalar> n = x - sphereCenter;
-            Scalar d = glm::length(n) - sphereRadius;
-            glm::tvec3<Scalar> normal = glm::normalize(n);
-            if (d < dhat)
-            {
-                Scalar s = d / dhat;
-                sum += solverData.contact_area[vertIdx] * dhat * sphere.kappa * 0.5 * (s - 1) * log(s);
-            }
-        }
-        return sum;
+        else
+            return (Scalar)0;
     },
         0.0,
         thrust::plus<Scalar>());
@@ -220,85 +127,29 @@ Scalar BarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData
 }
 
 template<typename Scalar>
-void BarrierEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, Scalar coef) const
+void BarrierEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const
 {
+    int numQueries = solverData.numQueries();
+    if (numQueries == 0)return;
     int threadsPerBlock = 256;
-    int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    Barrier::gradientKern << <numBlocks, threadsPerBlock >> > (grad, solverData.X, solverData.numVerts, solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes,
-        solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, solverData.pFixedBodies->dev_spheres, solverData.pFixedBodies->numSpheres, dhat, solverData.contact_area, coef);
+    int numBlocks = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
+    Barrier::GradientKern << <numBlocks, threadsPerBlock >> > (grad, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverParams.kappa, coef);
 }
 
 template <typename Scalar>
-void BarrierEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, Scalar coef) const
+void BarrierEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const
 {
+    int numQueries = solverData.numQueries();
+    if (numQueries == 0)return;
     int threadsPerBlock = 256;
-    int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    Barrier::hessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.numVerts,
-        solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes, solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, solverData.pFixedBodies->dev_spheres, solverData.pFixedBodies->numSpheres, dhat, solverData.contact_area, coef);
+    int numBlocks = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
+    Barrier::hessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverParams.kappa, coef);
 }
 
 template<typename Scalar>
-Scalar BarrierEnergy<Scalar>::InitStepSize(const SolverData<Scalar>& solverData, Scalar* p) const
+Scalar BarrierEnergy<Scalar>::InitStepSize(const SolverData<Scalar>& solverData, Scalar* p, glm::tvec3<Scalar>* XTmp) const
 {
-    const Plane* planes = solverData.pFixedBodies->dev_planes;
-    const Cylinder* cylinders = solverData.pFixedBodies->dev_cylinders;
-    const Sphere* spheres = solverData.pFixedBodies->dev_spheres;
-    int numSpheres = solverData.pFixedBodies->numSpheres;
-    int numCylinders = solverData.pFixedBodies->numCylinders;
-    int numPlanes = solverData.pFixedBodies->numPlanes;
-    return thrust::transform_reduce(
-        thrust::counting_iterator<indexType>(0),
-        thrust::counting_iterator<indexType>(solverData.numVerts),
-        [=]__host__ __device__(indexType vertIdx) {
-        Scalar alpha = 1.0;
-        glm::tvec3<Scalar> localP{ -p[vertIdx * 3], -p[vertIdx * 3 + 1], -p[vertIdx * 3 + 2] };
-        const glm::tvec3<Scalar> x = solverData.X[vertIdx];
-        for (int j = 0; j < numPlanes; j++)
-        {
-            glm::tvec3<Scalar> floorUp = planes[j].m_floorUp;
-            glm::tvec3<Scalar> floorPos = glm::tvec3<Scalar>(planes[j].m_model[3]);
-            Scalar p_n = glm::dot(localP, floorUp);
-            if (p_n < 0)
-            {
-                alpha = min(alpha, 0.9 * glm::dot(floorUp, x - floorPos) / -p_n);
-            }
-        }
-        for (int j = 0; j < numCylinders; j++)
-        {
-            const Cylinder cy = cylinders[j];
-            glm::tvec3<Scalar> axis = glm::tvec3<Scalar>(glm::normalize(cy.m_model * glm::vec4(0.f, 1.f, 0.f, 0.f)));
-            glm::tmat3x3<Scalar> nnT = glm::tmat3x3<Scalar>(1.f) - glm::outerProduct(axis, axis);
-            glm::tvec3<Scalar> cylinderCenter = glm::tvec3<Scalar>(cy.m_model[3]);
-            Scalar cylinderRadius = cy.m_radius;
-            glm::tvec3<Scalar> n = nnT * (x - cylinderCenter);
-            Scalar p_n = glm::dot(localP, n);
-            if (p_n < 0)
-            {
-                glm::tvec3<Scalar> pp = nnT * localP;
-                Scalar pp2 = glm::dot(pp, pp);
-                Scalar n2 = glm::dot(n, n);
-                Scalar ndotpp = glm::dot(n, pp);
-                alpha = min(alpha, 0.9 * (-ndotpp - sqrt(ndotpp * ndotpp - pp2 * (n2 - cylinderRadius * cylinderRadius))) / pp2);
-            }
-        }
-        for (int j = 0; j < numSpheres; j++) {
-            const Sphere& sphere = spheres[j];
-            glm::tvec3<Scalar> sphereCenter = glm::tvec3<Scalar>(sphere.m_model[3]);
-            Scalar sphereRadius = sphere.m_radius;
-            glm::tvec3<Scalar> n = x - sphereCenter;
-            Scalar p_n = glm::dot(localP, n);
-            if (p_n < 0)
-            {
-                Scalar ndotp = glm::dot(n, localP);
-                Scalar pp = glm::dot(localP, localP);
-                Scalar nn = glm::dot(n, n);
-                alpha = min(alpha, 0.9 * (-ndotp - sqrt(ndotp * ndotp - pp * (nn - sphereRadius * sphereRadius))) / pp);
-            }
-        }
-        return alpha;
-    },
-        1.0,
-        thrust::minimum<Scalar>());
+    return 0.9 * solverData.pCollisionDetection->ComputeMinStepSize(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, XTmp, solverData.dev_TriFathers, true);
 }
 
 template class BarrierEnergy<float>;

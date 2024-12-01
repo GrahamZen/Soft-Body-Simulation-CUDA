@@ -18,15 +18,16 @@ public:
         const glm::vec3& rot, bool centralize, int startIndex, SoftBodyAttribute* attrib);
     void CollectData(const char* mshFileName, const glm::vec3& pos, const glm::vec3& scale, const glm::vec3& rot,
         bool centralize, int startIndex, SoftBodyAttribute* attrib);
-    void AllocData(std::vector<int>& startIndices, SolverData<Scalar>& solverData, std::vector<SoftBody*>& softbodies);
+    void AllocData(std::vector<int>& startIndices, SolverData<Scalar>& solverData, std::vector<SoftBody*>& softbodies, const std::vector<const char*>& namesSoftBodies);
+    static void FillData(Scalar* X, Scalar val, indexType* Tet, std::pair<size_t, size_t> tetIdxRange);
 private:
-    static std::vector<indexType> loadEleFile(const std::string& EleFilename, int startIndex, int& numTets);
+    static std::pair<std::vector<indexType>, std::vector<indexType>> loadEleFaceFile(const std::string& EleFilename, int startIndex, int& numTets, int& numTris, std::string faceFilename = "");
     static std::vector<glm::tvec3<Scalar>> loadNodeFile(const std::string& nodeFilename, bool centralize, int& numVerts);
-    static std::vector<indexType> loadFaceFile(const std::string& faceFilename, int startIndex, int& numTris);
     void CollectEdges(const std::vector<indexType>& triIdx);
     std::unique_ptr<Impl> m_impl;
     int totalNumDBC = 0;
     int totalNumVerts = 0;
+    int totalNumTris = 0;
     int totalNumTets = 0;
     int totalNumEdges = 0;
     const int threadsPerBlock;

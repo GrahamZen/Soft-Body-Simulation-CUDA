@@ -20,5 +20,5 @@ public:
 protected:
     cudaGraphicsResource* cuda_bufPos_resource = nullptr;
     cudaGraphicsResource* cuda_bufCol_resource = nullptr;
-    int numVerts;
+    int numVerts = 0;
 };

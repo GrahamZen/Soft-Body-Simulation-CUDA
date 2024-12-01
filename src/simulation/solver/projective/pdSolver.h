@@ -13,10 +13,10 @@ public:
     PdSolver(int threadsPerBlock, const SolverData<float>&);
     ~PdSolver();
     void SetGlobalSolver(bool useEigen) { this->useEigen = useEigen; }
-    virtual void Update(SolverData<float>& solverData, SolverParams<float>& solverParams) override;
+    virtual void Update(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
 protected:
-    virtual void SolverPrepare(SolverData<float>& solverData, SolverParams<float>& solverParams) override;
-    virtual void SolverStep(SolverData<float>& solverData, SolverParams<float>& solverParams) override;
+    virtual void SolverPrepare(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
+    virtual bool SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
 private:
     LinearSolver<float>* ls = nullptr;
     bool useEigen = false;

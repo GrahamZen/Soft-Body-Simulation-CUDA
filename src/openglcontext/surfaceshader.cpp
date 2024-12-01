@@ -77,11 +77,14 @@ void SurfaceShader::draw(Drawable& d, int textureSlot)
     printGLErrorLog();
 }
 
-void SurfaceShader::drawPoints(Drawable& d)
+void SurfaceShader::drawLines(Drawable& d)
 {
     if (d.elemCount() == 0) return;
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glDisable(GL_DEPTH_TEST); 
     useMe();
 
+    d.bindIdx();
     // Bind and enable the position attribute
     if (attrPos != -1 && d.bindPos()) {
         glEnableVertexAttribArray(attrPos);
@@ -95,7 +98,7 @@ void SurfaceShader::drawPoints(Drawable& d)
     }
 
     // Draw points
-    glDrawArrays(d.drawMode(), 0, d.elemCount());
+    glDrawElements(d.drawMode(), d.elemCount(), GL_UNSIGNED_INT, 0);
 
     // Disable the attributes
     if (attrPos != -1) glDisableVertexAttribArray(attrPos);

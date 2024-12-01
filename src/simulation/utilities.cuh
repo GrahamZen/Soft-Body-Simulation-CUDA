@@ -27,11 +27,11 @@ void inspectGLM(const T* dev_ptr, int size, const char* str = "") {
 }
 
 template <typename T>
-void inspectSparseMatrix(T* dev_val, int* dev_rowIdx, int* dev_colIdx, int nnz, int size);
-void inspectMortonCodes(const int* dev_mortonCodes, int numTets);
+void inspectSparseMatrix(T* dev_val, int* dev_rowIdx, int* dev_colIdx, int begin, int nnz, int size);
+void inspectMortonCodes(const int* dev_mortonCodes, int numTris);
 
 template<typename Scalar>
-void inspectBVHNode(const BVHNode<Scalar>* dev_BVHNodes, int numTets);
+void inspectBVHNode(const BVHNode<Scalar>* dev_BVHNodes, int numTris);
 template<typename Scalar>
 void inspectBVH(const AABB<Scalar>* dev_aabbs, int size);
 void inspectQuerys(const Query* dev_query, int size);

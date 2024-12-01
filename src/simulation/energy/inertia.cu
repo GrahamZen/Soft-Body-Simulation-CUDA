@@ -36,7 +36,9 @@ namespace Inertia {
 }
 
 template <typename Scalar>
-int InertiaEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const { return solverData.numVerts * 3; }
+int InertiaEnergy<Scalar>::NNZ(const SolverData<Scalar>& solverData) const {
+    return solverData.numVerts * 3;
+}
 
 template <typename Scalar>
 InertiaEnergy<Scalar>::InertiaEnergy(const SolverData<Scalar>& solverData, int& hessianIdxOffset, int numVerts, const Scalar* dev_mass) :
@@ -46,7 +48,7 @@ InertiaEnergy<Scalar>::InertiaEnergy(const SolverData<Scalar>& solverData, int& 
 }
 
 template <typename Scalar>
-Scalar InertiaEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData) const {
+Scalar InertiaEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) const {
     // ||(x - x_tilde)||m^2 * 0.5.
     Scalar sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
@@ -62,7 +64,7 @@ Scalar InertiaEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData
 }
 
 template<typename Scalar>
-void InertiaEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, Scalar coef) const
+void InertiaEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const
 {
     // m(x - x_tilde).
     int threadsPerBlock = 256;
@@ -71,7 +73,7 @@ void InertiaEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& sol
 }
 
 template <typename Scalar>
-void InertiaEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, Scalar coef) const
+void InertiaEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const
 {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;

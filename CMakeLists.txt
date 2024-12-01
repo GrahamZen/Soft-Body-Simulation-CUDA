@@ -10,41 +10,15 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib)
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-include(FetchContent)
-FetchContent_Declare(
-  Eigen
-  GIT_REPOSITORY https://gitlab.com/libeigen/eigen.git
-  GIT_TAG 3.4
-  GIT_SHALLOW TRUE
-  GIT_PROGRESS TRUE)
-set(EIGEN_BUILD_DOC OFF)
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/recipes/")
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/find/")
 
-set(BUILD_TESTING OFF)
-set(EIGEN_BUILD_PKGCONFIG OFF)
-FetchContent_MakeAvailable(Eigen)
-
-include(FetchContent)
-
-FetchContent_Declare(
-        spdlog
-        GIT_REPOSITORY https://github.com/gabime/spdlog.git
-        GIT_TAG        v1.x
-)
-
-FetchContent_GetProperties(spdlog)
-if (NOT spdlog_POPULATED)
-    FetchContent_Populate(spdlog)
-    add_subdirectory(${spdlog_SOURCE_DIR} ${spdlog_BINARY_DIR})
-endif()
-
-# Enable C++11 for host code
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED True)
-set(CMAKE_CUDA_STANDARD_REQUIRED ON)
-set(CMAKE_CUDA_ARCHITECTURES 86)
+set(CMAKE_CUDA_ARCHITECTURES native)
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 set(CUDA_NVCC_FLAGS_DEBUG "${CUDA_NVCC_FLAGS_DEBUG} -G -g")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set a default build type if none was specified
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -66,7 +40,7 @@ if(UNIX)
     find_package(glfw3 REQUIRED)
     find_package(GLEW REQUIRED)
     set(LIBRARIES glfw ${GLEW_LIBRARIES} ${OPENGL_gl_LIBRARY})
-else(UNIX)
+else()
     set(EXTERNAL "external")
 
     set(GLFW_ROOT_DIR ${EXTERNAL})
@@ -80,7 +54,7 @@ else(UNIX)
     add_definitions(${GLEW_DEFINITIONS})
     include_directories(${GLEW_INCLUDE_DIR} ${GLFW_INCLUDE_DIR})
     set(LIBRARIES ${GLEW_LIBRARY} ${GLFW_LIBRARY} ${OPENGL_LIBRARY})
-endif(UNIX)
+endif()
 
 set(GLM_ROOT_DIR "external")
 find_package(GLM REQUIRED)
@@ -90,6 +64,9 @@ file(GLOB IMGUI_SOURCES "external/ImGui/*.cpp")
 include_directories(${EXTERNAL}/include)
 
 find_package(OpenMP)
+
+include(eigen)
+include(spdlog)
 
 file(GLOB_RECURSE HEADER_FILES 
      "${PROJECT_SOURCE_DIR}/src/*.h"
@@ -115,13 +92,15 @@ ${PROJECT_SOURCE_DIR}/src
 ${PROJECT_SOURCE_DIR}/src/openglcontext 
 ${PROJECT_SOURCE_DIR}/src/simulation
 ${PROJECT_SOURCE_DIR}/src/simulation/solver
+${PROJECT_SOURCE_DIR}/src/simulation/distance
+${PROJECT_SOURCE_DIR}/src/simulation/energy
 ${PROJECT_SOURCE_DIR}/src/simulation/solver/projective
 ${PROJECT_SOURCE_DIR}/src/collision 
 ${PROJECT_SOURCE_DIR}/src/collision/rigid
 )
 
 include_directories(
-    ${PROJECT_INCLUDE_DIR} 
+    ${PROJECT_INCLUDE_DIR}
     ${GLM_INCLUDE_DIRS} 
     ${GLEW_INCLUDE_DIR} 
     ${GLFW_INCLUDE_DIR})
@@ -138,15 +117,15 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui" "${
 target_link_libraries(${CMAKE_PROJECT_NAME}
 ${LIBRARIES}
 CUDA::cudart
-Eigen3::Eigen
-OpenMP::OpenMP_CXX
 CUDA::cusolver
+OpenMP::OpenMP_CXX
 spdlog::spdlog
 #stream_compaction  # TODO: uncomment if using your stream compaction
 )
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
+    CUDA_RESOLVE_DEVICE_SYMBOLS ON
 )
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
-    $<$<COMPILE_LANGUAGE:CUDA>:--extended-lambda -lineinfo>
+    $<$<COMPILE_LANGUAGE:CUDA>:-Xptxas -v --extended-lambda -lineinfo --expt-relaxed-constexpr -Xcompiler "/wd 4819 /wd 4068 /wd 4661" -Xcudafe "--display_error_number --diag_suppress=20012 --diag_suppress=20011 --diag_suppress=20014">
 )

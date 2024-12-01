@@ -4,11 +4,12 @@
 #include <collision/bvh.cuh>
 #include <collision/bvh.h>
 #include <simulation/simulationContext.h>
+#include <distance/distance_type.h>
 #include <collision/intersections.h>
 #include <thrust/sort.h>
 #include <thrust/unique.h>
 #include <thrust/remove.h>
-#include <cuda_runtime.h>
+#include <thrust/device_vector.h>
 
 //input the aabb box of a Tetrahedron
 //generate a 30-bit morton code
@@ -33,8 +34,8 @@ __device__ unsigned int genMortonCode(AABB<Scalar> bbox, glm::tvec3<Scalar> geoM
     return xx * 4 + yy * 2 + zz;
 }
 
-template unsigned int genMortonCode<float>(AABB<float> bbox, glm::tvec3<float> geoMin, glm::tvec3<float> geoMax);
-template unsigned int genMortonCode<double>(AABB<double> bbox, glm::tvec3<double> geoMin, glm::tvec3<double> geoMax);
+template __device__ unsigned int genMortonCode<float>(AABB<float> bbox, glm::tvec3<float> geoMin, glm::tvec3<float> geoMax);
+template __device__ unsigned int genMortonCode<double>(AABB<double> bbox, glm::tvec3<double> geoMin, glm::tvec3<double> geoMax);
 
 __device__ unsigned long long expandMorton(int index, unsigned int mortonCode)
 {
@@ -46,7 +47,7 @@ __device__ unsigned long long expandMorton(int index, unsigned int mortonCode)
 
 /**
 * please sort the morton code first then get split pairs
-thrust::stable_sort_by_key(mortonCodes, mortonCodes + TetrahedronCount, TetrahedronIndex);*/
+thrust::stable_sort_by_key(mortonCodes, mortonCodes + TetrahedronCount, TriangleIndex);*/
 
 //total input is a 30 x N matrix
 //currentIndex is between 0 - N-1
@@ -141,41 +142,78 @@ __global__ void buildSplitList(int codeCount, unsigned int* uniqueMorton, BVHNod
 
 // build the bounding box and morton code for each SoftBody
 template<typename Scalar>
-__global__ void buildLeafMorton(int startIndex, int numTri, Scalar minX, Scalar minY, Scalar minZ,
-    Scalar maxX, Scalar maxY, Scalar maxZ, const indexType* tet, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, BVHNode<Scalar>* leafNodes,
+__global__ void buildLeafMortonCCD(int startIndex, int numTri, Scalar minX, Scalar minY, Scalar minZ,
+    Scalar maxX, Scalar maxY, Scalar maxZ, const indexType* tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, BVHNode<Scalar>* leafNodes,
     unsigned int* mortonCodes)
 {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
     if (ind < numTri)
     {
         int leafPos = ind + numTri - 1;
-        leafNodes[leafPos].bbox = computeTetTrajBBox(X[tet[ind * 4]], X[tet[ind * 4 + 1]], X[tet[ind * 4 + 2]], X[tet[ind * 4 + 3]],
-            XTilde[tet[ind * 4]], XTilde[tet[ind * 4 + 1]], XTilde[tet[ind * 4 + 2]], XTilde[tet[ind * 4 + 3]]);
+        leafNodes[leafPos].bbox = computeTriTrajBBoxCCD(X[tri[ind * 3]], X[tri[ind * 3 + 1]], X[tri[ind * 3 + 2]],
+            XTilde[tri[ind * 3]], XTilde[tri[ind * 3 + 1]], XTilde[tri[ind * 3 + 2]]);
         leafNodes[leafPos].isLeaf = 1;
         leafNodes[leafPos].leftIndex = -1;
         leafNodes[leafPos].rightIndex = -1;
-        leafNodes[leafPos].TetrahedronIndex = ind;
+        leafNodes[leafPos].TriangleIndex = ind;
         mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glm::tvec3<Scalar>(minX, minY, minZ), glm::tvec3<Scalar>(maxX, maxY, maxZ));
     }
 }
 
 template<typename Scalar>
-void BVH<Scalar>::BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTets, const glm::tvec3<Scalar>* X, glm::tvec3<Scalar>* XTilde, const indexType* tets)
+__global__ void buildLeafMorton(int startIndex, int numTri, Scalar minX, Scalar minY, Scalar minZ, Scalar maxX, Scalar maxY, Scalar maxZ,
+    const indexType* tri, const glm::tvec3<Scalar>* X, BVHNode<Scalar>* leafNodes, unsigned int* mortonCodes, Scalar bound)
 {
-    cudaMemset(dev_BVHNodes, 0, (numTets * 2 - 1) * sizeof(BVHNode<Scalar>));
+    int ind = blockIdx.x * blockDim.x + threadIdx.x;
+    if (ind < numTri)
+    {
+        int leafPos = ind + numTri - 1;
+        leafNodes[leafPos].bbox = computeTriTrajBBox(X[tri[ind * 3]], X[tri[ind * 3 + 1]], X[tri[ind * 3 + 2]], bound);
+        leafNodes[leafPos].isLeaf = 1;
+        leafNodes[leafPos].leftIndex = -1;
+        leafNodes[leafPos].rightIndex = -1;
+        leafNodes[leafPos].TriangleIndex = ind;
+        mortonCodes[ind + startIndex] = genMortonCode(leafNodes[ind + numTri - 1].bbox, glm::tvec3<Scalar>(minX, minY, minZ), glm::tvec3<Scalar>(maxX, maxY, maxZ));
+    }
+}
 
-    buildLeafMorton << <numblocksTets, threadsPerBlock >> > (0, numTets, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
-        tets, X, XTilde, dev_BVHNodes, dev_mortonCodes);
+template<typename Scalar>
+void BVH<Scalar>::BuildBVHTreeCCD(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* tris)
+{
+    cudaMemset(dev_BVHNodes, 0, (numTris * 2 - 1) * sizeof(BVHNode<Scalar>));
 
-    thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTets, dev_BVHNodes + numTets - 1);
+    buildLeafMortonCCD << <numblocksTets, threadsPerBlock >> > (0, numTris, ctxAABB.min.x, ctxAABB.min.y, ctxAABB.min.z, ctxAABB.max.x, ctxAABB.max.y, ctxAABB.max.z,
+        tris, X, XTilde, dev_BVHNodes, dev_mortonCodes);
 
-    buildSplitList << <numblocksTets, threadsPerBlock >> > (numTets, dev_mortonCodes, dev_BVHNodes);
+    thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTris, dev_BVHNodes + numTris - 1);
+
+    buildSplitList << <numblocksTets, threadsPerBlock >> > (numTris, dev_mortonCodes, dev_BVHNodes);
 
     BuildBBoxes(buildType);
 
-    cudaMemset(dev_mortonCodes, 0, numTets * sizeof(unsigned int));
-    cudaMemset(dev_ready, 0, (numTets - 1) * sizeof(ReadyFlagType));
-    cudaMemset(&dev_ready[numTets - 1], 1, numTets * sizeof(ReadyFlagType));
+    cudaMemset(dev_mortonCodes, 0, numTris * sizeof(unsigned int));
+    cudaMemset(dev_ready, 0, (numTris - 1) * sizeof(ReadyFlagType));
+    cudaMemset(&dev_ready[numTris - 1], 1, numTris * sizeof(ReadyFlagType));
+}
+
+template<typename Scalar>
+void BVH<Scalar>::BuildBVHTree(BuildType buildType, const AABB<Scalar>& ctxAABB, int numTris, const glm::tvec3<Scalar>* X, const indexType* tris, Scalar bound)
+{
+    cudaMemset(dev_BVHNodes, 0, (numTris * 2 - 1) * sizeof(BVHNode<Scalar>));
+
+    buildLeafMorton << <numblocksTets, threadsPerBlock >> > (0, numTris, ctxAABB.min.x - bound, ctxAABB.min.y - bound, ctxAABB.min.z - bound,
+        ctxAABB.max.x + bound, ctxAABB.max.y + bound, ctxAABB.max.z + bound,
+        tris, X, dev_BVHNodes, dev_mortonCodes, bound);
+
+    thrust::stable_sort_by_key(thrust::device, dev_mortonCodes, dev_mortonCodes + numTris, dev_BVHNodes + numTris - 1);
+
+    buildSplitList << <numblocksTets, threadsPerBlock >> > (numTris, dev_mortonCodes, dev_BVHNodes);
+
+    BuildBBoxes(buildType);
+
+    cudaMemset(dev_mortonCodes, 0, numTris * sizeof(unsigned int));
+    cudaMemset(dev_ready, 0, (numTris - 1) * sizeof(ReadyFlagType));
+    cudaMemset(&dev_ready[numTris - 1], 1, numTris * sizeof(ReadyFlagType));
 }
 
 struct QueryComparator {
@@ -207,8 +245,8 @@ struct IsUnknown {
     }
 };
 
-__constant__ int edgeIndicesTable[12] = {
-    0, 1, 0, 2, 0, 3, 1, 2, 1, 3, 2, 3
+__constant__ int edgeIndicesTable[6] = {
+    0, 1, 0, 2, 1, 2
 };
 
 template<typename T>
@@ -217,6 +255,8 @@ __host__ __device__ void sortThree(T& a, T& b, T& c) {
     if (b > c) swap(b, c);
     if (a > b) swap(a, b);
 }
+
+template __host__ __device__ void sortThree<indexType>(indexType& a, indexType& b, indexType& c);
 
 template<typename T>
 __host__ __device__ void sortFour(T& a, T& b, T& c, T& d) {
@@ -228,84 +268,55 @@ __host__ __device__ void sortFour(T& a, T& b, T& c, T& d) {
     if (a > b) swap(a, b);
 }
 
-__device__ void fillQuery(Query* query, int tetId, int tet2Id, const indexType* tets) {
-    for (int i = 0; i < 4; i++) {
-        int vi = tets[tetId * 4 + i];
-        int v20 = tets[tet2Id * 4 + 0];
-        int v21 = tets[tet2Id * 4 + 1];
-        int v22 = tets[tet2Id * 4 + 2];
-        int v23 = tets[tet2Id * 4 + 3];
-        query[i * 4].type = QueryType::VF;
-        query[i * 4].v0 = vi;
-        query[i * 4].v1 = v20;
-        query[i * 4].v2 = v21;
-        query[i * 4].v3 = v22;
-        query[i * 4 + 1].type = QueryType::VF;
-        query[i * 4 + 1].v0 = vi;
-        query[i * 4 + 1].v1 = v20;
-        query[i * 4 + 1].v2 = v21;
-        query[i * 4 + 1].v3 = v23;
-        query[i * 4 + 2].type = QueryType::VF;
-        query[i * 4 + 2].v0 = vi;
-        query[i * 4 + 2].v1 = v20;
-        query[i * 4 + 2].v2 = v22;
-        query[i * 4 + 2].v3 = v23;
-        query[i * 4 + 3].type = QueryType::VF;
-        query[i * 4 + 3].v0 = vi;
-        query[i * 4 + 3].v1 = v21;
-        query[i * 4 + 3].v2 = v22;
-        query[i * 4 + 3].v3 = v23;
+__device__ void fillQuery(Query* query, int triId, int tri2Id, const indexType* tris) {
+    for (int i = 0; i < 3; i++) {
+        int vi = tris[triId * 3 + i];
+        int v20 = tris[tri2Id * 3 + 0];
+        int v21 = tris[tri2Id * 3 + 1];
+        int v22 = tris[tri2Id * 3 + 2];
+        query[i].type = QueryType::VF;
+        query[i].v0 = vi;
+        query[i].v1 = v20;
+        query[i].v2 = v21;
+        query[i].v3 = v22;
     }
-    for (int i = 0; i < 6; i++) {
-        int v0 = tets[tetId * 4 + edgeIndicesTable[i * 2 + 0]];
-        int v1 = tets[tetId * 4 + edgeIndicesTable[i * 2 + 1]];
-        int v20 = tets[tet2Id * 4 + 0];
-        int v21 = tets[tet2Id * 4 + 1];
-        int v22 = tets[tet2Id * 4 + 2];
-        int v23 = tets[tet2Id * 4 + 3];
-        query[i * 6 + 16].type = QueryType::EE;
-        query[i * 6 + 16].v0 = v0;
-        query[i * 6 + 16].v1 = v1;
-        query[i * 6 + 16].v2 = v20;
-        query[i * 6 + 16].v3 = v21;
-        query[i * 6 + 17].type = QueryType::EE;
-        query[i * 6 + 17].v0 = v0;
-        query[i * 6 + 17].v1 = v1;
-        query[i * 6 + 17].v2 = v20;
-        query[i * 6 + 17].v3 = v22;
-        query[i * 6 + 18].type = QueryType::EE;
-        query[i * 6 + 18].v0 = v0;
-        query[i * 6 + 18].v1 = v1;
-        query[i * 6 + 18].v2 = v20;
-        query[i * 6 + 18].v3 = v23;
-        query[i * 6 + 19].type = QueryType::EE;
-        query[i * 6 + 19].v0 = v0;
-        query[i * 6 + 19].v1 = v1;
-        query[i * 6 + 19].v2 = v21;
-        query[i * 6 + 19].v3 = v22;
-        query[i * 6 + 20].type = QueryType::EE;
-        query[i * 6 + 20].v0 = v0;
-        query[i * 6 + 20].v1 = v1;
-        query[i * 6 + 20].v2 = v21;
-        query[i * 6 + 20].v3 = v23;
-        query[i * 6 + 21].type = QueryType::EE;
-        query[i * 6 + 21].v0 = v0;
-        query[i * 6 + 21].v1 = v1;
-        query[i * 6 + 21].v2 = v22;
-        query[i * 6 + 21].v3 = v23;
+    for (int i = 0; i < 3; i++) {
+        int v0 = tris[triId * 3 + edgeIndicesTable[i * 2 + 0]];
+        int v1 = tris[triId * 3 + edgeIndicesTable[i * 2 + 1]];
+        int v20 = tris[tri2Id * 3 + 0];
+        int v21 = tris[tri2Id * 3 + 1];
+        int v22 = tris[tri2Id * 3 + 2];
+        query[i * 3 + 3].type = QueryType::EE;
+        query[i * 3 + 3].v0 = v0;
+        query[i * 3 + 3].v1 = v1;
+        query[i * 3 + 3].v2 = v20;
+        query[i * 3 + 3].v3 = v21;
+        query[i * 3 + 4].type = QueryType::EE;
+        query[i * 3 + 4].v0 = v0;
+        query[i * 3 + 4].v1 = v1;
+        query[i * 3 + 4].v2 = v20;
+        query[i * 3 + 4].v3 = v22;
+        query[i * 3 + 5].type = QueryType::EE;
+        query[i * 3 + 5].v0 = v0;
+        query[i * 3 + 5].v1 = v1;
+        query[i * 3 + 5].v2 = v21;
+        query[i * 3 + 5].v3 = v22;
     }
 }
 
+__device__ bool isAdjacentTriangle(indexType v00, indexType v01, indexType v02, indexType v10, indexType v11, indexType v12) {
+    return (v00 == v10 || v00 == v11 || v00 == v12) ||
+        (v01 == v10 || v01 == v11 || v01 == v12) ||
+        (v02 == v10 || v02 == v11 || v02 == v12);
+}
 
 template<typename Scalar>
-__global__ void traverseTree(int numTets, const BVHNode<Scalar>* nodes, const indexType* tets, const indexType* tetFathers, Query* queries, size_t* queryCount, size_t maxNumQueries, bool* overflowFlag)
+__global__ void traverseTree(int numTris, const BVHNode<Scalar>* nodes, const indexType* tris, const indexType* triFathers, Query* queries, size_t* queryCount, size_t maxNumQueries, bool* overflowFlag, bool ignoreSelfCollision)
 {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
-    if (index >= numTets) return;
-    int leafIdx = index + numTets - 1;
+    if (index >= numTris) return;
+    int leafIdx = index + numTris - 1;
     const BVHNode<Scalar> myNode = nodes[leafIdx];
-    // record the closest intersection
-    Scalar closest = 1;
     int bvhStart = 0;
     int stack[64];
     int stackPtr = 0;
@@ -327,12 +338,13 @@ __global__ void traverseTree(int numTets, const BVHNode<Scalar>* nodes, const in
             // check triangle intersection
             if (leftChild.isLeaf == 1)
             {
-                // 4 faces * 4 verts + 6 edges * 6 edges
-                if (tetFathers[myNode.TetrahedronIndex] != tetFathers[leftChild.TetrahedronIndex] && myNode.TetrahedronIndex != leftChild.TetrahedronIndex) {
-                    int qIdx = atomicAdd(queryCount, 36 + 16);
-                    if (qIdx + 52 < maxNumQueries) {
+                // 1 faces * 3 verts + 3 edges * 3 edges
+                if ((!ignoreSelfCollision || triFathers[myNode.TriangleIndex] != triFathers[leftChild.TriangleIndex]) && myNode.TriangleIndex != leftChild.TriangleIndex && !isAdjacentTriangle(tris[myNode.TriangleIndex * 3 + 0], tris[myNode.TriangleIndex * 3 + 1], tris[myNode.TriangleIndex * 3 + 2],
+                    tris[leftChild.TriangleIndex * 3 + 0], tris[leftChild.TriangleIndex * 3 + 1], tris[leftChild.TriangleIndex * 3 + 2])) {
+                    int qIdx = atomicAdd(queryCount, 12);
+                    if (qIdx + 12 < maxNumQueries) {
                         Query* qBegin = &queries[qIdx];
-                        fillQuery(qBegin, myNode.TetrahedronIndex, leftChild.TetrahedronIndex, tets);
+                        fillQuery(qBegin, myNode.TriangleIndex, leftChild.TriangleIndex, tris);
                     }
                     else {
                         *overflowFlag = true;
@@ -351,11 +363,12 @@ __global__ void traverseTree(int numTets, const BVHNode<Scalar>* nodes, const in
             // check triangle intersection
             if (rightChild.isLeaf == 1)
             {
-                if (tetFathers[myNode.TetrahedronIndex] != tetFathers[rightChild.TetrahedronIndex] && myNode.TetrahedronIndex != rightChild.TetrahedronIndex) {
-                    int qIdx = atomicAdd(queryCount, 36 + 16);
-                    if (qIdx + 52 < maxNumQueries) {
+                if ((!ignoreSelfCollision || triFathers[myNode.TriangleIndex] != triFathers[rightChild.TriangleIndex]) && myNode.TriangleIndex != rightChild.TriangleIndex && !isAdjacentTriangle(tris[myNode.TriangleIndex * 3 + 0], tris[myNode.TriangleIndex * 3 + 1], tris[myNode.TriangleIndex * 3 + 2],
+                    tris[rightChild.TriangleIndex * 3 + 0], tris[rightChild.TriangleIndex * 3 + 1], tris[rightChild.TriangleIndex * 3 + 2])) {
+                    int qIdx = atomicAdd(queryCount, 12);
+                    if (qIdx + 12 < maxNumQueries) {
                         Query* qBegin = &queries[qIdx];
-                        fillQuery(qBegin, myNode.TetrahedronIndex, rightChild.TetrahedronIndex, tets);
+                        fillQuery(qBegin, myNode.TriangleIndex, rightChild.TriangleIndex, tris);
                     }
                     else {
                         *overflowFlag = true;
@@ -373,16 +386,16 @@ __global__ void traverseTree(int numTets, const BVHNode<Scalar>* nodes, const in
 }
 
 template<typename Scalar>
-bool CollisionDetection<Scalar>::DetectCollisionCandidates(const BVHNode<Scalar>* dev_BVHNodes) {
+bool CollisionDetection<Scalar>::DetectCollisionCandidates(const BVHNode<Scalar>* dev_BVHNodes, int numTris, const indexType* Tri, const indexType* TriFathers) {
     bool overflowHappened = false;
     bool overflow;
-    dim3 numblocksTets = (mpSolverData->numTets + threadsPerBlock - 1) / threadsPerBlock;
+    dim3 numblocksTets = (numTris + threadsPerBlock - 1) / threadsPerBlock;
 
     cudaMemset(dev_numQueries, 0, sizeof(size_t));
     do {
         overflow = false;
         cudaMemset(dev_overflowFlag, 0, sizeof(bool));
-        traverseTree << <numblocksTets, threadsPerBlock >> > (mpSolverData->numTets, dev_BVHNodes, mpSolverData->Tet, mpSolverData->dev_TetFathers, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag);
+        traverseTree << <numblocksTets, threadsPerBlock >> > (numTris, dev_BVHNodes, Tri, TriFathers, dev_queries, dev_numQueries, maxNumQueries, dev_overflowFlag, ignoreSelfCollision);
         cudaMemcpy(&overflow, dev_overflowFlag, sizeof(bool), cudaMemcpyDeviceToHost);
         if (overflow) {
             overflowHappened = true;
@@ -404,10 +417,24 @@ bool CollisionDetection<Scalar>::DetectCollisionCandidates(const BVHNode<Scalar>
 }
 
 template<typename Scalar>
-void CollisionDetection<Scalar>::Init(int numTets, int numVerts, int maxThreads)
+void CollisionDetection<Scalar>::Init(int numTris, int numVerts, int maxThreads)
 {
     createQueries(numVerts);
-    m_bvh.Init(numTets, numVerts, maxThreads);
+    m_bvh.Init(numTris, numVerts, maxThreads);
+    cudaMalloc(&mpP, sizeof(Scalar) * 3 * numVerts);
+    cudaMalloc(&mpX, sizeof(glm::tvec3<Scalar>) * numVerts);
+}
+
+template<typename Scalar>
+void CollisionDetection<Scalar>::UpdateDirection(const Scalar* p)
+{
+    cudaMemcpy(mpP, p, sizeof(Scalar) * 3 * numVerts, cudaMemcpyDeviceToDevice);
+}
+
+template<typename Scalar>
+void CollisionDetection<Scalar>::UpdateX(const glm::tvec3<Scalar>* X)
+{
+    cudaMemcpy(mpX, X, sizeof(glm::tvec3<Scalar>) * numVerts, cudaMemcpyDeviceToDevice);
 }
 
 __global__ void sortEachQuery(size_t numQueries, Query* query)
@@ -436,18 +463,24 @@ __global__ void sortEachQuery(size_t numQueries, Query* query)
     }
 }
 
-void removeDuplicates(Query* dev_queries, size_t& dev_numQueries) {
+template <typename Predicate>
+void remove(Query* dev_queries, size_t& numQueries, Predicate pred) {
     thrust::device_ptr<Query> dev_ptr(dev_queries);
-    size_t numQueries = dev_numQueries;
+
+    auto new_end_remove = thrust::remove_if(dev_ptr, dev_ptr + numQueries, pred);
+    numQueries = new_end_remove - dev_ptr;
+}
+
+void removeDuplicates(Query* dev_queries, size_t& numQueries) {
+    thrust::device_ptr<Query> dev_ptr(dev_queries);
 
     auto new_end_remove = thrust::remove_if(dev_ptr, dev_ptr + numQueries, IsUnknown());
     numQueries = new_end_remove - dev_ptr;
-
     thrust::sort(dev_ptr, dev_ptr + numQueries, QueryComparator());
 
     auto new_end_unique = thrust::unique(dev_ptr, dev_ptr + numQueries, QueryEquality());
 
-    dev_numQueries = new_end_unique - dev_ptr;
+    numQueries = new_end_unique - dev_ptr;
 }
 
 template<typename Scalar>
@@ -467,7 +500,7 @@ struct MaxOp {
 };
 
 template<typename Scalar>
-AABB<Scalar> computeBoundingBox(const thrust::device_ptr<glm::tvec3<Scalar>>& begin, const thrust::device_ptr<glm::tvec3<Scalar>>& end) {
+AABB<Scalar> computeBoundingBox(const thrust::device_ptr<const glm::tvec3<Scalar>>& begin, const thrust::device_ptr<const glm::tvec3<Scalar>>& end) {
     glm::tvec3<Scalar> min = thrust::reduce(begin, end, glm::tvec3<Scalar>(FLT_MAX), MinOp<Scalar>());
     glm::tvec3<Scalar> max = thrust::reduce(begin, end, glm::tvec3<Scalar>(-FLT_MAX), MaxOp<Scalar>());
 
@@ -475,29 +508,68 @@ AABB<Scalar> computeBoundingBox(const thrust::device_ptr<glm::tvec3<Scalar>>& be
 }
 
 template<typename Scalar>
-AABB<Scalar> CollisionDetection<Scalar>::GetAABB() const
+AABB<Scalar> GetAABBCCD(int numVerts, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde)
 {
-    using XType = typename std::decay<decltype(*mpSolverData->X)>::type;
-    thrust::device_ptr<XType> dev_ptr(mpSolverData->X);
-    thrust::device_ptr<XType> dev_ptrTildes(mpSolverData->XTilde);
+    thrust::device_ptr<const glm::tvec3<Scalar>> dev_ptr(X);
+    thrust::device_ptr<const glm::tvec3<Scalar>> dev_ptrTildes(XTilde);
     return computeBoundingBox(dev_ptr, dev_ptr + numVerts).expand(computeBoundingBox(dev_ptrTildes, dev_ptrTildes + numVerts));
 }
 
 template<typename Scalar>
-bool CollisionDetection<Scalar>::BroadPhase()
+AABB<Scalar> GetAABB(int numVerts, const glm::tvec3<Scalar>* X)
+{
+    thrust::device_ptr<const glm::tvec3<Scalar>> dev_ptr(X);
+    return computeBoundingBox(dev_ptr, dev_ptr + numVerts);
+}
+
+template<typename Scalar>
+bool CollisionDetection<Scalar>::BroadPhaseCCD(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const glm::tvec3<Scalar>* XTilde, const indexType* TriFathers)
 {
     const std::string buildTypeStr = buildType == BVH<Scalar>::BuildType::Cooperative ? "Cooperative" : buildType == BVH<Scalar>::BuildType::Atomic ? "Atomic" : "Serial";
-    m_bvh.BuildBVHTree(buildType, GetAABB(), mpSolverData->numTets, mpSolverData->X, mpSolverData->XTilde, mpSolverData->Tet);
+    m_bvh.BuildBVHTreeCCD(buildType, GetAABBCCD(numVerts, X, XTilde), numTris, X, XTilde, Tri);
 
-    if (!DetectCollisionCandidates(m_bvh.GetBVHNodes())) {
+    if (!DetectCollisionCandidates(m_bvh.GetBVHNodes(), numTris, Tri, TriFathers)) {
         count = 0;
         return false;
     }
     dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
     sortEachQuery << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries);
     removeDuplicates(dev_queries, numQueries);
-    count = numVerts;
+    count = numVerts * 2;
     return true;
+}
+
+template<typename Scalar>
+bool CollisionDetection<Scalar>::BroadPhase(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers, Scalar bound)
+{
+    const std::string buildTypeStr = buildType == BVH<Scalar>::BuildType::Cooperative ? "Cooperative" : buildType == BVH<Scalar>::BuildType::Atomic ? "Atomic" : "Serial";
+    m_bvh.BuildBVHTree(buildType, GetAABB(numVerts, X), numTris, X, Tri, bound);
+
+    if (!DetectCollisionCandidates(m_bvh.GetBVHNodes(), numTris, Tri, TriFathers)) {
+        count = 0;
+        return false;
+    }
+    dim3 numBlocksQuery = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
+    sortEachQuery << <numBlocksQuery, threadsPerBlock >> > (numQueries, dev_queries);
+    removeDuplicates(dev_queries, numQueries);
+    count = numVerts * 2;
+    return true;
+}
+
+template<typename Scalar>
+void CollisionDetection<Scalar>::UpdateQueries(int numVerts, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X, const indexType* TriFathers, Scalar dhat)
+{
+    BroadPhase(numVerts, numTris, Tri, X, TriFathers, dhat * 2);
+    if (numQueries == 0)return;
+    GetDistanceType<Scalar> << <(numQueries + 255) / 256, 256 >> > (X, dev_queries, numQueries);
+    thrust::device_ptr<Query> queries_ptr(dev_queries);
+    thrust::sort(queries_ptr, queries_ptr + numQueries, []__host__ __device__(const Query & a, const Query & b) { return a.dType < b.dType; });
+    ComputeDistance<Scalar> << < (numQueries + 255) / 256, 256 >> > (X, dev_queries, numQueries);
+    remove(dev_queries, numQueries, [dhat]__host__ __device__(const Query & q) { return q.d > dhat; });
+    thrust::sort(queries_ptr, queries_ptr + numQueries, []__host__ __device__(const Query & a, const Query & b) {
+        if (a.d == b.d) return a.dType < b.dType;
+        return a.d < b.d;
+    });
 }
 
 template class CollisionDetection<float>;

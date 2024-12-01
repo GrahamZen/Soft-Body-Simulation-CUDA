@@ -16,20 +16,32 @@ QueryDisplay::~QueryDisplay()
 
 GLenum QueryDisplay::drawMode()
 {
-    return GL_POINTS;
+    return GL_LINES;
 }
 
 void QueryDisplay::createQueries(int _numVerts) {
     numVerts = _numVerts;
-    count = numVerts;
+    count = numVerts * 2;
+    std::vector<GLuint> lines(count);
+    std::vector<glm::vec4> color(count, glm::vec4(0.0f, 1.0f, 1.0f, 1.0f));
+    for (int t = 0; t < numVerts; t++)
+    {
+        lines[t * 2 + 0] = t;
+        lines[t * 2 + 1] = t + numVerts;
+    }
+
+    generateIdx();
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufIdx);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(GLuint), lines.data(), GL_STATIC_DRAW);
+
     generatePos();
     glBindBuffer(GL_ARRAY_BUFFER, bufPos);
-    glBufferData(GL_ARRAY_BUFFER, numVerts * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, count * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
     cudaGraphicsGLRegisterBuffer(&cuda_bufPos_resource, bufPos, cudaGraphicsMapFlagsWriteDiscard);
 
     generateCol();
     glBindBuffer(GL_ARRAY_BUFFER, bufCol);
-    glBufferData(GL_ARRAY_BUFFER, numVerts * sizeof(glm::vec4), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, count * sizeof(glm::vec4), color.data(), GL_DYNAMIC_DRAW);
     cudaGraphicsGLRegisterBuffer(&cuda_bufCol_resource, bufCol, cudaGraphicsMapFlagsWriteDiscard);
 }
 
