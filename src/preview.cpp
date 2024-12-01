@@ -108,10 +108,11 @@ void RenderImGui()
             if (ImGui::TreeNode("Soft Bodies")) {
                 for (size_t j = 0; j < simCtx->GetSoftBodies().size(); j++) {
                     auto softBody = simCtx->GetSoftBodies()[j];
-                    if (ImGui::TreeNode(softBody->GetName().c_str())) {
+                    const std::string uniqueId = std::string(softBody->GetName()) + "_" + std::to_string(j);
+                    if (ImGui::TreeNode(uniqueId.c_str())) {
                         ImGui::SameLine();
                         if (ImGui::Button("Highlight")) {
-                            imguiData->HighLightObjId = softBody->GetName();
+                            imguiData->HighLightObjId = uniqueId;
                         }
                         ImGui::Text("#DBC: %d", softBody->GetAttributes().numDBC);
                         ImGui::Text("#Triangle: %d", softBody->GetNumTris());
@@ -129,11 +130,13 @@ void RenderImGui()
 
             // FixedBodies
             if (ImGui::TreeNode("Fixed Bodies")) {
-                for (const auto& fixedBody : simCtx->GetFixedBodies()) {
-                    if (ImGui::TreeNode(fixedBody->name)) {
+                for (size_t j = 0; j < simCtx->GetFixedBodies().size(); j++) {
+                    const auto& fixedBody = simCtx->GetFixedBodies()[j];
+                    const std::string uniqueId = std::string(fixedBody->name) + "_" + std::to_string(j);
+                    if (ImGui::TreeNode(uniqueId.c_str())) {
                         ImGui::SameLine();
                         if (ImGui::Button("Highlight")) {
-                            imguiData->HighLightObjId = fixedBody->name;
+                            imguiData->HighLightObjId = uniqueId;
                         }
                         ImGui::TreePop();
                     }

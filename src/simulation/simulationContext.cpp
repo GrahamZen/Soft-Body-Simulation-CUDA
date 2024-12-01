@@ -69,14 +69,16 @@ void SimulationCUDAContext::Draw(SurfaceShader* highLightShaderProgram, SurfaceS
     if (contextGuiData->ObjectVis) {
         shaderProgram->setModelMatrix(glm::mat4(1.f));
         highLightShaderProgram->setModelMatrix(glm::mat4(1.f));
-        for (auto softBody : softBodies) {
-            if (softBody->GetName() == highLightName)
+        for (int i = 0; i < softBodies.size(); i++) {
+            auto softBody = softBodies[i];
+            if (utilityCore::compareHighlightID(softBody->GetName(), highLightName, i))
                 highLightShaderProgram->draw(*softBody, 0);
             else
                 shaderProgram->draw(*softBody, 0);
         }
-        for (auto fixedBody : fixedBodies) {
-            if (highLightName == fixedBody->name) {
+        for (int i = 0; i < fixedBodies.size(); i++) {
+            auto fixedBody = fixedBodies[i];
+            if (utilityCore::compareHighlightID(fixedBody->name, highLightName, i)) {
                 highLightShaderProgram->setModelMatrix(fixedBody->m_model);
                 highLightShaderProgram->draw(*fixedBody, 0);
             }

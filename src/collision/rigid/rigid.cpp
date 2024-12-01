@@ -6,5 +6,6 @@ FixedBody::FixedBody(const glm::mat4& model) : m_model(model), m_inverseModel(gl
 
 FixedBody::~FixedBody()
 {
-    delete []name;
+    if(name)
+        delete []name;
 }

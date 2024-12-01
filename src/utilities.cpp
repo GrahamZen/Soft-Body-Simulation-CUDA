@@ -316,3 +316,8 @@ std::string utilityCore::findFileName(const std::string& fileName) {
     std::cerr << "File not found: " << fileName << std::endl;
     return std::string();
 }
+
+bool utilityCore::compareHighlightID(const std::string& name, const std::string& highlightName, size_t idx)
+{
+    return name + +"_" + std::to_string(idx) == highlightName;
+}
