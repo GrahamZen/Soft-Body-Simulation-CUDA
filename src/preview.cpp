@@ -67,6 +67,7 @@ bool initOpenGL() {
     ImGui::StyleColorsLight();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 120");
+    io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;  // ∆Ù”√ Docking
 
     // Initialize other stuff
     //initTextures();
@@ -94,7 +95,7 @@ void RenderImGui()
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
     static float f = 0.0f;
     static int counter = 0;
-    ImGui::Begin("Scene Hierarchy");
+    ImGui::Begin("Scene Hierarchy", nullptr);
     bool contextChanged = false;
     for (size_t i = 0; i < context->mpSimContexts.size(); i++) {
         auto simCtx = context->mpSimContexts[i];
@@ -152,7 +153,7 @@ void RenderImGui()
 
     ImGui::End();
 
-    ImGui::Begin("Simulator Analytics");                  // Create a window called "Hello, world!" and append into it.
+    ImGui::Begin("Simulator Analytics", nullptr);                  // Create a window called "Hello, world!" and append into it.
     ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
     ImGui::Checkbox("Enable BVH", &imguiData->BVHEnabled);
     ImGui::Checkbox("Enable Detection", &imguiData->handleCollision);
