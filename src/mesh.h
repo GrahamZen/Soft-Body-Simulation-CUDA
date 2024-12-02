@@ -15,6 +15,7 @@ public:
     void create() override;
 
     void createTetrahedron();
+    void createCube();
     void createMesh();
     void bindTexture() const;
     void loadTexture() const;
@@ -28,8 +29,8 @@ protected:
     int numTets = 0;
     int numTris = 0;
 private:
-    std::unique_ptr<Texture> mp_texture;
-    std::unique_ptr<Texture> mp_bgTexture;
+    std::unique_ptr<Texture2D> mp_texture;
+    std::unique_ptr<Texture2D> mp_bgTexture;
     const std::vector<glm::vec4> cube_normals{
     glm::vec4(0, 0, 1, 0),  // 0
     glm::vec4(0, -1, 0, 0), // 1
