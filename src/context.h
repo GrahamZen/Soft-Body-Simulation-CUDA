@@ -108,5 +108,5 @@ private:
     bool logEnabled = false;
     std::vector<int> DOFs;
     std::vector<int> Eles;
-    TextureCubemap* envMap;
+    TextureCubemap* envMap = nullptr;
 };

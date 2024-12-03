@@ -3,6 +3,26 @@
 #include <glm/glm.hpp>
 #include <cuda_runtime.h>
 
+template<typename Func>
+float measureExecutionTime(const Func& func, bool print = false) {
+    if (!print) {
+        func();
+        return 0;
+    }
+    cudaEvent_t start, stop;
+    cudaEventCreate(&start);
+    cudaEventCreate(&stop);
+    cudaEventRecord(start);
+    func();
+    cudaEventRecord(stop);
+    cudaEventSynchronize(stop);
+    float milliseconds = 0;
+    cudaEventElapsedTime(&milliseconds, start, stop);
+    cudaEventDestroy(start);
+    cudaEventDestroy(stop);
+    return milliseconds;
+}
+
 template<typename Scalar>
 __forceinline__ __host__ __device__ void printGLMVector(const glm::tvec3<Scalar>& v, const char* name) {
     printf("Vector 3 %s\n%f %f %f \n--------------------------------\n", name, v.x, v.y, v.z);
