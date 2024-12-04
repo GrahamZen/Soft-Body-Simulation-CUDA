@@ -1,7 +1,9 @@
 #include <linear/cg.h>
+#include <linear/cuUtils.cuh>
 #include <iostream>
 
-CGSolver::CGSolver(int N, int max_iter, double tolerance) : N(N), max_iter(max_iter), tolerance(tolerance)
+template<typename T>
+CGSolver<T>::CGSolver(int N, int max_iter, T tolerance) : N(N), max_iter(max_iter), tolerance(tolerance)
 {
     CHECK_CUBLAS(cublasCreate(&cubHandle));
 
@@ -28,26 +30,27 @@ CGSolver::CGSolver(int N, int max_iter, double tolerance) : N(N), max_iter(max_i
     CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrL));
     CHECK_CUSPARSE(cusparseSpSV_createDescr(&spsvDescrU));
 
-    CHECK_CUDA(cudaMalloc((void**)&d_y, N * sizeof(double)));
-    CHECK_CUDA(cudaMalloc((void**)&d_z, N * sizeof(double)));
-    CHECK_CUDA(cudaMalloc((void**)&d_r, N * sizeof(double)));
-    CHECK_CUDA(cudaMalloc((void**)&d_q, N * sizeof(double)));
-    CHECK_CUDA(cudaMalloc((void**)&d_p, N * sizeof(double)));
+    CHECK_CUDA(cudaMalloc((void**)&d_y, N * sizeof(T)));
+    CHECK_CUDA(cudaMalloc((void**)&d_z, N * sizeof(T)));
+    CHECK_CUDA(cudaMalloc((void**)&d_r, N * sizeof(T)));
+    CHECK_CUDA(cudaMalloc((void**)&d_q, N * sizeof(T)));
+    CHECK_CUDA(cudaMalloc((void**)&d_p, N * sizeof(T)));
     CHECK_CUDA(cudaMalloc((void**)&d_rowPtrA, (N + 1) * sizeof(int)));
-    CHECK_CUDA(cudaMemset(d_y, 0, N * sizeof(double)));
-    CHECK_CUDA(cudaMemset(d_z, 0, N * sizeof(double)));
-    CHECK_CUDA(cudaMemset(d_r, 0, N * sizeof(double)));
-    CHECK_CUDA(cudaMemset(d_q, 0, N * sizeof(double)));
-    CHECK_CUDA(cudaMemset(d_p, 0, N * sizeof(double)));
+    CHECK_CUDA(cudaMemset(d_y, 0, N * sizeof(T)));
+    CHECK_CUDA(cudaMemset(d_z, 0, N * sizeof(T)));
+    CHECK_CUDA(cudaMemset(d_r, 0, N * sizeof(T)));
+    CHECK_CUDA(cudaMemset(d_q, 0, N * sizeof(T)));
+    CHECK_CUDA(cudaMemset(d_p, 0, N * sizeof(T)));
 
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_p, N, d_p, CUDA_R_64F));
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_q, N, d_q, CUDA_R_64F));
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_y, N, d_y, CUDA_R_64F));
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_z, N, d_z, CUDA_R_64F));
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_r, N, d_r, CUDA_R_64F));
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_p, N, d_p, dType));
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_q, N, d_q, dType));
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_y, N, d_y, dType));
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_z, N, d_z, dType));
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_r, N, d_r, dType));
 }
 
-CGSolver::~CGSolver()
+template<typename T>
+CGSolver<T>::~CGSolver()
 {
     CHECK_CUDA(cudaFree(d_y));
     CHECK_CUDA(cudaFree(d_z));
@@ -74,44 +77,44 @@ CGSolver::~CGSolver()
     CHECK_CUSPARSE(cusparseSpSV_destroyDescr(spsvDescrL));
     CHECK_CUSPARSE(cusparseSpSV_destroyDescr(spsvDescrU));
 }
-
-void CGSolver::Solve(int N, double* d_b, double* d_x, double* A, int nz, int* rowIdx, int* colIdx, double* d_guess)
+template<typename T>
+void CGSolver<T>::Solve(int N, T* d_b, T* d_x, T* A, int nz, int* rowIdx, int* colIdx, T* d_guess)
 {
     assert(d_b != nullptr);
     assert(d_x != nullptr);
     assert(A != nullptr);
     assert(rowIdx != nullptr);
     assert(colIdx != nullptr);
-    CHECK_CUDA(cudaMemset(d_x, 0, N * sizeof(double)));
+    CHECK_CUDA(cudaMemset(d_x, 0, N * sizeof(T)));
 
     //==============================================================================
     // Sort the COO matrix by row index and convert it to CSR format
     sort_coo(N, nz, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx);
     cusparseXcoo2csr(cusHandle, d_rowIdx, nz, N, d_rowPtrA, CUSPARSE_INDEX_BASE_ZERO);
     CHECK_CUSPARSE(cusparseCreateCsr(&d_matA, N, N, nz, d_rowPtrA, d_colIdx, d_A,
-        CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F));
+        CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, dType));
 
     //==============================================================================
     // Create dense vectors for p, q, x, b, y, z, r
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_x, N, d_x, CUDA_R_64F));
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_b, N, d_b, CUDA_R_64F));
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_x, N, d_x, dType));
+    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_b, N, d_b, dType));
     // x = 0, r0 = b  (since x == 0, b - A*x = b)
-    CHECK_CUDA(cudaMemcpy(d_r, d_b, N * sizeof(double), cudaMemcpyDeviceToDevice));
+    CHECK_CUDA(cudaMemcpy(d_r, d_b, N * sizeof(T), cudaMemcpyDeviceToDevice));
 
     //==============================================================================
     // L = ichol(A), L is a lower triangular matrix
     if (nz > old_nnz) {
         if (d_ic != nullptr)
             CHECK_CUDA(cudaFree(d_ic));
-        CHECK_CUDA(cudaMalloc((void**)&d_ic, nz * sizeof(double)));
+        CHECK_CUDA(cudaMalloc((void**)&d_ic, nz * sizeof(T)));
         std::cout << "d_ic malloc." << std::endl;
         old_nnz = nz;
     }
 
-    CHECK_CUDA(cudaMemcpy(d_ic, d_A, nz * sizeof(double), cudaMemcpyDeviceToDevice));
+    CHECK_CUDA(cudaMemcpy(d_ic, d_A, nz * sizeof(T), cudaMemcpyDeviceToDevice));
 
     int ic02BufferSizeInBytes = 0;
-    CHECK_CUSPARSE(cusparseDcsric02_bufferSize(cusHandle, N, nz, descrA, d_ic,
+    CHECK_CUSPARSE(cusparsecsric02_bufferSize(cusHandle, N, nz, descrA, d_ic,
         d_rowPtrA, d_colIdx, ic02info, &ic02BufferSizeInBytes));
 
     if (ic02BufferSizeInBytes > old_ic02BufferSizeInBytes)
@@ -122,13 +125,13 @@ void CGSolver::Solve(int N, double* d_b, double* d_x, double* A, int nz, int* ro
         std::cout << "ic02Buffer malloc." << std::endl;
         old_ic02BufferSizeInBytes = ic02BufferSizeInBytes;
     }
-    CHECK_CUSPARSE(cusparseDcsric02_analysis(cusHandle, N, nz, descrA, d_ic,
+    CHECK_CUSPARSE(cusparsecsric02_analysis(cusHandle, N, nz, descrA, d_ic,
         d_rowPtrA, d_colIdx, ic02info, CUSPARSE_SOLVE_POLICY_USE_LEVEL, ic02Buffer));
 
-    CHECK_CUSPARSE(cusparseDcsric02(cusHandle, N, nz, descrA, d_ic,
+    CHECK_CUSPARSE(cusparsecsric02(cusHandle, N, nz, descrA, d_ic,
         d_rowPtrA, d_colIdx, ic02info, CUSPARSE_SOLVE_POLICY_USE_LEVEL, ic02Buffer));
     CHECK_CUSPARSE(cusparseCreateCsr(&d_matL, N, N, nz, d_rowPtrA, d_colIdx, d_ic,
-        CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, CUDA_R_64F));
+        CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, dType));
 
     //============================================================================== 
     // Prepare workspace for solving L*y = b and L^T*z = y
@@ -137,12 +140,12 @@ void CGSolver::Solve(int N, double* d_b, double* d_x, double* A, int nz, int* ro
     size_t tmpBufferSize = 0;
 
     CHECK_CUSPARSE(cusparseSpSV_bufferSize(cusHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, &one, d_matL,
-        dvec_x, dvec_b, CUDA_R_64F, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL, &bufferSizeL));
+        dvec_x, dvec_b, dType, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL, &bufferSizeL));
     CHECK_CUSPARSE(cusparseSpSV_bufferSize(cusHandle, CUSPARSE_OPERATION_TRANSPOSE, &one, d_matL,
-        dvec_x, dvec_b, CUDA_R_64F, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrU, &bufferSizeU));
+        dvec_x, dvec_b, dType, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrU, &bufferSizeU));
 
     CHECK_CUSPARSE(cusparseSpMV_bufferSize(cusHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, &one, d_matA,
-        dvec_p, &zero, dvec_q, CUDA_R_64F, CUSPARSE_SPMV_CSR_ALG1, &tmpBufferSize));
+        dvec_p, &zero, dvec_q, dType, CUSPARSE_SPMV_CSR_ALG1, &tmpBufferSize));
     if (tmpBufferSize > bufferSizeL)
         bufferSizeL = tmpBufferSize;
 
@@ -165,23 +168,22 @@ void CGSolver::Solve(int N, double* d_b, double* d_x, double* A, int nz, int* ro
     }
 
     CHECK_CUSPARSE(cusparseSpSV_analysis(cusHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, &one, d_matL,
-        dvec_x, dvec_b, CUDA_R_64F, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL, d_bufL));
+        dvec_x, dvec_b, dType, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL, d_bufL));
     CHECK_CUSPARSE(cusparseSpSV_analysis(cusHandle, CUSPARSE_OPERATION_TRANSPOSE, &one, d_matL,
-        dvec_x, dvec_b, CUDA_R_64F, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrU, d_bufU));
+        dvec_x, dvec_b, dType, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrU, d_bufU));
 
     //==============================================================================
     // Set initial guess
     if (d_guess != nullptr)
     {
         // x = guess
-        CHECK_CUDA(cudaMemcpy(d_x, d_guess, N * sizeof(double), cudaMemcpyDeviceToDevice));
+        CHECK_CUDA(cudaMemcpy(d_x, d_guess, N * sizeof(T), cudaMemcpyDeviceToDevice));
         // r0 = b - A*x
         // q = A*x
         // r0 = -q + b
         CHECK_CUSPARSE(cusparseSpMV(cusHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, &one, d_matA,
-            dvec_x, &zero, dvec_q, CUDA_R_64F, CUSPARSE_SPMV_CSR_ALG1, d_bufL));
-        double n_one = -1;
-        CHECK_CUBLAS(cublasDaxpy(cubHandle, N, &n_one, d_q, 1, d_r, 1));
+            dvec_x, &zero, dvec_q, dType, CUSPARSE_SPMV_CSR_ALG1, d_bufL));
+        CHECK_CUBLAS(cublasAxpy(cubHandle, N, (T)-1, d_q, 1, d_r, 1));
     }
 
     //==============================================================================
@@ -189,52 +191,51 @@ void CGSolver::Solve(int N, double* d_b, double* d_x, double* A, int nz, int* ro
     for (k = 0; k < max_iter; ++k)
     {
         // if ||rk|| < tolerance
-        CHECK_CUBLAS(cublasDnrm2(cubHandle, N, d_r, 1, &rTr));
+        CHECK_CUBLAS(cublasnrm2(cubHandle, N, d_r, 1, &rTr));
         if (rTr < tolerance)
         {
             break;
         }
         // Solve L*y = rk
         CHECK_CUSPARSE(cusparseSpSV_solve(cusHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, &one,
-            d_matL, dvec_r, dvec_y, CUDA_R_64F, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL));
+            d_matL, dvec_r, dvec_y, dType, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL));
 
         // Solve L^T*zk = y
         CHECK_CUSPARSE(cusparseSpSV_solve(cusHandle, CUSPARSE_OPERATION_TRANSPOSE, &one,
-            d_matL, dvec_y, dvec_z, CUDA_R_64F, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrU));
+            d_matL, dvec_y, dvec_z, dType, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrU));
 
         // rho_t = r{k-1} * z{k-1}
         rho_t = rho;
         // rho = rk * zk
-        CHECK_CUBLAS(cublasDdot(cubHandle, N, d_r, 1, d_z, 1, &rho));
+        CHECK_CUBLAS(cublasdot(cubHandle, N, d_r, 1, d_z, 1, &rho));
 
         if (k == 0)
         {
             // pk = zk
-            CHECK_CUBLAS(cublasDcopy(cubHandle, N, d_z, 1, d_p, 1));
+            CHECK_CUBLAS(cublascopy(cubHandle, N, d_z, 1, d_p, 1));
         }
         else
         {
             // beta = (rk*zk) / (r{k-1}*z{k-1})
             beta = rho / rho_t;
             // pk = zk + beta*p{k-1}
-            CHECK_CUBLAS(cublasDscal(cubHandle, N, &beta, d_p, 1));
-            CHECK_CUBLAS(cublasDaxpy(cubHandle, N, &one, d_z, 1, d_p, 1));
+            CHECK_CUBLAS(cublasscal(cubHandle, N, beta, d_p, 1));
+            CHECK_CUBLAS(cublasAxpy(cubHandle, N, (T)1, d_z, 1, d_p, 1));
         }
 
         // q = A*pk
         CHECK_CUSPARSE(cusparseSpMV(cusHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, &one, d_matA,
-            dvec_p, &zero, dvec_q, CUDA_R_64F, CUSPARSE_SPMV_CSR_ALG1, d_bufL));
+            dvec_p, &zero, dvec_q, dType, CUSPARSE_SPMV_CSR_ALG1, d_bufL));
 
         // alpha = (rk*zk) / (pk*q)
-        CHECK_CUBLAS(cublasDdot(cubHandle, N, d_p, 1, d_q, 1, &pTq));
+        CHECK_CUBLAS(cublasdot(cubHandle, N, d_p, 1, d_q, 1, &pTq));
         alpha = rho / pTq;
 
         // x{k+1} = xk + alpha*pk
-        CHECK_CUBLAS(cublasDaxpy(cubHandle, N, &alpha, d_p, 1, d_x, 1));
+        CHECK_CUBLAS(cublasAxpy(cubHandle, N, alpha, d_p, 1, d_x, 1));
 
         // r{k+1} = rk - alpha*q 
-        double n_alpha = -alpha;
-        CHECK_CUBLAS(cublasDaxpy(cubHandle, N, &n_alpha, d_q, 1, d_r, 1));
+        CHECK_CUBLAS(cublasAxpy(cubHandle, N, -alpha, d_q, 1, d_r, 1));
     }
 
     CHECK_CUSPARSE(cusparseDestroySpMat(d_matA));
@@ -242,3 +243,6 @@ void CGSolver::Solve(int N, double* d_b, double* d_x, double* A, int nz, int* ro
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_b));
     CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_x));
 }
+
+template class CGSolver<float>;
+template class CGSolver<double>;
