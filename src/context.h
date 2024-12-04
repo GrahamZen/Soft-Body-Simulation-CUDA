@@ -39,6 +39,7 @@ public:
     bool WireFrame = false;
     bool BVHVis = false;
     bool BVHEnabled = true;
+    bool PerfEnabled = true;
     bool handleCollision = true;
     bool QueryVis = false;
     bool QueryDebugMode = true;

@@ -200,7 +200,7 @@ void RenderTimeBar(const std::vector<std::pair<std::string, float>>& times)
         ImGui::GetWindowDrawList()->AddRectFilled(colorBoxPos, ImVec2(colorBoxPos.x + 15, colorBoxPos.y + 15), color);
 
         ImGui::GetWindowDrawList()->AddText(textPos, IM_COL32(0, 0, 0, 255),
-            (times[i].first + ": " + std::to_string(times[i].second) + "ms").c_str());
+            (times[i].first + ": " + std::to_string(times[i].second / context->GetIteration()) + "ms").c_str());
         textPos.y += 20;
     }
 
@@ -222,7 +222,6 @@ void RenderImGui()
     static int counter = 0;
     bool contextChanged = false;
     RenderHierarchy(contextChanged);
-    RenderTimeBar(context->mcrpSimContext->GetPerformanceData());
     ImGui::Begin("Simulator Analytics", nullptr);                  // Create a window called "Hello, world!" and append into it.
     ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
     ImGui::Checkbox("Enable BVH", &imguiData->BVHEnabled);
@@ -288,9 +287,13 @@ void RenderImGui()
     //	counter++;
     //ImGui::SameLine();
     //ImGui::Text("counter = %d", counter);
+    if (ImGui::Checkbox("Enable Performance", &imguiData->PerfEnabled)) {
+        context->mcrpSimContext->SetPerf(imguiData->PerfEnabled);
+    }
     ImGui::Separator();
     RenderQueryDisplay(availWidth);
     ImGui::End();
+    RenderTimeBar(context->mcrpSimContext->GetPerformanceData());
 
     if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || contextChanged || globalSolverChanged) {
         context->panelModified = true;

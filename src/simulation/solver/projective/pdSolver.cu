@@ -182,3 +182,12 @@ void PdSolver::Update(SolverData<float>& solverData, const SolverParams<float>& 
         solverData.pFixedBodies->HandleCollisions(solverData.XTilde, solverData.V, solverData.numVerts, solverParams.muT, solverParams.muN);
             }, perf);
 }
+
+void PdSolver::Reset()
+{
+    Solver::Reset();
+    for (auto& pd : performanceData)
+    {
+        pd.second = 0.0f;
+    }
+}
