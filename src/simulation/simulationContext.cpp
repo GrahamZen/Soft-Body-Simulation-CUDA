@@ -96,3 +96,13 @@ SolverParams<solverPrecision>* SimulationCUDAContext::GetSolverParams()
 {
     return &mSolverParams;
 }
+
+void SimulationCUDAContext::SetPerf(bool val)
+{
+    mSolver->SetPerf(val);
+}
+
+const std::vector<std::pair<std::string, solverPrecision>>& SimulationCUDAContext::GetPerformanceData() const
+{
+    return mSolver->GetPerformanceData();
+}

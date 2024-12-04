@@ -1,6 +1,7 @@
 #pragma once
 
 #include <def.h>
+#include <string>
 
 struct SoftBodyData {
     indexType* Tri = nullptr;
@@ -15,11 +16,14 @@ public:
 
     virtual void Update(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
     virtual void Reset();
+    void SetPerf(bool val) { perf = val; }
+    const std::vector<std::pair<std::string, Scalar>>& GetPerformanceData() const { return performanceData; }
 protected:
     virtual void SolverPrepare(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
     virtual bool SolverStep(SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams) = 0;
     int threadsPerBlock;
-
+    std::vector<std::pair<std::string, Scalar>> performanceData;
+    bool perf = false;
     bool solverReady = false;
 };
 

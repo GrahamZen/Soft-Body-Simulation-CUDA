@@ -14,6 +14,7 @@ public:
     ~PdSolver();
     void SetGlobalSolver(bool useEigen) { this->useEigen = useEigen; }
     virtual void Update(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
+    virtual void Reset() override;
 protected:
     virtual void SolverPrepare(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
     virtual bool SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;

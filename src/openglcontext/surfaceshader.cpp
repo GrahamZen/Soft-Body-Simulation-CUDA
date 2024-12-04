@@ -1,4 +1,7 @@
 #include <surfaceshader.h>
+#include <string>
+#include <iostream>
+#include <stdexcept>
 
 
 SurfaceShader::SurfaceShader()
@@ -105,6 +108,19 @@ void SurfaceShader::drawLines(Drawable& d)
     if (attrCol != -1) glDisableVertexAttribArray(attrCol);
 
     printGLErrorLog();
+}
+
+void SurfaceShader::setUnifInt(std::string name, int i) {
+    useMe();
+    try {
+        int handle = m_unifs.at(name);
+        if (handle != -1) {
+            glUniform1i(handle, i);
+        }
+    }
+    catch (std::out_of_range& e) {
+        std::cout << "Error: could not find shader variable with name " << name << std::endl;
+    }
 }
 
 void SurfaceShader::drawSingleQuery(SingleQueryDisplay& d)

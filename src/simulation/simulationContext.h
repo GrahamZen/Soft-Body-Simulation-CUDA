@@ -23,6 +23,8 @@ public:
     void SetGlobalSolver(bool useEigen);
     void Draw(SurfaceShader*, SurfaceShader*, SurfaceShader*, std::string highLightName = "");
     SolverParams<solverPrecision>* GetSolverParams();
+    void SetPerf(bool val);
+    const std::vector<std::pair<std::string, solverPrecision>>& GetPerformanceData() const;
     int GetTetCnt() const;
     int GetVertCnt() const;
     int GetThreadsPerBlock() const { return threadsPerBlock; }

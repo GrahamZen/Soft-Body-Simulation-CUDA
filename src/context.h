@@ -8,6 +8,8 @@ class SoftBody;
 class Camera;
 class SimulationCUDAContext;
 class SurfaceShader;
+class TextureCubemap;
+class Mesh;
 
 
 struct SoftBodyAttr
@@ -37,6 +39,7 @@ public:
     bool WireFrame = false;
     bool BVHVis = false;
     bool BVHEnabled = true;
+    bool PerfEnabled = true;
     bool handleCollision = true;
     bool QueryVis = false;
     bool QueryDebugMode = true;
@@ -61,11 +64,18 @@ void cleanupCuda();
 
 class Context
 {
+    enum class ShaderType
+    {
+        LAMBERT,
+        PHONG,
+        FLAT
+    };
 public:
     Context(const std::string& _filename);
     ~Context();
     void LoadShaders(const std::string& vertShaderFilename = "../src/shaders/lambert.vert.glsl", const std::string& fragShaderFilename = "../src/shaders/lambert.frag.glsl");
     void LoadFlatShaders(const std::string& vertShaderFilename = "../src/shaders/flat.vert.glsl", const std::string& fragShaderFilename = "../src/shaders/flat.frag.glsl");
+    void LoadEnvCubemap(const std::string& filename);
     void InitDataContainer();
     void InitCuda();
     void Update();
@@ -73,6 +83,8 @@ public:
     void Draw();
     void SetBVHBuildType(int buildType);
     int& GetBVHBuildType();
+    void SetShaderType(int shaderType);
+    int& GetShaderType();
     int GetNumQueries() const;
     int GetIteration() const { return iteration; }
     const std::vector<int>& GetDOFs() const { return DOFs; }
@@ -90,17 +102,22 @@ public:
     std::vector<SimulationCUDAContext*> mpSimContexts;
 
 private:
+    ShaderType shaderType;
     int GetMaxCGThreads();
     void PollEvents();
     std::string filename = "context.json";
     SimulationCUDAContext* LoadSimContext();
     glm::vec3 ogLookAt; // for recentering the camera
-    SurfaceShader* mpProgHighLight;
-    SurfaceShader* mpProgLambert;
-    SurfaceShader* mpProgFlat;
+    SurfaceShader* mpProgHighLight = nullptr;
+    SurfaceShader* mpProgLambert = nullptr;
+    SurfaceShader* mpProgPhong = nullptr;
+    SurfaceShader* mpProgFlat = nullptr;
+    SurfaceShader* mpProgSkybox = nullptr;
+    Mesh* mpCube = nullptr;
     size_t iteration = 0;
     bool pause = false;
     bool logEnabled = false;
     std::vector<int> DOFs;
     std::vector<int> Eles;
+    TextureCubemap* envMap = nullptr;
 };

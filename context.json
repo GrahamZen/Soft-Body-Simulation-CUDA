@@ -13,6 +13,10 @@
         "up": [0, 1, 0],
         "fovy": 45
     },
+    "environmentMap": {
+        "path":"../assets/envmap/Yokohama",
+        "on": true
+    },
     "external force": {
         "jump": [0, 1000, 0]
     },

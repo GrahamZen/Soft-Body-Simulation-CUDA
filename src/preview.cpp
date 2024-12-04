@@ -67,10 +67,12 @@ bool initOpenGL() {
     ImGui::StyleColorsLight();
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 120");
+    io->ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     // Initialize other stuff
     //initTextures();
     //glActiveTexture(GL_TEXTURE0);
+    srand(0);
 
     return true;
 }
@@ -80,22 +82,8 @@ void InitImguiData(GuiDataContainer* guiData)
     imguiData = guiData;
 }
 
-// LOOK: Un-Comment to check ImGui Usage
-void RenderImGui()
-{
-    mouseOverImGuiWinow = io->WantCaptureMouse;
-
-    ImGui_ImplOpenGL3_NewFrame();
-    ImGui_ImplGlfw_NewFrame();
-    ImGui::NewFrame();
-    context->panelModified = false;
-    bool show_demo_window = true;
-    bool show_another_window = false;
-    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-    static float f = 0.0f;
-    static int counter = 0;
-    ImGui::Begin("Scene Hierarchy");
-    bool contextChanged = false;
+void RenderHierarchy(bool& contextChanged) {
+    ImGui::Begin("Scene Hierarchy", nullptr);
     for (size_t i = 0; i < context->mpSimContexts.size(); i++) {
         auto simCtx = context->mpSimContexts[i];
         if (ImGui::TreeNode(simCtx->GetName().c_str())) {
@@ -138,25 +126,109 @@ void RenderImGui()
                         if (ImGui::Button("Highlight")) {
                             imguiData->HighLightObjId = uniqueId;
                         }
-                        const glm::vec4 &pos = fixedBody->m_model[3];
+                        const glm::vec4& pos = fixedBody->m_model[3];
                         ImGui::Text("pos: [%.2f, %.2f, %.2f]", pos.x, pos.y, pos.z);
                         ImGui::TreePop();
                     }
                 }
                 ImGui::TreePop();
             }
-
             ImGui::TreePop();
         }
     }
+    ImGui::End();
+}
+void RenderQueryDisplay(const float& availWidth) {
+    ImGui::Text("Query Display");
+    ImGui::Checkbox("Visualize All Queries", &imguiData->QueryVis);
+    ImGui::SameLine();
+    ImGui::Checkbox("Query Debug Mode", &imguiData->QueryDebugMode);
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    ImGui::DragFloat("Point Size", &imguiData->PointSize, 1, 0.1f, 50.f, "%.2f");
+    ImGui::SameLine();
+    ImGui::SetNextItemWidth(availWidth * 0.25f);
+    ImGui::DragFloat("Line Width", &imguiData->LineWidth, 1, 0.1f, 50.f, "%.2f");
+    context->guiData->QueryDirty = ImGui::DragInt("Query Index", &imguiData->CurrQueryId, 1, 0, context->GetNumQueries() - 1);
+    ImGui::Text("%s, v0: %d, v1: %d, v2: %d, v3: %d, d:%f", distanceTypeString[static_cast<int>(context->guiData->mPQuery->dType)],
+        context->guiData->mPQuery->v0, context->guiData->mPQuery->v1, context->guiData->mPQuery->v2, context->guiData->mPQuery->v3, context->guiData->mPQuery->d);
+    ImGui::Text("toi: %.4f, normal: (%.4f, %.4f, %.4f)", context->guiData->mPQuery->toi, context->guiData->mPQuery->normal.x, context->guiData->mPQuery->normal.y, context->guiData->mPQuery->normal.z);
+
+    ImGui::Separator();
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
+    ImGui::Text("#DOF %d, #Ele %d, #Query %d",
+        context->GetDOFs()[imguiData->currSimContextId],
+        context->GetEles()[imguiData->currSimContextId],
+        context->GetNumQueries());
+}
+
+std::vector<ImU32> colors;
+
+void RenderTimeBar(const std::vector<std::pair<std::string, float>>& times)
+{
+    size_t timeSize = times.size();
+    if (timeSize == 0) return;
+    size_t colorSize = colors.size();
+    if (colorSize < timeSize) {
+
+        for (size_t i = 0; i < timeSize - colorSize; i++) {
+            colors.push_back(ImU32(ImGui::ColorConvertFloat4ToU32(ImVec4(rand() % 256 / 255.f, rand() % 256 / 255.f, rand() % 256 / 255.f, 1.0f))));
+        }
+    }
+
+    float totalTime = std::accumulate(times.begin(), times.end(), 0.0f, [](float sum, const std::pair<std::string, float>& p) { return sum + p.second; });
+    if (totalTime == 0.0f) return;
+
+    ImGui::Begin("Step Time Breakdown");
+
+    ImVec2 windowPos = ImGui::GetCursorScreenPos();
+    ImVec2 windowSize = ImVec2(400, 20);
+
+    ImGui::GetWindowDrawList()->AddRectFilled(windowPos, ImVec2(windowPos.x + windowSize.x, windowPos.y + windowSize.y), IM_COL32(50, 50, 50, 255));
+
+    float barX = windowPos.x;
+
+    for (size_t i = 0; i < times.size(); ++i) {
+        float ratio = times[i].second / totalTime;
+        float barWidth = windowSize.x * ratio;
+        ImGui::GetWindowDrawList()->AddRectFilled(ImVec2(barX, windowPos.y), ImVec2(barX + barWidth, windowPos.y + windowSize.y), colors[i]);
+        barX += barWidth;
+    }
+    auto textPos = ImVec2(windowPos.x + 20, windowPos.y + windowSize.y + 5);
+    for (size_t i = 0; i < times.size(); ++i) {
+        ImVec2 colorBoxPos = ImVec2(textPos.x - 20, textPos.y);
+        ImU32 color = colors[i];
+        ImGui::GetWindowDrawList()->AddRectFilled(colorBoxPos, ImVec2(colorBoxPos.x + 15, colorBoxPos.y + 15), color);
+
+        ImGui::GetWindowDrawList()->AddText(textPos, IM_COL32(0, 0, 0, 255),
+            (times[i].first + ": " + std::to_string(times[i].second / context->GetIteration()) + "ms").c_str());
+        textPos.y += 20;
+    }
 
     ImGui::End();
+}
+// LOOK: Un-Comment to check ImGui Usage
+void RenderImGui()
+{
+    mouseOverImGuiWinow = io->WantCaptureMouse;
 
-    ImGui::Begin("Simulator Analytics");                  // Create a window called "Hello, world!" and append into it.
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+    context->panelModified = false;
+    bool show_demo_window = true;
+    bool show_another_window = false;
+    ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+    static float f = 0.0f;
+    static int counter = 0;
+    bool contextChanged = false;
+    RenderHierarchy(contextChanged);
+    ImGui::Begin("Simulator Analytics", nullptr);                  // Create a window called "Hello, world!" and append into it.
     ImGui::Checkbox("Wireframe mode", &imguiData->WireFrame);
     ImGui::Checkbox("Enable BVH", &imguiData->BVHEnabled);
     ImGui::Checkbox("Enable Detection", &imguiData->handleCollision);
     ImGui::Checkbox("Visualize BVH", &imguiData->BVHVis);
+    const std::vector<const char*> shaderTypeNameItems = { "Lambertian", "Phong", "Flat" };
+    if (ImGui::Combo("Shader Type", &context->GetShaderType(), shaderTypeNameItems.data(), shaderTypeNameItems.size()));
     const std::vector<const char*> buildTypeNameItems = { "Serial", "Atomic", "Cooperative" };
     if (ImGui::Combo("BVH Build Type", &context->GetBVHBuildType(), buildTypeNameItems.data(), buildTypeNameItems.size()))
     {
@@ -217,28 +289,13 @@ void RenderImGui()
     //	counter++;
     //ImGui::SameLine();
     //ImGui::Text("counter = %d", counter);
+    if (ImGui::Checkbox("Enable Performance", &imguiData->PerfEnabled)) {
+        context->mcrpSimContext->SetPerf(imguiData->PerfEnabled);
+    }
     ImGui::Separator();
-    ImGui::Text("Query Display");
-    ImGui::Checkbox("Visualize All Queries", &imguiData->QueryVis);
-    ImGui::SameLine();
-    ImGui::Checkbox("Query Debug Mode", &imguiData->QueryDebugMode);
-    ImGui::SetNextItemWidth(availWidth * 0.25f);
-    ImGui::DragFloat("Point Size", &imguiData->PointSize, 1, 0.1f, 50.f, "%.2f");
-    ImGui::SameLine();
-    ImGui::SetNextItemWidth(availWidth * 0.25f);
-    ImGui::DragFloat("Line Width", &imguiData->LineWidth, 1, 0.1f, 50.f, "%.2f");
-    context->guiData->QueryDirty = ImGui::DragInt("Query Index", &imguiData->CurrQueryId, 1, 0, context->GetNumQueries() - 1);
-    ImGui::Text("%s, v0: %d, v1: %d, v2: %d, v3: %d, d:%f", distanceTypeString[static_cast<int>(context->guiData->mPQuery->dType)],
-        context->guiData->mPQuery->v0, context->guiData->mPQuery->v1, context->guiData->mPQuery->v2, context->guiData->mPQuery->v3, context->guiData->mPQuery->d);
-    ImGui::Text("toi: %.4f, normal: (%.4f, %.4f, %.4f)", context->guiData->mPQuery->toi, context->guiData->mPQuery->normal.x, context->guiData->mPQuery->normal.y, context->guiData->mPQuery->normal.z);
-
-    ImGui::Separator();
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate, ImGui::GetIO().Framerate);
-    ImGui::Text("#DOF %d, #Ele %d, #Query %d",
-        context->GetDOFs()[imguiData->currSimContextId],
-        context->GetEles()[imguiData->currSimContextId],
-        context->GetNumQueries());
+    RenderQueryDisplay(availWidth);
     ImGui::End();
+    RenderTimeBar(context->mcrpSimContext->GetPerformanceData());
 
     if (cameraPhiChanged || cameraThetaChanged || cameraLookAtChanged || zoomChanged || contextChanged || globalSolverChanged) {
         context->panelModified = true;

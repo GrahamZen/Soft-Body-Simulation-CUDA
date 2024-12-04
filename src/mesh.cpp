@@ -41,6 +41,94 @@ void Mesh::createTetrahedron()
     glBufferData(GL_ARRAY_BUFFER, numTets * 12 * sizeof(glm::vec4), nullptr, GL_DYNAMIC_DRAW);
     cudaGraphicsGLRegisterBuffer(&cuda_bufNor_resource, bufNor, cudaGraphicsMapFlagsWriteDiscard);
 }
+void Mesh::createCube()
+{
+    // Code that sets up texture data on the GPU
+    std::vector<glm::vec3> pos{
+        glm::vec3(-1, -1, 1),  // 0
+        glm::vec3(-1, -1, 1),  // 1
+        glm::vec3(-1, -1, 1),  // 2
+        glm::vec3(1, -1, 1),   // 3
+        glm::vec3(1, -1, 1),   // 4
+        glm::vec3(1, -1, 1),   // 5
+        glm::vec3(1, 1, 1),    // 6
+        glm::vec3(1, 1, 1),    // 7
+        glm::vec3(1, 1, 1),    // 8
+        glm::vec3(-1, 1, 1),   // 9
+        glm::vec3(-1, 1, 1),   // 10
+        glm::vec3(-1, 1, 1),   // 11
+        glm::vec3(-1, -1, -1), // 12
+        glm::vec3(-1, -1, -1), // 13
+        glm::vec3(-1, -1, -1), // 14
+        glm::vec3(1, -1, -1),  // 15
+        glm::vec3(1, -1, -1),  // 16
+        glm::vec3(1, -1, -1),  // 17
+        glm::vec3(1, 1, -1),   // 18
+        glm::vec3(1, 1, -1),   // 19
+        glm::vec3(1, 1, -1),   // 20
+        glm::vec3(-1, 1, -1),  // 21
+        glm::vec3(-1, 1, -1),  // 22
+        glm::vec3(-1, 1, -1) }; // 23
+    // each uvs corresponds to a pos vec3, which corresponds to a normal.
+    std::vector<glm::vec2> uvs{
+        glm::vec2(0, 0),// 0
+        glm::vec2(0, 1),// 1
+        glm::vec2(1, 0),// 2
+        glm::vec2(1, 0),// 3
+        glm::vec2(1, 1),// 4
+        glm::vec2(0, 0),// 5
+        glm::vec2(1, 1),// 6
+        glm::vec2(1, 0),// 7
+        glm::vec2(0, 1),// 8
+        glm::vec2(0, 1),// 9
+        glm::vec2(0, 0),// 10
+        glm::vec2(1, 1),// 11
+        glm::vec2(1, 0),// 12
+        glm::vec2(0, 0),// 13
+        glm::vec2(0, 0),// 14
+        glm::vec2(0, 0),// 15
+        glm::vec2(1, 0),// 16
+        glm::vec2(1, 0),// 17
+        glm::vec2(0, 1),// 18
+        glm::vec2(1, 1),// 19
+        glm::vec2(1, 1),// 20
+        glm::vec2(1, 1),// 21
+        glm::vec2(0, 1),// 22
+        glm::vec2(0, 1),// 23
+    };
+
+    std::vector<GLuint> idx{ 0, 3, 6,
+                            0, 6, 9,
+                            5, 17, 8,
+                            8, 17, 20,
+                            10, 7, 19,
+                            10, 19, 22,
+                            2, 14, 23,
+                            2, 23, 11,
+                            12, 15, 18,
+                            12, 18, 21,
+                            1, 4, 16,
+                            1, 16, 13 };
+
+    count = 36; // TODO: Set "count" to the number of indices in your index VBO
+
+    generateIdx();
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufIdx);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size() * sizeof(GLuint), idx.data(), GL_STATIC_DRAW);
+
+    generatePos();
+    glBindBuffer(GL_ARRAY_BUFFER, bufPos);
+    glBufferData(GL_ARRAY_BUFFER, pos.size() * sizeof(glm::vec3), pos.data(), GL_DYNAMIC_DRAW);
+    cudaGraphicsGLRegisterBuffer(&cuda_bufPos_resource, bufPos, cudaGraphicsMapFlagsWriteDiscard);
+
+    generateNor();
+    glBindBuffer(GL_ARRAY_BUFFER, bufNor);
+    glBufferData(GL_ARRAY_BUFFER, cube_normals.size() * sizeof(glm::vec4), cube_normals.data(), GL_DYNAMIC_DRAW);
+
+    generateUV();
+    glBindBuffer(GL_ARRAY_BUFFER, bufUV);
+    glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(glm::vec2), uvs.data(), GL_STATIC_DRAW);
+}
 
 void Mesh::createMesh()
 {

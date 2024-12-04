@@ -12,6 +12,7 @@ PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : F
 {
     cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(solverData.ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
+    performanceData = { {"local step", 0.0f}, {"global step", 0.0f}, {"collision handling(fixed)", 0.0f}, {"collision handling(mesh)", 0.0f} };
 }
 
 PdSolver::~PdSolver() {
@@ -132,23 +133,28 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
     PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, solverData.ExtForce, masses, m_1_dt2, solverData.numVerts);
     for (int i = 0; i < solverParams.numIterations; i++)
     {
-        cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
-        PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
-        PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
-
-        if (useEigen)
-        {
-            cudaMemcpy(bHost, b, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToHost);
-            Eigen::VectorXf bh = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(bHost, solverData.numVerts * 3);
-            Eigen::VectorXf res = cholesky_decomposition_.solve(bh);
-            cudaMemcpy(sn, res.data(), sizeof(float) * (solverData.numVerts * 3), cudaMemcpyHostToDevice);
-        }
-        else
-        {
-            ls->Solve(solverData.numVerts * 3, b, sn);
-        }
+        performanceData[0].second +=
+            measureExecutionTime([&]() {
+            cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
+            PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
+            PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
+                }, perf);
+        performanceData[1].second +=
+            measureExecutionTime([&]()
+                {
+                    if (useEigen)
+                    {
+                        cudaMemcpy(bHost, b, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToHost);
+                        Eigen::VectorXf bh = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(bHost, solverData.numVerts * 3);
+                        Eigen::VectorXf res = cholesky_decomposition_.solve(bh);
+                        cudaMemcpy(sn, res.data(), sizeof(float) * (solverData.numVerts * 3), cudaMemcpyHostToDevice);
+                    }
+                    else
+                    {
+                        ls->Solve(solverData.numVerts * 3, b, sn);
+                    }
+                }, perf);
     }
-
     PdUtil::updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilde, solverData.V, solverData.numVerts);
     return true;
 }
@@ -162,11 +168,26 @@ void PdSolver::Update(SolverData<float>& solverData, const SolverParams<float>& 
     }
     SolverStep(solverData, solverParams);
     if (solverParams.handleCollision) {
-        solverData.pCollisionDetection->DetectCollision(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.XTilde, solverData.dev_TriFathers, solverData.dev_tIs, solverData.dev_Normals, true);
-        int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-        CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts, solverParams.dt);
+        performanceData[3].second +=
+            measureExecutionTime([&]() {
+            solverData.pCollisionDetection->DetectCollision(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.XTilde, solverData.dev_TriFathers, solverData.dev_tIs, solverData.dev_Normals, true);
+            int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+            CCDKernel << <blocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.V, solverData.dev_tIs, solverData.dev_Normals, solverParams.muT, solverParams.muN, solverData.numVerts, solverParams.dt);
+                }, perf);
     }
     else
         cudaMemcpy(solverData.X, solverData.XTilde, sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
-    solverData.pFixedBodies->HandleCollisions(solverData.XTilde, solverData.V, solverData.numVerts, solverParams.muT, solverParams.muN);
+    performanceData[2].second +=
+        measureExecutionTime([&]() {
+        solverData.pFixedBodies->HandleCollisions(solverData.XTilde, solverData.V, solverData.numVerts, solverParams.muT, solverParams.muN);
+            }, perf);
+}
+
+void PdSolver::Reset()
+{
+    Solver::Reset();
+    for (auto& pd : performanceData)
+    {
+        pd.second = 0.0f;
+    }
 }

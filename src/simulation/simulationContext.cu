@@ -181,6 +181,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     }
     mSolverData.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
     mSolver = new IPCSolver{ threadsPerBlock, mSolverData };
+    mSolver->SetPerf(true);
 }
 
 SimulationCUDAContext::~SimulationCUDAContext()

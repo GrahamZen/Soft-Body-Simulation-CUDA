@@ -1,6 +1,7 @@
 #include <sceneStructs.h>
 #include <surfaceshader.h>
 #include <context.h>
+#include <Mesh.h>
 #include <collision/aabb.h>
 #include <simulation/simulationContext.h>
 #include <utilities.h>
@@ -72,7 +73,8 @@ Camera& Camera::computeCameraParams()
     return *this;
 }
 
-Context::Context(const std::string& _filename) :filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()), mpProgHighLight(new SurfaceShader()), mpProgFlat(new SurfaceShader()),
+Context::Context(const std::string& _filename) :shaderType(ShaderType::PHONG), filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()),
+mpProgPhong(new SurfaceShader()), mpProgHighLight(new SurfaceShader()), mpProgFlat(new SurfaceShader()), mpProgSkybox(new SurfaceShader()),
 width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer())
 {
     glm::vec3 view = mpCamera->view;
@@ -95,10 +97,13 @@ Context::~Context()
 {
     delete mpProgHighLight;
     delete mpProgLambert;
+    delete mpProgPhong;
     delete mpProgFlat;
+    delete mpProgSkybox;
     delete mcrpSimContext;
     delete guiData;
     delete mpCamera;
+    delete mpCube;
 }
 
 int Context::GetMaxCGThreads()
@@ -144,6 +149,8 @@ void Context::LoadShaders(const std::string& vertShaderFilename, const std::stri
         std::string vertShaderPath = shadersFolder + "/" + "lambert.vert.glsl";
         std::string fragShaderPath = shadersFolder + "/" + "lambert.frag.glsl";
         mpProgLambert->create(vertShaderPath.c_str(), fragShaderPath.c_str());
+        fragShaderPath = shadersFolder + "/" + "blinnphong.frag.glsl";
+        mpProgPhong->create(vertShaderPath.c_str(), fragShaderPath.c_str());
         vertShaderPath = shadersFolder + "/" + "highLight.vert.glsl";
         fragShaderPath = shadersFolder + "/" + "highLight.frag.glsl";
         mpProgHighLight->create(vertShaderPath.c_str(), fragShaderPath.c_str());
@@ -154,9 +161,24 @@ void Context::LoadShaders(const std::string& vertShaderFilename, const std::stri
     mpProgLambert->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
     mpProgLambert->setCameraPos(cameraPosition);
     mpProgLambert->setModelMatrix(glm::mat4(1.f));
+    mpProgPhong->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
+    mpProgPhong->setCameraPos(cameraPosition);
+    mpProgPhong->setModelMatrix(glm::mat4(1.f));
     mpProgHighLight->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
     mpProgHighLight->setCameraPos(cameraPosition);
     mpProgHighLight->setModelMatrix(glm::mat4(1.f));
+    if (json.contains("environmentMap")) {
+        std::string envMapPath = json["environmentMap"]["path"];
+        bool envMapOn = json["environmentMap"]["on"];
+        if (envMapOn) {
+            LoadEnvCubemap(envMapPath);
+            mpProgSkybox->create("../src/shaders/envMap.vert.glsl", "../src/shaders/envMap.frag.glsl");
+            mpProgSkybox->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
+            mpProgSkybox->addUniform("u_EnvironmentMap");
+            mpCube = new Mesh();
+            mpCube->createCube();
+        }
+    }
 }
 
 void Context::LoadFlatShaders(const std::string& vertShaderFilename, const std::string& fragShaderFilename)
@@ -353,6 +375,13 @@ SimulationCUDAContext* Context::LoadSimContext() {
     return mcrpSimContext;
 }
 
+void Context::LoadEnvCubemap(const std::string& filename) {
+    {
+        envMap = new TextureCubemap();
+        envMap->create(filename.c_str(), false);
+    }
+}
+
 void Context::InitDataContainer() {
     guiData->phi = phi;
     guiData->theta = theta;
@@ -373,9 +402,29 @@ void Context::InitCuda() {
 }
 
 void Context::Draw() {
+    if (mpProgSkybox && envMap->m_isCreated) {
+        glDepthFunc(GL_LEQUAL);
+        glDepthMask(GL_FALSE);
+        envMap->bind(ENV_MAP_CUBE_TEX_SLOT);
+        mpProgSkybox->setViewProjMatrix(glm::mat4(glm::mat3(mpCamera->getView())), mpCamera->getProj());
+        mpProgSkybox->setUnifInt("u_EnvironmentMap", ENV_MAP_CUBE_TEX_SLOT);
+        mpProgSkybox->draw(*mpCube);
+        glDepthFunc(GL_LESS);
+        glDepthMask(GL_TRUE);
+    }
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    mcrpSimContext->Draw(mpProgHighLight, mpProgLambert, mpProgFlat, guiData->HighLightObjId);
+    switch (shaderType)
+    {
+    case Context::ShaderType::LAMBERT:
+        mcrpSimContext->Draw(mpProgHighLight, mpProgLambert, mpProgFlat, guiData->HighLightObjId);
+        break;
+    case Context::ShaderType::PHONG:
+        mcrpSimContext->Draw(mpProgHighLight, mpProgPhong, mpProgFlat, guiData->HighLightObjId);
+        break;
+    default:
+        break;
+    }
 }
 
 void Context::SetBVHBuildType(int buildType)
@@ -386,6 +435,16 @@ void Context::SetBVHBuildType(int buildType)
 int& Context::GetBVHBuildType()
 {
     return bvhBuildType;
+}
+
+void Context::SetShaderType(int shaderType)
+{
+    this->shaderType = (ShaderType)shaderType;
+}
+
+int& Context::GetShaderType()
+{
+    return (int&)shaderType;
 }
 
 void Context::Update() {
@@ -421,8 +480,19 @@ void Context::Update() {
         guiData->theta = theta;
         guiData->zoom = zoom;
         camchanged = false;
-        mpProgLambert->setCameraPos(cameraPosition);
-        mpProgLambert->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
+        switch (shaderType)
+        {
+        case Context::ShaderType::LAMBERT:
+            mpProgLambert->setCameraPos(cameraPosition);
+            mpProgLambert->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
+            break;
+        case Context::ShaderType::PHONG:
+            mpProgPhong->setCameraPos(cameraPosition);
+            mpProgPhong->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
+            break;
+        default:
+            break;
+        }
         mpProgHighLight->setCameraPos(cameraPosition);
         mpProgHighLight->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
         mpProgFlat->setCameraPos(cameraPosition);
