@@ -6,7 +6,6 @@
 
 template<typename T>
 class JacobiSolver : public LinearSolver<T> {
-    cudaDataType dType = CUDAType<T>::value;
 public:
     JacobiSolver(int N, int maxIter = 1000);
     virtual ~JacobiSolver() override;

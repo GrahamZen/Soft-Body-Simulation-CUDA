@@ -1,4 +1,5 @@
 #include <simulation/solver/linear/cholesky.h>
+#include <linear/cuUtils.cuh>
 #include <stdexcept>
 
 template<typename T>
@@ -49,8 +50,8 @@ CholeskyDnLinearSolver<T>::CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx
     // Assuming h_A is the host matrix with size n x n
 
     cusolverDnXpotrf_bufferSize(
-        cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, n, dataType, d_predecomposedA, lda,
-        dataType, &workspaceInBytesOnDevice, &workspaceInBytesOnHost);
+        cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, n, dType, d_predecomposedA, lda,
+        dType, &workspaceInBytesOnDevice, &workspaceInBytesOnHost);
 
     cudaMalloc(reinterpret_cast<void**>(&d_work), workspaceInBytesOnDevice);
     if (0 < workspaceInBytesOnHost) {
@@ -60,8 +61,8 @@ CholeskyDnLinearSolver<T>::CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx
         }
     }
 
-    cusolverDnXpotrf(cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, n, dataType,
-        d_predecomposedA, lda, dataType, d_work, workspaceInBytesOnDevice,
+    cusolverDnXpotrf(cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, n, dType,
+        d_predecomposedA, lda, dType, d_work, workspaceInBytesOnDevice,
         h_work, workspaceInBytesOnHost, d_info);
     cudaMemcpy(&info, d_info, sizeof(int), cudaMemcpyDeviceToHost);
 
@@ -147,8 +148,8 @@ void CholeskySpLinearSolver<T>::ComputeAMD(cusolverSpHandle_t handle, int rowsA,
     free(buffer_cpu);
 }
 
-template<>
-CholeskySpLinearSolver<double>::CholeskySpLinearSolver(int threadsPerBlock, int* rowIdx, int* colIdx, double* A, int ASize, int len) {
+template<typename T>
+CholeskySpLinearSolver<T>::CholeskySpLinearSolver(int threadsPerBlock, int* rowIdx, int* colIdx, T* A, int ASize, int len) {
     sort_coo(ASize, len, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx);
     int nnz = len;
     cudaMalloc((void**)&d_rowPtrA, sizeof(int) * (ASize + 1));
@@ -166,43 +167,18 @@ CholeskySpLinearSolver<double>::CholeskySpLinearSolver(int threadsPerBlock, int*
     size_t internalSize = 0;
     cusolverSpCreateCsrcholInfo(&d_info);
     cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnz, descrA, d_rowPtrA, d_colIdx, d_info);
-    cusolverSpDcsrcholBufferInfo(cusolverHandle, ASize, nnz, descrA, d_A, d_rowPtrA, d_colIdx, d_info, &internalSize, &cholSize);
+    cusolverSpcsrcholBufferInfo(cusolverHandle, ASize, nnz, descrA, d_A, d_rowPtrA, d_colIdx, d_info, &internalSize, &cholSize);
     cudaMalloc((void**)&buffer_gpu, sizeof(char) * cholSize);
-    cudaMalloc((void**)&dev_b_permuted, sizeof(double) * ASize);
-    cudaMalloc((void**)&dev_x_permuted, sizeof(double) * ASize);
-    cusolverSpDcsrcholFactor(cusolverHandle, ASize, nnz, descrA, d_A, d_rowPtrA, d_colIdx, d_info, buffer_gpu);
-}
-
-template<> CholeskySpLinearSolver<float>::CholeskySpLinearSolver(int threadsPerBlock, int* rowIdx, int* colIdx, float* A, int ASize, int len) {
-    sort_coo(ASize, len, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx);
-    int nnz = len;
-    cudaMalloc((void**)&d_rowPtrA, sizeof(int) * (ASize + 1));
-    cusparseHandle_t handle;
-    cusparseCreate(&handle);
-    cusparseXcoo2csr(handle, d_rowIdx, nnz, ASize, d_rowPtrA, CUSPARSE_INDEX_BASE_ZERO);
-
-    cusolverSpCreate(&cusolverHandle);
-    cusparseCreateMatDescr(&descrA);
-    cusparseSetMatType(descrA, CUSPARSE_MATRIX_TYPE_GENERAL);
-    cusparseSetMatIndexBase(descrA, CUSPARSE_INDEX_BASE_ZERO);
-
-    ComputeAMD(cusolverHandle, ASize, nnz, d_rowPtrA, d_colIdx, d_A);
-    size_t cholSize = 0;
-    size_t internalSize = 0;
-    cusolverSpCreateCsrcholInfo(&d_info);
-    cusolverSpXcsrcholAnalysis(cusolverHandle, ASize, nnz, descrA, d_rowPtrA, d_colIdx, d_info);
-    cusolverSpScsrcholBufferInfo(cusolverHandle, ASize, nnz, descrA, d_A, d_rowPtrA, d_colIdx, d_info, &internalSize, &cholSize);
-    cudaMalloc((void**)&buffer_gpu, sizeof(char) * cholSize);
-    cudaMalloc((void**)&dev_b_permuted, sizeof(float) * ASize);
-    cudaMalloc((void**)&dev_x_permuted, sizeof(float) * ASize);
-    cusolverSpScsrcholFactor(cusolverHandle, ASize, nnz, descrA, d_A, d_rowPtrA, d_colIdx, d_info, buffer_gpu);
+    cudaMalloc((void**)&dev_b_permuted, sizeof(T) * ASize);
+    cudaMalloc((void**)&dev_x_permuted, sizeof(T) * ASize);
+    cusolverSpcsrcholFactor(cusolverHandle, ASize, nnz, descrA, d_A, d_rowPtrA, d_colIdx, d_info, buffer_gpu);
 }
 
 template<typename T>
 void CholeskyDnLinearSolver<T>::Solve(int N, T* d_b, T* d_x, T* d_A, int nz, int* d_rowIdx, int* d_colIdx, T* d_guess) {
     cusolverDnXpotrs(cusolverHandle, params, CUBLAS_FILL_MODE_LOWER, N, 1, /* nrhs */
-        dataType, d_predecomposedA, N,
-        dataType, d_b, N, d_info);
+        dType, d_predecomposedA, N,
+        dType, d_b, N, d_info);
     cudaMemcpy(d_x, d_b, sizeof(T) * (N), cudaMemcpyDeviceToDevice);
 }
 
@@ -222,21 +198,13 @@ __global__ void permuteVectorInv(const T* x_permuted, T* x, const int* p, int n)
     }
 }
 
-template<> void CholeskySpLinearSolver<float>::Solve(int N, float* d_b, float* d_x, float* d_A, int nz, int* d_rowIdx, int* d_colIdx, float* d_guess)
+template<typename T>
+void CholeskySpLinearSolver<T>::Solve(int N, T* d_b, T* d_x, T* d_A, int nz, int* d_rowIdx, int* d_colIdx, T* d_guess)
 {
     int threadsPerBlock = 256;
     int blocks = (N + threadsPerBlock - 1) / threadsPerBlock;
     permuteVector << <blocks, threadsPerBlock >> > (d_b, dev_b_permuted, d_p, N);
-    cusolverSpScsrcholSolve(cusolverHandle, N, dev_b_permuted, dev_x_permuted, d_info, buffer_gpu);
-    permuteVectorInv << <blocks, threadsPerBlock >> > (dev_x_permuted, d_x, d_p, N);
-}
-
-template<> void CholeskySpLinearSolver<double>::Solve(int N, double* d_b, double* d_x, double* d_A, int nz, int* d_rowIdx, int* d_colIdx, double* d_guess)
-{
-    int threadsPerBlock = 256;
-    int blocks = (N + threadsPerBlock - 1) / threadsPerBlock;
-    permuteVector << <blocks, threadsPerBlock >> > (d_b, dev_b_permuted, d_p, N);
-    cusolverSpDcsrcholSolve(cusolverHandle, N, dev_b_permuted, dev_x_permuted, d_info, buffer_gpu);
+    cusolverSpcsrcholSolve(cusolverHandle, N, dev_b_permuted, dev_x_permuted, d_info, buffer_gpu);
     permuteVectorInv << <blocks, threadsPerBlock >> > (dev_x_permuted, d_x, d_p, N);
 }
 

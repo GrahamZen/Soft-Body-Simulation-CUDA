@@ -1,16 +1,7 @@
 #pragma once
 
 #include <cusolverSp.h>
-
-template <typename T>
-struct CUDAType {
-    static constexpr cudaDataType value = CUDA_R_32F;  //
-};
-
-template <>
-struct CUDAType<double> {
-    static constexpr cudaDataType value = CUDA_R_64F;
-};
+#include <cusolverSp_LOWLEVEL_PREVIEW.h>
 
 template <typename T>
 cublasStatus_t cublasscal(cublasHandle_t handle, int n, T alpha, T* x, int incx) {
@@ -174,5 +165,68 @@ cusparseStatus_t cusparsecsric02_analysis(
     }
     else {
         return CUSPARSE_STATUS_NOT_SUPPORTED;
+    }
+}
+template <typename T>
+cusolverStatus_t cusolverSpcsrcholBufferInfo(
+    cusolverSpHandle_t       handle,
+    int                      n,
+    int                      nnzA,
+    const cusparseMatDescr_t descrA,
+    const T* csrValA,
+    const int* csrRowPtrA,
+    const int* csrColIndA,
+    csrcholInfo_t            info,
+    size_t* internalDataInBytes,
+    size_t* workspaceInBytes) {
+    if constexpr (std::is_same<T, float>::value) {
+        return cusolverSpScsrcholBufferInfo(handle, n, nnzA, descrA, csrValA, csrRowPtrA, csrColIndA, info, internalDataInBytes, workspaceInBytes);
+    }
+    else if constexpr (std::is_same<T, double>::value) {
+        return cusolverSpDcsrcholBufferInfo(handle, n, nnzA, descrA, csrValA, csrRowPtrA, csrColIndA, info, internalDataInBytes, workspaceInBytes);
+    }
+    else {
+        return CUSOLVER_STATUS_NOT_SUPPORTED;
+    }
+}
+
+template <typename T>
+cusolverStatus_t cusolverSpcsrcholSolve(
+    cusolverSpHandle_t handle,
+    int                n,
+    const T* b,
+    T* x,
+    csrcholInfo_t      info,
+    void* pBuffer) {
+    if constexpr (std::is_same<T, float>::value) {
+        return cusolverSpScsrcholSolve(handle, n, b, x, info, pBuffer);
+    }
+    else if constexpr (std::is_same<T, double>::value) {
+        return cusolverSpDcsrcholSolve(handle, n, b, x, info, pBuffer);
+    }
+    else {
+        return CUSOLVER_STATUS_NOT_SUPPORTED;
+    }
+}
+
+template <typename T>
+cusolverStatus_t  cusolverSpcsrcholFactor(
+    cusolverSpHandle_t       handle,
+    int                      n,
+    int                      nnzA,
+    const cusparseMatDescr_t descrA,
+    const T* csrValA,
+    const int* csrRowPtrA,
+    const int* csrColIndA,
+    csrcholInfo_t            info,
+    void* pBuffer) {
+    if constexpr (std::is_same<T, float>::value) {
+        return cusolverSpScsrcholFactor(handle, n, nnzA, descrA, csrValA, csrRowPtrA, csrColIndA, info, pBuffer);
+    }
+    else if constexpr (std::is_same<T, double>::value) {
+        return cusolverSpDcsrcholFactor(handle, n, nnzA, descrA, csrValA, csrRowPtrA, csrColIndA, info, pBuffer);
+    }
+    else {
+        return CUSOLVER_STATUS_NOT_SUPPORTED;
     }
 }

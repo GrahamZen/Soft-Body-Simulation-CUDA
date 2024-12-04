@@ -6,7 +6,6 @@
 
 template<typename T>
 class CGSolver : public LinearSolver<T> {
-    cudaDataType dType = CUDAType<T>::value;
 public:
     CGSolver(int N, int max_iter = 1e2, T tolerance = 1e-6);
     virtual ~CGSolver() override;
