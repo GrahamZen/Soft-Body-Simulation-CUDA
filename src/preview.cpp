@@ -178,7 +178,7 @@ void RenderTimeBar(const std::vector<std::pair<std::string, float>>& times)
     float totalTime = std::accumulate(times.begin(), times.end(), 0.0f, [](float sum, const std::pair<std::string, float>& p) { return sum + p.second; });
     if (totalTime == 0.0f) return;
 
-    ImGui::Begin("Function Time Breakdown");
+    ImGui::Begin("Step Time Breakdown");
 
     ImVec2 windowPos = ImGui::GetCursorScreenPos();
     ImVec2 windowSize = ImVec2(400, 20);
@@ -227,6 +227,8 @@ void RenderImGui()
     ImGui::Checkbox("Enable BVH", &imguiData->BVHEnabled);
     ImGui::Checkbox("Enable Detection", &imguiData->handleCollision);
     ImGui::Checkbox("Visualize BVH", &imguiData->BVHVis);
+    const std::vector<const char*> shaderTypeNameItems = { "Lambertian", "Phong", "Flat" };
+    if (ImGui::Combo("Shader Type", &context->GetShaderType(), shaderTypeNameItems.data(), shaderTypeNameItems.size()));
     const std::vector<const char*> buildTypeNameItems = { "Serial", "Atomic", "Cooperative" };
     if (ImGui::Combo("BVH Build Type", &context->GetBVHBuildType(), buildTypeNameItems.data(), buildTypeNameItems.size()))
     {

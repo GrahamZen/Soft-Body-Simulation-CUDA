@@ -21,7 +21,7 @@ void main()
     // Material base color (before shading)
     // vec4 diffuseColor=texture(u_Texture,fs_UV);
     vec4 diffuseColor=vec4(0.43, 0.55, 1.0, 1.0);
-    vec4 lightColor=vec4(1.0, 1.0, 0.35, 1.0);
+    vec4 lightColor=vec4(1.0, 1.0, 1.0, 1.0);
     
     // Calculate the diffuse term for Lambert shading
     float diffuseTerm=dot(normalize(fs_Nor),normalize(fs_LightVec));
@@ -38,9 +38,9 @@ void main()
     // out_Col=diffuseColor*lightIntensity;
     // out_Col.a=1.0;
 
-    // Blinn-Phong shading model, fixed light position
+    // Blinn-Phong shading model
     vec3 lightDir = normalize(vec3(0.0, 1.0, 1.0));
-    vec3 viewDir = normalize(vec3(0.0, 0.0, 1.0));
+    vec3 viewDir = normalize(fs_LightVec.xyz);
     vec3 halfwayDir = normalize(lightDir + viewDir);
     float spec = pow(max(dot(normalize(vec3(fs_Nor)), halfwayDir), 0.0), 32.0);
     vec4 specular = vec4(1.0, 1.0, 1.0, 1.0);

@@ -64,6 +64,12 @@ void cleanupCuda();
 
 class Context
 {
+    enum class ShaderType
+    {
+        LAMBERT,
+        PHONG,
+        FLAT
+    };
 public:
     Context(const std::string& _filename);
     ~Context();
@@ -77,6 +83,8 @@ public:
     void Draw();
     void SetBVHBuildType(int buildType);
     int& GetBVHBuildType();
+    void SetShaderType(int shaderType);
+    int& GetShaderType();
     int GetNumQueries() const;
     int GetIteration() const { return iteration; }
     const std::vector<int>& GetDOFs() const { return DOFs; }
@@ -94,6 +102,7 @@ public:
     std::vector<SimulationCUDAContext*> mpSimContexts;
 
 private:
+    ShaderType shaderType;
     int GetMaxCGThreads();
     void PollEvents();
     std::string filename = "context.json";
@@ -101,6 +110,7 @@ private:
     glm::vec3 ogLookAt; // for recentering the camera
     SurfaceShader* mpProgHighLight = nullptr;
     SurfaceShader* mpProgLambert = nullptr;
+    SurfaceShader* mpProgPhong = nullptr;
     SurfaceShader* mpProgFlat = nullptr;
     SurfaceShader* mpProgSkybox = nullptr;
     Mesh* mpCube = nullptr;
