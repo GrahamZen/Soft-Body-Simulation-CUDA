@@ -1,7 +1,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_approx.hpp>
-#include <linear/cg.h>
+#include <linear/jacobi.h>
 #include <vector>
 #include <matrix.h>
 #include <cuda_runtime.h>
@@ -97,10 +97,10 @@ void generateSPDMatrixCOO(int N, int nonZeroEntries, std::vector<int>& rowIdx, s
     }
 }
 
-TEST_CASE("CG Test", "[CG][.][SKIP]") {
+TEST_CASE("JACOBI Test", "[JACOBI]") {
     int N = 75000;
-    int nz = 10000;
-    int num_test = 100;
+    int nz = 100000;
+    int num_test = 1;
 
     double cpu_time = 0;
     double gpu_time = 0;
@@ -122,7 +122,7 @@ TEST_CASE("CG Test", "[CG][.][SKIP]") {
     Eigen::VectorXd ex;
 
     // Choose a solver, here we use SparseLU as an example
-    CGSolver cg(N, 100, 1e-3);
+    JacobiSolver<double> jacobi(N, 100);
     Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> solver;
 
     int* dev_ARowIdx = nullptr, * dev_AColIdx = nullptr;
@@ -158,7 +158,7 @@ TEST_CASE("CG Test", "[CG][.][SKIP]") {
         cudaEventCreate(&stop);
 
         cudaEventRecord(start);
-        cg.Solve(N, dev_b, dev_x, dev_Aval, rowIdx.size(), dev_ARowIdx, dev_AColIdx);
+        jacobi.Solve(N, dev_b, dev_x, dev_Aval, rowIdx.size(), dev_ARowIdx, dev_AColIdx);
         cudaEventRecord(stop);
         cudaEventSynchronize(stop);
         float milliseconds = 0;
@@ -169,7 +169,8 @@ TEST_CASE("CG Test", "[CG][.][SKIP]") {
         cudaMemcpy(x.data(), dev_x, N * sizeof(double), cudaMemcpyDeviceToHost);
 
         Eigen::VectorXd eCUDAx = Eigen::Map<Eigen::VectorXd>(x.data(), x.size());
-        REQUIRE((A * eCUDAx - bVec).isZero(1e-3));
+        Eigen::VectorXd e = ex - eCUDAx;
+        REQUIRE(e.isZero(1e-3));
     }
     std::cout << "Averge GPU Execution time: " << gpu_time / num_test << " ms" << std::endl;
     std::cout << "Averge CPU Execution time: " << cpu_time / num_test << " ms" << std::endl;

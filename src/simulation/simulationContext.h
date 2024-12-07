@@ -20,7 +20,7 @@ public:
     void Reset();
     void UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr);
     void SetBVHBuildType(int);
-    void SetGlobalSolver(bool useEigen);
+    void SetGlobalSolver(int val);
     void Draw(SurfaceShader*, SurfaceShader*, SurfaceShader*, std::string highLightName = "");
     SolverParams<solverPrecision>* GetSolverParams();
     void SetPerf(bool val);

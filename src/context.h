@@ -47,7 +47,7 @@ public:
     bool Reset = false;
     bool Pause = false;
     bool Step = false;
-    bool UseEigen = true;
+    int pdSolverType = 1;
     int CurrQueryId = 0;
     std::string HighLightObjId;
     float theta, phi;

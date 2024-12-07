@@ -35,6 +35,7 @@ void SimulationCUDAContext::Update()
     mSolverParams.handleCollision = (contextGuiData->handleCollision && contextGuiData->BVHEnabled);
     mSolver->Update(mSolverData, mSolverParams);
     if (contextGuiData->handleCollision || contextGuiData->BVHEnabled) {
+        mSolverData.pCollisionDetection->UpdateX(mSolverData.X);
         mSolverData.pCollisionDetection->PrepareRenderData();
     }
     if (contextGuiData->ObjectVis) {
@@ -47,11 +48,11 @@ void SimulationCUDAContext::SetBVHBuildType(int buildType)
     mSolverData.pCollisionDetection->SetBuildType(buildType);
 }
 
-void SimulationCUDAContext::SetGlobalSolver(bool useEigen)
+void SimulationCUDAContext::SetGlobalSolver(int val)
 {
     PdSolver* pdsolver = nullptr;
     if (pdsolver = dynamic_cast<PdSolver*>(mSolver)) {
-        pdsolver->SetGlobalSolver(useEigen);
+        pdsolver->SetGlobalSolver(static_cast<PdSolver::SolverType>(val));
     }
 }
 

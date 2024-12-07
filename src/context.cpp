@@ -389,7 +389,6 @@ void Context::InitDataContainer() {
     guiData->zoom = zoom;
     guiData->solverParams = mcrpSimContext->GetSolverParams();
     guiData->Pause = false;
-    guiData->UseEigen = false;
     guiData->softBodyAttr.currSoftBodyId = -1;
     guiData->currSimContextId = 0;
 }
@@ -454,7 +453,7 @@ void Context::Update() {
             mcrpSimContext = mpSimContexts[guiData->currSimContextId];
             guiData->solverParams = mcrpSimContext->GetSolverParams();
         }
-        mcrpSimContext->SetGlobalSolver(guiData->UseEigen);
+        mcrpSimContext->SetGlobalSolver(guiData->pdSolverType);
         phi = guiData->phi;
         theta = guiData->theta;
         mpCamera->lookAt = guiData->cameraLookAt;
@@ -558,7 +557,7 @@ bool SoftBodyAttr::getJumpDirty()const {
 GuiDataContainer::GuiDataContainer()
     :mPQuery(new Query()), PointSize(15), LineWidth(10), WireFrame(false), BVHVis(false), BVHEnabled(true),
     handleCollision(true), QueryVis(false), QueryDebugMode(true), ObjectVis(true), Reset(false), Pause(false),
-    Step(false), UseEigen(true), CurrQueryId(0)
+    Step(false), CurrQueryId(0)
 {
 }
 

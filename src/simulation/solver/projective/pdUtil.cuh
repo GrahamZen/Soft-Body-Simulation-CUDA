@@ -25,6 +25,6 @@ namespace PdUtil {
     __global__ void setMDt_2(int* rowIdx, int* colIdx, float* val, int startIndex, float massDt_2, int vertNumber);
     __global__ void computeM_h2Sn(float* b, float* sn, float massDt_2, int vertNumber);
     __global__ void addM_h2Sn(float* b, float* masses, int vertNumber);
-    __global__ void computeSiTSi(int* rowIdx, int* colIdx, float* val, const float* V0, const glm::mat3* DmInv, const indexType* tetIndex, float weight, int tetNumber, int vertNumber);
+    __global__ void computeSiTSi(int* rowIdx, int* colIdx, float* val, const float* V0, const glm::mat3* DmInv, const indexType* tetIndex, const float* weight, int tetNumber, int vertNumber);
     __global__ void updateVelPos(float* newPos, float dt_1, glm::vec3* pos, glm::vec3* vel, int numVerts);
 }

@@ -3,12 +3,12 @@
 #include <stdexcept>
 
 template<typename T>
-__global__ void FillMatrixA(int* AIdx, T* tmpVal, T* d_A, int n, int ASize) {
+__global__ void FillMatrixA(int* AIdx, T* AVal, T* d_A, int n, int ASize) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
     if (idx >= n) return;
     int row = AIdx[idx] / ASize;
     int col = AIdx[idx] % ASize;
-    atomicAdd(&d_A[row * ASize + col], tmpVal[idx]);
+    atomicAdd(&d_A[row * ASize + col], AVal[idx]);
 }
 
 __global__ void initAMatrix(int* idx, int* row, int* col, int rowLen, int totalNumber)
@@ -30,9 +30,9 @@ CholeskyDnLinearSolver<T>::~CholeskyDnLinearSolver()
 }
 
 template<typename T>
-CholeskyDnLinearSolver<T>::CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx, T* tmpVal, int ASize, int len) {
+CholeskyDnLinearSolver<T>::CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx, T* AVal, int ASize, int len) {
     cudaMalloc(&d_predecomposedA, sizeof(T) * ASize * ASize);
-    FillMatrixA << < (len + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (AIdx, tmpVal, d_predecomposedA, len, ASize);
+    FillMatrixA << < (len + threadsPerBlock - 1) / threadsPerBlock, threadsPerBlock >> > (AIdx, AVal, d_predecomposedA, len, ASize);
     cusolverDnCreate(&cusolverHandle);
     cusolverDnCreateParams(&params);
 
