@@ -235,7 +235,8 @@ void RenderImGui()
         context->SetBVHBuildType(context->GetBVHBuildType());
     }
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
-    bool globalSolverChanged = ImGui::Checkbox("Use Eigen For Global Solve", &imguiData->UseEigen);
+    const std::vector<const char*> pdSolverTypeNameItems = { "Cholesky(Eigen)", "Cholesky(CUSOLVER)", "Jacobi" };
+    bool globalSolverChanged = ImGui::Combo("Global Solver", &imguiData->pdSolverType, pdSolverTypeNameItems.data(), pdSolverTypeNameItems.size());
     imguiData->Reset = ImGui::Button("Reset");
     ImGui::SameLine();
     imguiData->Pause = ImGui::Button("Pause");

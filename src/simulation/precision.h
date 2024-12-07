@@ -1,1 +1,1 @@
-using solverPrecision = double;
+using solverPrecision = float;

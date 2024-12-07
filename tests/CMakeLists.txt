@@ -30,6 +30,7 @@ ${TEST_SOURCES}
 ${TEST_DISTANCE_SOURCES}
 ${CMAKE_SOURCE_DIR}/src/collision/intersections.cu
 ${CMAKE_SOURCE_DIR}/src/simulation/solver/linear/cg.cu
+${CMAKE_SOURCE_DIR}/src/simulation/solver/linear/jacobi.cu
 ${CMAKE_SOURCE_DIR}/src/simulation/solver/linear/linear.cu
 )
 target_include_directories(tests PUBLIC ${CMAKE_SOURCE_DIR}/src/simulation/solver/linear)

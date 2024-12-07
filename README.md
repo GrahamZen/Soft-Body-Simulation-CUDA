@@ -56,5 +56,7 @@ Below are included in the project:
 
 ## Screenshots
 
+https://github.com/user-attachments/assets/1c088da8-6842-4ba1-9514-9ba6ddd2cf92
+
 <p align="center">
 <img src="image/showcase1.png" width="600">

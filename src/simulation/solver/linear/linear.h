@@ -1,5 +1,16 @@
 #pragma once
 #include <def.h>
+#include <library_types.h>
+
+template <typename T>
+struct CUDAType {
+    static constexpr cudaDataType value = CUDA_R_32F;  //
+};
+
+template <>
+struct CUDAType<double> {
+    static constexpr cudaDataType value = CUDA_R_64F;
+};
 
 #define CHECK_CUDA(func)                                                       \
 {                                                                              \
@@ -44,6 +55,7 @@ public:
     virtual ~LinearSolver() = default;
     virtual void Solve(int N, T* d_b, T* d_x, T* A = nullptr, int nz = 0, int* rowIdx = nullptr, int* colIdx = nullptr, T* d_guess = nullptr) = 0;
 protected:
+    cudaDataType dType = CUDAType<T>::value;
     T* d_A = nullptr;
     int* d_rowIdx = nullptr;
     int* d_colIdx = nullptr;

@@ -27,11 +27,10 @@ private:
 template<typename T>
 class CholeskyDnLinearSolver : public LinearSolver<T> {
 public:
-    CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx, T* tmpVal, int ASize, int len);
+    CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx, T* AVal, int ASize, int len);
     virtual ~CholeskyDnLinearSolver() override;
     virtual void Solve(int N, T* d_b, T* d_x, T* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, T* d_guess = nullptr) override;
 private:
-    cudaDataType_t dataType = std::is_same<T, double>::value ? CUDA_R_64F : CUDA_R_32F;
     cusolverDnParams_t params;
     int* d_info = nullptr;    /* error info */
     cusolverDnHandle_t cusolverHandle;

@@ -26,6 +26,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
     DataLoader<solverPrecision> dataLoader(threadsPerBlock);
     std::vector<const char*> namesSoftBodies;
     mSolverData.pCollisionDetection = new CollisionDetection<solverPrecision>{ ctx, _threadsPerBlockBVH, 1 << 16 };
+    mSolverParams.numIterations = _numIterations;
     if (json.contains("dt")) {
         mSolverParams.dt = json["dt"].get<float>();
     }
@@ -180,7 +181,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(solverPrecision));
     }
     mSolverData.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
-    mSolver = new IPCSolver{ threadsPerBlock, mSolverData };
+    mSolver = new PdSolver{ threadsPerBlock, mSolverData };
     mSolver->SetPerf(true);
 }
 

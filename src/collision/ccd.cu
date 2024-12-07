@@ -170,8 +170,10 @@ void CollisionDetection<Scalar>::Draw(SurfaceShader* flatShaderProgram)
     if (mpContext->guiData->BVHVis)
         flatShaderProgram->draw(m_bvh, 0);
     if (mpContext->guiData->QueryVis)
+    {
         glLineWidth(mpContext->guiData->LineWidth);
         flatShaderProgram->drawLines(*this);
+    }
     if (mpContext->guiData->QueryDebugMode && mpX) {
         glLineWidth(mpContext->guiData->LineWidth);
         flatShaderProgram->drawSingleQuery(GetSQDisplay(mpContext->guiData->CurrQueryId, mpX,
