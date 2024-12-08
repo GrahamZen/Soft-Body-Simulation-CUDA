@@ -27,6 +27,7 @@ private:
     LinearSolver<float>* jacobiSolver = nullptr;
     SolverType solverType = SolverType::CuSolverCholesky;
 
+    const float positional_weight = 1e9;
     float* masses;
     float* sn;
     float* sn_prime;

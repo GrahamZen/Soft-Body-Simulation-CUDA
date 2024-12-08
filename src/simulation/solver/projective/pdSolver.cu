@@ -35,12 +35,14 @@ PdSolver::~PdSolver() {
 void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    int DBCBlocks = (solverData.numDBC + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     float dt = solverParams.dt;
     float const m_1_dt2 = solverParams.softBodyAttr.mass / (dt * dt);
     int len = solverData.numVerts * 3 + 48 * solverData.numTets;
     int ASize = 3 * solverData.numVerts;
-
+    // positional constraints
+    len += solverData.numDBC * 3;
     cudaMalloc((void**)&sn, sizeof(float) * ASize);
     cudaMalloc((void**)&sn_prime, sizeof(float) * ASize);
     cudaMalloc((void**)&b, sizeof(float) * ASize);
@@ -61,8 +63,13 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
     cudaMalloc((void**)&AVal, sizeof(int) * len);
     cudaMemset(AVal, 0, sizeof(int) * len);
 
+    size_t offset = 0;
     PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, solverData.V0, solverData.DmInv, solverData.Tet, solverData.mu, solverData.numTets, solverData.numVerts);
-    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
+    offset += 48 * solverData.numTets;
+    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, offset, m_1_dt2, solverData.numVerts);
+    offset += solverData.numVerts * 3;
+    if (solverData.numDBC > 0)
+        PdUtil::setOne << < DBCBlocks, threadsPerBlock >> > (solverData.numDBC, solverData.DBC, offset, ARowIdx, AColIdx, AVal, positional_weight);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
     std::vector<int>ARowIdxHost(len);
@@ -144,6 +151,10 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
 
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
+    int DBCBlocks = 0;
+    if (solverData.numDBC > 0)
+        DBCBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
+
     cudaMemset(sn_prime, 0, sizeof(float) * solverData.numVerts * 3);
     thrust::device_ptr<float> x_prime_ptr(sn_prime);
     thrust::device_ptr<float> x_ptr(sn);
@@ -159,6 +170,8 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
             measureExecutionTime([&]() {
             cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
             PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
+            if (solverData.numDBC > 0)
+                PdUtil::computeDBCLocal << < DBCBlocks, threadsPerBlock >> > (solverData.numDBC, solverData.DBC, solverData.X0, positional_weight, b);
             PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
                 }, perf);
         performanceData[1].second +=

@@ -45,6 +45,18 @@ namespace PdUtil {
         }
     }
 
+    __global__ void setOne(int numDBC, indexType* DBC, int offset, int* rowIdx, int* colIdx, float* val, float weight)
+    {
+        int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+        if (index < numDBC)
+        {
+            indexType dbcIdx = DBC[index];
+            setRowColVal(offset + index * 3 + 0, rowIdx, colIdx, val, dbcIdx * 3 + 0, dbcIdx * 3 + 0, weight);
+            setRowColVal(offset + index * 3 + 1, rowIdx, colIdx, val, dbcIdx * 3 + 1, dbcIdx * 3 + 1, weight);
+            setRowColVal(offset + index * 3 + 2, rowIdx, colIdx, val, dbcIdx * 3 + 2, dbcIdx * 3 + 2, weight);
+        }
+    }
+
     // dt2_m_1 is dt^2 / mass
     // s(n) = q(n) + dt*v(n) + dt^2 * M^(-1) * fext(n)
     __global__ void computeSn(float* sn, float dt, float dt2_m_1, glm::vec3* pos, glm::vec3* vel, const glm::vec3* force, float* b, float massDt_2, int numVerts)
@@ -116,6 +128,18 @@ namespace PdUtil {
             atomicAdd(&(xProj[v3Ind + 0]), piTAiSi[3][0]);
             atomicAdd(&(xProj[v3Ind + 1]), piTAiSi[3][1]);
             atomicAdd(&(xProj[v3Ind + 2]), piTAiSi[3][2]);
+        }
+    }
+
+    __global__ void computeDBCLocal(int numDBC, indexType* DBC, const glm::vec3* x0, const float wi, float* xProj)
+    {
+        int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+        if (index < numDBC)
+        {
+            indexType dbcIdx = DBC[index];
+            xProj[dbcIdx * 3 + 0] = x0[dbcIdx].x * wi;
+            xProj[dbcIdx * 3 + 1] = x0[dbcIdx].y * wi;
+            xProj[dbcIdx * 3 + 2] = x0[dbcIdx].z * wi;
         }
     }
 
