@@ -10,6 +10,14 @@
 #include <thrust/device_ptr.h>
 #include <thrust/fill.h>
 
+struct gravity_force {
+    const float g;
+    gravity_force(float _g) : g(_g) {}
+    __device__ glm::vec3 operator()(float mass) const { return  glm::vec3{ 0.0f, -g * mass, 0.0f }; }
+};
+
+float computeError(thrust::device_ptr<float> sn, thrust::device_ptr<float> sn_prime, int size);
+
 PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver(threadsPerBlock, solverData)
 {
     cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::vec3) * solverData.numVerts);
@@ -24,7 +32,7 @@ PdSolver::~PdSolver() {
     cudaFree(sn);
     cudaFree(sn_prime);
     cudaFree(b);
-    cudaFree(masses);
+    cudaFree(massDt_2s);
     free(bHost);
 
     cudaFree(ARowIdx);
@@ -38,7 +46,6 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
     int DBCBlocks = (solverData.numDBC + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     float dt = solverParams.dt;
-    float const m_1_dt2 = solverParams.softBodyAttr.mass / (dt * dt);
     int len = solverData.numVerts * 3 + 48 * solverData.numTets;
     int ASize = 3 * solverData.numVerts;
     // positional constraints
@@ -46,7 +53,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
     cudaMalloc((void**)&sn, sizeof(float) * ASize);
     cudaMalloc((void**)&sn_prime, sizeof(float) * ASize);
     cudaMalloc((void**)&b, sizeof(float) * ASize);
-    cudaMalloc((void**)&masses, sizeof(float) * ASize);
+    cudaMalloc((void**)&massDt_2s, sizeof(float) * ASize);
 
     if (AColIdx && ARowIdx && AVal)
     {
@@ -66,7 +73,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
     size_t offset = 0;
     PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, solverData.V0, solverData.DmInv, solverData.Tet, solverData.mu, solverData.numTets, solverData.numVerts);
     offset += 48 * solverData.numTets;
-    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, offset, m_1_dt2, solverData.numVerts);
+    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, offset, solverData.mass, dt * dt, massDt_2s, solverData.numVerts);
     offset += solverData.numVerts * 3;
     if (solverData.numDBC > 0)
         PdUtil::setOne << < DBCBlocks, threadsPerBlock >> > (solverData.numDBC, solverData.DBC, offset, ARowIdx, AColIdx, AVal, positional_weight);
@@ -129,25 +136,11 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
     }
 }
 
-float computeError(thrust::device_ptr<float> sn, thrust::device_ptr<float> sn_prime, int size)
-{
-    return thrust::transform_reduce(
-        thrust::counting_iterator<indexType>(0),
-        thrust::counting_iterator<indexType>(size),
-        [=]__host__ __device__(indexType vertIdx) {
-        return (sn_prime[vertIdx] - sn[vertIdx]) * (sn_prime[vertIdx] - sn[vertIdx]);
-    },
-        0.0,
-        thrust::plus<float>()) / size;
-}
-
 bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
     float dt = solverParams.dt;
     float const dtInv = 1.0f / dt;
     float const dt2 = dt * dt;
-    float const dt2_m_1 = dt2 / solverParams.softBodyAttr.mass;
-    float const m_1_dt2 = 1.f / dt2_m_1;
 
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
@@ -158,21 +151,19 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
     cudaMemset(sn_prime, 0, sizeof(float) * solverData.numVerts * 3);
     thrust::device_ptr<float> x_prime_ptr(sn_prime);
     thrust::device_ptr<float> x_ptr(sn);
-    glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.softBodyAttr.mass, 0.0f };
-    thrust::device_ptr<glm::vec3> dev_ptr(solverData.ExtForce);
-    thrust::fill(dev_ptr, dev_ptr + solverData.numVerts, gravity);
-    PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, solverData.ExtForce, masses, m_1_dt2, solverData.numVerts);
+    thrust::transform(thrust::device_pointer_cast(solverData.mass), thrust::device_pointer_cast(solverData.mass) + solverData.numVerts,
+        thrust::device_pointer_cast(solverData.ExtForce), gravity_force(solverParams.gravity));
+    PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, sn, dt, massDt_2s, solverData.X, solverData.V, solverData.ExtForce);
     float err{ 1 };
     for (int i = 0; i < solverParams.numIterations && sqrt(err) >= solverParams.tol; i++)
     {
         Eigen::VectorXf bh, res;
         performanceData[0].second +=
             measureExecutionTime([&]() {
-            cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
-            PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
+            PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, sn, massDt_2s, solverData.numVerts);
+            PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets, solverType == PdSolver::SolverType::Jacobi);
             if (solverData.numDBC > 0)
                 PdUtil::computeDBCLocal << < DBCBlocks, threadsPerBlock >> > (solverData.numDBC, solverData.DBC, solverData.X0, positional_weight, b);
-            PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
                 }, perf);
         performanceData[1].second +=
             measureExecutionTime([&]()
@@ -239,4 +230,16 @@ void PdSolver::Reset()
     {
         pd.second = 0.0f;
     }
+}
+
+float computeError(thrust::device_ptr<float> sn, thrust::device_ptr<float> sn_prime, int size)
+{
+    return thrust::transform_reduce(
+        thrust::counting_iterator<indexType>(0),
+        thrust::counting_iterator<indexType>(size),
+        [=]__host__ __device__(indexType vertIdx) {
+        return (sn_prime[vertIdx] - sn[vertIdx]) * (sn_prime[vertIdx] - sn[vertIdx]);
+    },
+        0.0,
+        thrust::plus<float>()) / size;
 }

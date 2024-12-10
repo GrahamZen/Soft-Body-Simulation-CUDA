@@ -33,12 +33,14 @@ namespace PdUtil {
         }
     }
 
-    __global__ void setMDt_2(int* rowIdx, int* colIdx, float* val, int offset, float massDt_2, int numVerts)
+    __global__ void setMDt_2(int* rowIdx, int* colIdx, float* val, int offset, const float* masses, float dt2, float* massDt_2s, int numVerts)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
             int start = index * 3;
+            float massDt_2 = masses[index] / dt2;
+            massDt_2s[index] = massDt_2;
             setRowColVal(offset + start + 0, rowIdx, colIdx, val, start, start, massDt_2);
             setRowColVal(offset + start + 1, rowIdx, colIdx, val, start + 1, start + 1, massDt_2);
             setRowColVal(offset + start + 2, rowIdx, colIdx, val, start + 2, start + 2, massDt_2);
@@ -59,12 +61,15 @@ namespace PdUtil {
 
     // dt2_m_1 is dt^2 / mass
     // s(n) = q(n) + dt*v(n) + dt^2 * M^(-1) * fext(n)
-    __global__ void computeSn(float* sn, float dt, float dt2_m_1, glm::vec3* pos, glm::vec3* vel, const glm::vec3* force, float* b, float massDt_2, int numVerts)
+    __global__ void computeSn(int numVerts, float* sn, float dt, const float* massDt_2s, glm::vec3* pos, glm::vec3* vel, const glm::vec3* force)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
             int offset = index * 3;
+            float massDt_2 = massDt_2s[index];
+            float dt2_m_1 = 1 / massDt_2;
+
             float3 my_pos{ pos[index].x, pos[index].y, pos[index].z };
             float3 my_vel{ vel[index].x, vel[index].y, vel[index].z };
             float3 my_force{ force[index].x, force[index].y, force[index].z };
@@ -75,14 +80,10 @@ namespace PdUtil {
             sn[offset + 0] = sn_val.x;
             sn[offset + 1] = sn_val.y;
             sn[offset + 2] = sn_val.z;
-
-            b[offset + 0] = sn_val.x * massDt_2;
-            b[offset + 1] = sn_val.y * massDt_2;
-            b[offset + 2] = sn_val.z * massDt_2;
         }
     }
 
-    __global__ void computeLocal(const float* V0, const float* wi, float* xProj, const glm::mat3* DmInvs, const float* qn, const indexType* Tets, int numTets)
+    __global__ void computeLocal(const float* V0, const float* wi, float* xProj, const glm::mat3* DmInvs, const float* qn, const indexType* Tets, int numTets, bool isJacobi)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numTets)
@@ -97,11 +98,10 @@ namespace PdUtil {
             const glm::vec3 v3 = glm::vec3(qn[v3Ind + 0], qn[v3Ind + 1], qn[v3Ind + 2]);
             const glm::mat3 DmInv = DmInvs[index];
 
-            glm::mat3 R = glm::mat3(v1 - v0, v2 - v0, v3 - v0) * DmInv;
-            glm::mat3 U;
-            glm::mat3 S;
+            glm::mat3 F = glm::mat3(v1 - v0, v2 - v0, v3 - v0) * DmInv;
+            glm::mat3 U, S, R;
 
-            svdGLM(R, U, S, R);
+            svdGLM(F, U, S, R);
 
             R = U * glm::transpose(R);
 
@@ -109,8 +109,10 @@ namespace PdUtil {
             {
                 R[2] = -R[2];
             }
-
-            const glm::mat4x3 piTAiSi = glm::abs(V0[index]) * wi[index] * R * glm::transpose(DmInv)
+            if (isJacobi) {
+                R = R - F;
+            }
+            glm::mat4x3 piTAiSi = glm::abs(V0[index]) * wi[index] * R * glm::transpose(DmInv)
                 * glm::mat4x3{ -1, -1, -1, 1, 0, 0, 0, 1, 0, 0, 0, 1 };
 
             atomicAdd(&(xProj[v0Ind + 0]), piTAiSi[0][0]);
@@ -155,15 +157,16 @@ namespace PdUtil {
         }
     }
 
-    __global__ void addM_h2Sn(float* b, float* masses, int numVerts)
+    __global__ void addM_h2Sn(float* b, float* sn, float* massDt_2s, int numVerts)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
             int offset = index * 3;
-            b[offset + 0] = b[offset + 0] + masses[offset + 0];
-            b[offset + 1] = b[offset + 1] + masses[offset + 1];
-            b[offset + 2] = b[offset + 2] + masses[offset + 2];
+            float massDt_2 = massDt_2s[index];
+            b[offset + 0] = massDt_2 * sn[offset + 0];
+            b[offset + 1] = massDt_2 * sn[offset + 1];
+            b[offset + 2] = massDt_2 * sn[offset + 2];
         }
     }
 
