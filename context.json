@@ -3,7 +3,7 @@
     "shaders folder": "../src/shaders",
     "threads per block": 128,
     "threads per block(bvh)": 128,
-    "num of iterations": 5,
+    "num of iterations": 100,
     "default camera": {
         "aspect ratio": 1.3333,
         "screen height": 1280,
@@ -121,15 +121,16 @@
     ],
     "contexts": [
         {
-            "name": "bunny&house",
+            "name": "armadillo&house",
             "load": true,
             "dt": 0.01,
             "gravity": 98,
             "damp": 0.999,
             "muN": 0.5,
             "muT": 0.5,
+            "tolerance": 1e-2,
             "softBodies": [
-                { "name": "bunny", "pos": [2.0, 80.0, 0.0]},
+                { "name": "armadillo0", "pos": [2.0, 80.0, 0.0]},
                 { "name": "house1", "pos": [0.0, 180.0, 0.0], "rot": [0.0, 0.0, 75.0]},
                 { "name": "softSphere", "pos": [35, 250, 0], "rot": [0, 0, 0]},
                 { "name": "cube", "pos": [60, 300, 0], "rot": [0, 0, 0], "scale": [5, 5, 5]}
@@ -149,7 +150,7 @@
             ]
         },
         {
-            "name": "armadillo&bunny",
+            "name": "massive armadillo",
             "load": true,
             "dt": 0.02,
             "gravity": 200,
@@ -157,8 +158,8 @@
             "muN": 0.5,
             "muT": 0.5,
             "softBodies": [
-                { "name": "bunny", "pos": [-100, 100, -20], "rot": [30, 0, 0]},
-                { "name": "bunny", "pos": [-25, 200, 35]},
+                { "name": "armadillo0", "pos": [-100, 100, -20], "rot": [30, 0, 0]},
+                { "name": "armadillo0", "pos": [-25, 200, 35]},
                 { "name": "armadillo0", "pos": [15, 1000, -35], "rot": [0, 0, 60] },
                 { "name": "armadillo0", "pos": [15, 700, -35], "rot": [0, 0, 60] },
                 { "name": "armadillo0", "pos": [15, 500, -35], "rot": [0, 0, 60] },
@@ -201,7 +202,7 @@
             "maxIterations": 100,
             "pauseIter": -1,
             "softBodies": [
-                { "name": "bunny", "pos": [0.0, 50.0, 0.0], "rot": [0.0, 0.0, 0.0]}
+                { "name": "armadillo0", "pos": [0.0, 50.0, 0.0], "rot": [0.0, 0.0, 0.0]}
             ],
             "fixedBodies": [
                 { "name": "bottom plane", "pos": [0.0, 0.0, 0.0]},

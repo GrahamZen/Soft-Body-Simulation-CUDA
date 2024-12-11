@@ -53,16 +53,16 @@ namespace PdUtil {
             setRowColVal(offset + start + 2, rowIdx, colIdx, val, start + 2, start + 2, massDt_2);
         }
     }
-
-    __global__ void setOne(int numDBC, indexType* DBC, int offset, int* rowIdx, int* colIdx, float* val, float weight)
+    __global__ void setDBC(int* rowIdx, int* colIdx, float* val, int offset, float weight, float* massDt_2s, int numDBC)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numDBC)
         {
-            indexType dbcIdx = DBC[index];
-            setRowColVal(offset + index * 3 + 0, rowIdx, colIdx, val, dbcIdx * 3 + 0, dbcIdx * 3 + 0, weight);
-            setRowColVal(offset + index * 3 + 1, rowIdx, colIdx, val, dbcIdx * 3 + 1, dbcIdx * 3 + 1, weight);
-            setRowColVal(offset + index * 3 + 2, rowIdx, colIdx, val, dbcIdx * 3 + 2, dbcIdx * 3 + 2, weight);
+            int start = index * 3;
+            massDt_2s[index] = weight;
+            setRowColVal(offset + start + 0, rowIdx, colIdx, val, start, start, weight);
+            setRowColVal(offset + start + 1, rowIdx, colIdx, val, start + 1, start + 1, weight);
+            setRowColVal(offset + start + 2, rowIdx, colIdx, val, start + 2, start + 2, weight);
         }
     }
 
@@ -149,18 +149,6 @@ namespace PdUtil {
             xProj[dbcIdx * 3 + 0] = x0[dbcIdx].x * wi;
             xProj[dbcIdx * 3 + 1] = x0[dbcIdx].y * wi;
             xProj[dbcIdx * 3 + 2] = x0[dbcIdx].z * wi;
-        }
-    }
-
-    __global__ void computeM_h2Sn(float* b, float* sn, float massDt_2, int numVerts)
-    {
-        int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < numVerts)
-        {
-            int offset = index * 3;
-            b[offset + 0] = sn[offset + 0] * massDt_2;
-            b[offset + 1] = sn[offset + 1] * massDt_2;
-            b[offset + 2] = sn[offset + 2] * massDt_2;
         }
     }
 

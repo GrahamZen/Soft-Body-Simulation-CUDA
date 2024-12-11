@@ -44,8 +44,6 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
     float dt = solverParams.dt;
     int len = solverData.numVerts * 3 + 48 * solverData.numTets;
     int ASize = 3 * solverData.numVerts;
-    // positional constraints
-    len += solverData.numDBC * 3;
     cudaMalloc((void**)&sn, sizeof(float) * ASize);
     cudaMalloc((void**)&sn_old, sizeof(float) * ASize);
     cudaMalloc((void**)&next_x, sizeof(float) * ASize);
@@ -69,9 +67,8 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
     PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, matrix_diag, solverData.V0, solverData.DmInv, solverData.Tet, solverData.mu, solverData.numTets, solverData.numVerts);
     offset += 48 * solverData.numTets;
     PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, offset, solverData.mass, dt * dt, massDt_2s, solverData.numVerts);
-    offset += solverData.numVerts * 3;
     if (solverData.numDBC > 0)
-        PdUtil::setOne << < DBCBlocks, threadsPerBlock >> > (solverData.numDBC, solverData.DBC, offset, ARowIdx, AColIdx, AVal, positional_weight);
+        PdUtil::setDBC << < DBCBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, offset, positional_weight, massDt_2s, solverData.numDBC);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
     std::vector<int>ARowIdxHost(len);
