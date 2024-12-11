@@ -25,19 +25,19 @@ protected:
 private:
     LinearSolver<float>* ls = nullptr;
     LinearSolver<float>* jacobiSolver = nullptr;
-    SolverType solverType = SolverType::CuSolverCholesky;
+    SolverType solverType;
 
     const float positional_weight = 1e9;
     float* massDt_2s;
     float* sn;
-    float* sn_prime;
+    float* sn_old;
     float* b;
     float* bHost;
+    float* matrix_diag;
     Eigen::SimplicialCholesky<Eigen::SparseMatrix<float>> cholesky_decomposition_;
 
-    // jacobi
-    int* AColIdx = nullptr;
-    int* ARowIdx = nullptr;
-    float* AVal = nullptr;
-    int nnz = 0;
+    //Jacobi
+    float omega;
+    float* next_x;
+    float* prev_x;
 };

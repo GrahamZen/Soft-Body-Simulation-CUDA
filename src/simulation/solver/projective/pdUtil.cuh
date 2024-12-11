@@ -20,13 +20,17 @@ namespace PdUtil {
         val[index] = v;
     }
 
+    __global__ void computeSiTSi(int* rowIdx, int* colIdx, float* val, float* matrix_diag, const float* V0, const glm::mat3* DmInv, const indexType* tetIndex, const float* weight, int tetNumber, int numVerts);
+    __global__ void setMDt_2(int* rowIdx, int* colIdx, float* val, int offset, const float* masses, float dt2, float* massDt_2s, int numVerts);
     __global__ void computeLocal(const float* V0, const float* wi, float* xProj, const glm::mat3* DmInv, const float* qn__1, const indexType* tetIndex, int tetNumber, bool isJacobi = false);
     __global__ void computeDBCLocal(int numDBC, indexType* DBC, const glm::vec3* x0, const float wi, float* xProj);
     __global__ void computeSn(int numVerts, float* sn, float dt, const float* massDt_2s, glm::vec3* pos, glm::vec3* vel, const glm::vec3* force);
-    __global__ void setMDt_2(int* rowIdx, int* colIdx, float* val, int offset, const float* masses, float dt2, float* massDt_2s, int numVerts);
     __global__ void setOne(int numDBC, indexType* DBC, int offset, int* rowIdx, int* colIdx, float* val, float weight);
     __global__ void computeM_h2Sn(float* b, float* sn, float massDt_2, int numVerts);
     __global__ void addM_h2Sn(float* b, float* sn, float* massDt_2s, int numVerts);
-    __global__ void computeSiTSi(int* rowIdx, int* colIdx, float* val, const float* V0, const glm::mat3* DmInv, const indexType* tetIndex, const float* weight, int tetNumber, int numVerts);
     __global__ void updateVelPos(float* newPos, float dt_1, glm::vec3* pos, glm::vec3* vel, int numVerts);
+
+    // Jacobi
+    __global__ void getErrorKern(int numVerts, float* next_x, const float* b, const float* massDt_2s, const float* sn, const float* matrix_diag);
+    __global__ void chebyshevKern(int numVerts3, float* next_x, float* prev_x, float* sn, float omega);
 }

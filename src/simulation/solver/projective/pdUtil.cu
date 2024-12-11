@@ -7,7 +7,7 @@ namespace PdUtil {
     // Ai here is I
     // size of row, col, val are 48 * numTets + numVerts
     // row, col, val are used to initialize sparse matrix SiTSi
-    __global__ void computeSiTSi(int* rowIdx, int* colIdx, float* val, const float* V0, const glm::mat3* DmInvs, const indexType* Tets, const float* weight, int numTets, int numVerts)
+    __global__ void computeSiTSi(int* rowIdx, int* colIdx, float* val, float* matrix_diag, const float* V0, const glm::mat3* DmInvs, const indexType* Tets, const float* weight, int numTets, int numVerts)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numTets)
@@ -16,6 +16,13 @@ namespace PdUtil {
 
             glm::mat4x3 AiSi = glm::transpose(DmInvs[index]) * glm::mat4x3{ -1, -1, -1, 1, 0, 0, 0, 1, 0, 0, 0, 1 };
             glm::mat4x4 SiTAiAiSi = glm::transpose(AiSi) * AiSi;
+
+            const float coef = V0[index] * weight[index];
+
+            atomicAdd(&matrix_diag[Tets[index * 4 + 0]], SiTAiAiSi[0][0] * coef);
+            atomicAdd(&matrix_diag[Tets[index * 4 + 1]], SiTAiAiSi[1][1] * coef);
+            atomicAdd(&matrix_diag[Tets[index * 4 + 2]], SiTAiAiSi[2][2] * coef);
+            atomicAdd(&matrix_diag[Tets[index * 4 + 3]], SiTAiAiSi[3][3] * coef);
 
             int start = index * 48;
             for (int i = 0; i < 4; i++)
@@ -26,7 +33,7 @@ namespace PdUtil {
                     int vc = Tets[index * 4 + j] * 3;
                     for (int k = 0; k < 3; k++)
                     {
-                        setRowColVal(start + (i * 12 + j * 3 + k), rowIdx, colIdx, val, vc + k, vr + k, SiTAiAiSi[j][i] * weight[index] * V0[index]);
+                        setRowColVal(start + (i * 12 + j * 3 + k), rowIdx, colIdx, val, vc + k, vr + k, SiTAiAiSi[j][i] * coef);
                     }
                 }
             }
@@ -180,6 +187,31 @@ namespace PdUtil {
             // sn is of size 3*numVerts
             vel[index] = (newPosition - pos[index]) * dt_1;
             pos[index] = newPosition;
+        }
+    }
+
+    __global__ void getErrorKern(int numVerts, float* next_x, const float* b, const float* massDt_2s, const float* sn, const float* matrix_diag)
+    {
+        int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+        if (index < numVerts)
+        {
+            float c = massDt_2s[index];
+            float md = matrix_diag[index];
+            next_x[index * 3 + 0] = (b[index * 3 + 0] - c * sn[index * 3 + 0]) / (c + md) + sn[index * 3 + 0];
+            next_x[index * 3 + 1] = (b[index * 3 + 1] - c * sn[index * 3 + 1]) / (c + md) + sn[index * 3 + 1];
+            next_x[index * 3 + 2] = (b[index * 3 + 2] - c * sn[index * 3 + 2]) / (c + md) + sn[index * 3 + 2];
+        }
+    }
+
+    __global__ void chebyshevKern(int numVerts3, float* next_x, float* prev_x, float* sn, float omega)
+    {
+        int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+        if (index < numVerts3)
+        {
+            next_x[index] = 0.9 * (next_x[index] - sn[index]) + sn[index];
+            next_x[index] = (next_x[index] - prev_x[index]) * omega + prev_x[index];
+            prev_x[index] = sn[index];
+            sn[index] = next_x[index];
         }
     }
 }
