@@ -78,7 +78,8 @@ void JacobiSolver<T>::Solve(int N, T* d_b, T* d_x, T* A, int nz, int* rowIdx, in
     thrust::device_ptr<T> x_prime_ptr(x_prime);
     thrust::device_ptr<T> x_ptr(d_x);
     T err{ 1 };
-    while (abs(err) > 1e-3) {
+    for (size_t i = 0; i < maxIter && abs(err) > 1e-3; i++)
+    {
         JacobiCSRKernel << <numBlocks, blockSize >> > (N, d_b, x_prime, A, nz, d_rowPtrA, d_colIdx, d_x);
         err = thrust::transform_reduce(
             thrust::counting_iterator<indexType>(0),

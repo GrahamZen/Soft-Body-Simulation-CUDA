@@ -22,11 +22,14 @@ This project is originally a final project for CIS5650 at UPenn and is still und
 * Linear solvers
   * [x] sparse cholesky prefactorization w/ approximate minimum degree ordering
   * [x] dense cholesky prefactorization
+  * [x] jacobi solver (naive)
   * [x] cholesky decomposition
   * [x] preconditioned conjugate gradient
 
 * FEM
   * [x] projective dynamics
+      * [x] Direct (cusolver's cholesky)
+      * [x] Chebyshev acceleration
   * [x] explicit euler
   * [x] incremental potential
     *  materials

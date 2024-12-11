@@ -10,7 +10,15 @@
 #include <thrust/device_ptr.h>
 #include <thrust/fill.h>
 
-PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver(threadsPerBlock, solverData)
+struct gravity_force {
+    const float g;
+    gravity_force(float _g) : g(_g) {}
+    __device__ glm::vec3 operator()(float mass) const { return  glm::vec3{ 0.0f, -g * mass, 0.0f }; }
+};
+
+float computeError(thrust::device_ptr<float> sn, thrust::device_ptr<float> sn_old, int size);
+
+PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver(threadsPerBlock, solverData), solverType(SolverType::CuSolverCholesky)
 {
     cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(solverData.ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
@@ -22,47 +30,45 @@ PdSolver::~PdSolver() {
         free(ls);
     }
     cudaFree(sn);
-    cudaFree(sn_prime);
+    cudaFree(sn_old);
     cudaFree(b);
-    cudaFree(masses);
+    cudaFree(massDt_2s);
     free(bHost);
-
-    cudaFree(ARowIdx);
-    cudaFree(AColIdx);
-    cudaFree(AVal);
 }
 
 void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    int DBCBlocks = (solverData.numDBC + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     float dt = solverParams.dt;
-    float const m_1_dt2 = solverParams.softBodyAttr.mass / (dt * dt);
     int len = solverData.numVerts * 3 + 48 * solverData.numTets;
     int ASize = 3 * solverData.numVerts;
-
     cudaMalloc((void**)&sn, sizeof(float) * ASize);
-    cudaMalloc((void**)&sn_prime, sizeof(float) * ASize);
+    cudaMalloc((void**)&sn_old, sizeof(float) * ASize);
+    cudaMalloc((void**)&next_x, sizeof(float) * ASize);
+    cudaMalloc((void**)&prev_x, sizeof(float) * ASize);
     cudaMalloc((void**)&b, sizeof(float) * ASize);
-    cudaMalloc((void**)&masses, sizeof(float) * ASize);
+    cudaMalloc((void**)&massDt_2s, sizeof(float) * solverData.numVerts);
+    cudaMalloc((void**)&matrix_diag, sizeof(float) * solverData.numVerts);
+    cudaMemset(matrix_diag, 0, sizeof(float) * solverData.numVerts);
 
-    if (AColIdx && ARowIdx && AVal)
-    {
-        cudaFree(AColIdx);
-        cudaFree(ARowIdx);
-        cudaFree(AVal);
-    }
+    int* AColIdx, * ARowIdx;
     cudaMalloc((void**)&AColIdx, sizeof(int) * len);
     cudaMemset(AColIdx, 0, sizeof(int) * len);
-
     cudaMalloc((void**)&ARowIdx, sizeof(int) * len);
     cudaMemset(ARowIdx, 0, sizeof(int) * len);
 
+    float* AVal;
     cudaMalloc((void**)&AVal, sizeof(int) * len);
     cudaMemset(AVal, 0, sizeof(int) * len);
 
-    PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, solverData.V0, solverData.DmInv, solverData.Tet, solverData.mu, solverData.numTets, solverData.numVerts);
-    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, 48 * solverData.numTets, m_1_dt2, solverData.numVerts);
+    size_t offset = 0;
+    PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, matrix_diag, solverData.V0, solverData.DmInv, solverData.Tet, solverData.mu, solverData.numTets, solverData.numVerts);
+    offset += 48 * solverData.numTets;
+    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, offset, solverData.mass, dt * dt, massDt_2s, solverData.numVerts);
+    if (solverData.numDBC > 0)
+        PdUtil::setDBC << < DBCBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, offset, positional_weight, massDt_2s, solverData.numDBC);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
     std::vector<int>ARowIdxHost(len);
@@ -90,8 +96,8 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
         A.setFromTriplets(A_triplets.begin(), A_triplets.end());
         cholesky_decomposition_.compute(A);
         A.makeCompressed();
-        // transfer A to coo format ARowIdx, AColIdx, AVal
-        nnz = A.nonZeros();
+        // transfer A to coo format ARowIdx, AColIdx, tmpVal
+        int nnz = A.nonZeros();
         if (nnz != len) {
             ARowIdxHost.resize(nnz);
             AColIdxHost.resize(nnz);
@@ -114,24 +120,16 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
         cudaMemcpy(AVal, tmpValHost.data(), sizeof(float) * nnz, cudaMemcpyHostToDevice);
 
         ls = new CholeskySpLinearSolver<float>(threadsPerBlock, ARowIdx, AColIdx, AVal, ASize, nnz);
-        jacobiSolver = new JacobiSolver<float>(ASize);
     }
     catch (const std::exception& e)
     {
         std::cerr << e.what() << ", " << "Cholesky decomposition(Eigen) failed" << std::endl;
     }
-}
 
-float computeError(thrust::device_ptr<float> sn, thrust::device_ptr<float> sn_prime, int size)
-{
-    return thrust::transform_reduce(
-        thrust::counting_iterator<indexType>(0),
-        thrust::counting_iterator<indexType>(size),
-        [=]__host__ __device__(indexType vertIdx) {
-        return (sn_prime[vertIdx] - sn[vertIdx]) * (sn_prime[vertIdx] - sn[vertIdx]);
-    },
-        0.0,
-        thrust::plus<float>()) / size;
+
+    cudaFree(ARowIdx);
+    cudaFree(AColIdx);
+    cudaFree(AVal);
 }
 
 bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams)
@@ -139,27 +137,33 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
     float dt = solverParams.dt;
     float const dtInv = 1.0f / dt;
     float const dt2 = dt * dt;
-    float const dt2_m_1 = dt2 / solverParams.softBodyAttr.mass;
-    float const m_1_dt2 = 1.f / dt2_m_1;
 
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
+    int vert3Blocks = (solverData.numVerts * 3 + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    cudaMemset(sn_prime, 0, sizeof(float) * solverData.numVerts * 3);
-    thrust::device_ptr<float> x_prime_ptr(sn_prime);
+    int DBCBlocks = 0;
+    if (solverData.numDBC > 0)
+        DBCBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
+
+    thrust::device_ptr<float> x_prime_ptr(prev_x);
     thrust::device_ptr<float> x_ptr(sn);
-    glm::vec3 gravity{ 0.0f, -solverParams.gravity * solverParams.softBodyAttr.mass, 0.0f };
-    thrust::device_ptr<glm::vec3> dev_ptr(solverData.ExtForce);
-    thrust::fill(dev_ptr, dev_ptr + solverData.numVerts, gravity);
-    PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (sn, dt, dt2_m_1, solverData.X, solverData.V, solverData.ExtForce, masses, m_1_dt2, solverData.numVerts);
+    thrust::transform(thrust::device_pointer_cast(solverData.mass), thrust::device_pointer_cast(solverData.mass) + solverData.numVerts,
+        thrust::device_pointer_cast(solverData.ExtForce), gravity_force(solverParams.gravity));
+    PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, sn, dt, massDt_2s, solverData.X, solverData.V, solverData.ExtForce);
+    cudaMemcpy(sn_old, sn, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToDevice);
+    if (solverType == PdSolver::SolverType::Jacobi)
+        cudaMemcpy(prev_x, sn, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToDevice);
+    else
+        cudaMemset(prev_x, 0, solverData.numVerts * 3);
     float err{ 1 };
     for (int i = 0; i < solverParams.numIterations && sqrt(err) >= solverParams.tol; i++)
     {
-        Eigen::VectorXf bh, res;
         performanceData[0].second +=
             measureExecutionTime([&]() {
-            cudaMemset(b, 0, sizeof(float) * solverData.numVerts * 3);
-            PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets);
-            PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, masses, solverData.numVerts);
+            PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, sn_old, massDt_2s, solverData.numVerts);
+            PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets, solverType == PdSolver::SolverType::Jacobi);
+            if (solverData.numDBC > 0)
+                PdUtil::computeDBCLocal << < DBCBlocks, threadsPerBlock >> > (solverData.numDBC, solverData.DBC, solverData.X0, positional_weight, b);
                 }, perf);
         performanceData[1].second +=
             measureExecutionTime([&]()
@@ -169,26 +173,28 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
                     case PdSolver::SolverType::EigenCholesky:
                     {
                         cudaMemcpy(bHost, b, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToHost);
-                        bh = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(bHost, solverData.numVerts * 3);
-                        res = cholesky_decomposition_.solve(bh);
+                        Eigen::VectorXf bh = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(bHost, solverData.numVerts * 3);
+                        Eigen::VectorXf res = cholesky_decomposition_.solve(bh);
                         cudaMemcpy(sn, res.data(), sizeof(float) * (solverData.numVerts * 3), cudaMemcpyHostToDevice);
                         break;
                     }
                     case PdSolver::SolverType::CuSolverCholesky:
+                    {
                         ls->Solve(solverData.numVerts * 3, b, sn);
+                        err = computeError(x_ptr, x_prime_ptr, solverData.numVerts * 3);
+                        cudaMemcpy(prev_x, sn, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToDevice);
                         break;
+                    }
                     case PdSolver::SolverType::Jacobi:
-                        cudaMemcpy(bHost, b, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToHost);
-                        bh = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(bHost, solverData.numVerts * 3);
-                        res = cholesky_decomposition_.solve(bh);
-
-                        jacobiSolver->Solve(solverData.numVerts * 3, b, sn, AVal, nnz, ARowIdx, AColIdx, res.data());
+                        PdUtil::getErrorKern << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, next_x, b, massDt_2s, sn, matrix_diag);
+                        if (i <= 10)		omega = 1;
+                        else if (i == 11)	omega = 2 / (2 - solverParams.rho * solverParams.rho);
+                        else			omega = 4 / (4 - solverParams.rho * solverParams.rho * omega);
+                        PdUtil::chebyshevKern << < vert3Blocks, threadsPerBlock >> > (solverData.numVerts * 3, next_x, prev_x, sn, omega);
                         break;
                     default:
                         break;
                     }
-                    err = computeError(x_ptr, x_prime_ptr, solverData.numVerts * 3);
-                    cudaMemcpy(sn_prime, sn, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToDevice);
                 }, perf);
     }
     PdUtil::updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilde, solverData.V, solverData.numVerts);
@@ -226,4 +232,16 @@ void PdSolver::Reset()
     {
         pd.second = 0.0f;
     }
+}
+
+float computeError(thrust::device_ptr<float> sn, thrust::device_ptr<float> sn_old, int size)
+{
+    return thrust::transform_reduce(
+        thrust::counting_iterator<indexType>(0),
+        thrust::counting_iterator<indexType>(size),
+        [=]__host__ __device__(indexType vertIdx) {
+        return (sn_old[vertIdx] - sn[vertIdx]) * (sn_old[vertIdx] - sn[vertIdx]);
+    },
+        0.0,
+        thrust::plus<float>()) / size;
 }

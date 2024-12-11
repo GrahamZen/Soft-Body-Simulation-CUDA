@@ -63,5 +63,9 @@ struct SolverParams {
     Scalar dhat = 1e-2;
     Scalar kappa = 1e5;
     Scalar tol = 1e-2;
+
+    // Pd(Jacobi)
+    Scalar rho = 0.9992;
+
     bool handleCollision = true;
 };
