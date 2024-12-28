@@ -163,7 +163,8 @@ void RenderQueryDisplay(const float& availWidth) {
 
 std::vector<ImU32> colors;
 
-void RenderTimeBar(const std::vector<std::pair<std::string, float>>& times)
+template<typename Scalar>
+void RenderTimeBar(const std::vector<std::pair<std::string, Scalar>>& times)
 {
     size_t timeSize = times.size();
     if (timeSize == 0) return;

@@ -80,8 +80,9 @@ namespace Corotated {
         d2PsidF2 += (lambdaI1Minus2muMinus3lambda * lambda0) * (Matrix9<Scalar>(t0, t0));
         d2PsidF2 += (lambdaI1Minus2muMinus3lambda * lambda1) * (Matrix9<Scalar>(t1, t1));
         d2PsidF2 += (lambdaI1Minus2muMinus3lambda * lambda2) * (Matrix9<Scalar>(t2, t2));
-        Matrix9x12<Scalar> PFPx = ComputePFPx(DmInv);
-        Matrix12<Scalar> Hessian = Vol[tetIndex] * coef * PFPx.transpose() * d2PsidF2 * PFPx;
+        d2PsidF2 *= (Vol[tetIndex] * coef);
+        Matrix12<Scalar> Hessian;
+        ComputeHessian(&DmInv[0][0], d2PsidF2, Hessian);
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
                 for (int k = 0; k < 3; k++) {

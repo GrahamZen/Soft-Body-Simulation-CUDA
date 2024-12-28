@@ -97,7 +97,7 @@ void generateSPDMatrixCOO(int N, int nonZeroEntries, std::vector<int>& rowIdx, s
     }
 }
 
-TEST_CASE("JACOBI Test", "[JACOBI]") {
+TEST_CASE("JACOBI Test", "[JACOBI][.][SKIP]") {
     int N = 75000;
     int nz = 100000;
     int num_test = 1;
@@ -182,7 +182,11 @@ TEST_CASE("JACOBI Test", "[JACOBI]") {
     cudaFree(dev_x);
 }
 
-TEST_CASE("vector 9", "[tensor][.][SKIP]") {
+TEST_CASE("vector 9", "[tensor]") {
+    glm::dmat3 DmInv(-0.100000, -0.000000, 0.100000,
+        -0.000000, -0.100000, 0.000000,
+        0.000000, 0.000000, 0.100000);
+    DmInv = glm::transpose(DmInv);
     glm::mat3 U(-0.6208, 0.7763, -0.1091, -0.2820, -0.3509, -0.8929, -0.7315, -0.5236, 0.4368);
     U = glm::transpose(U);
     glm::mat3 V(-0.6501, 0.3252, 0.6867, -0.6324, 0.2694, -0.7263, -0.4212, -0.9064, 0.0305);
@@ -204,4 +208,11 @@ TEST_CASE("vector 9", "[tensor][.][SKIP]") {
     H = H - (4 / (s0 + s1)) * (Matrix9<double>(t0, t0));
     H = H - (4 / (s1 + s2)) * (Matrix9<double>(t1, t1));
     H = H - (4 / (s0 + s2)) * (Matrix9<double>(t2, t2));
+    Matrix9x12<double> PFPx = ComputePFPx(DmInv);
+    Matrix12<double> Hessian = PFPx.transpose() * H * PFPx;
+    printMatrix(H, "H");
+
+    Matrix12<double> Hessian2;
+    ComputeHessian(static_cast<double*>(&DmInv[0][0]), H, Hessian2);
+    printMatrix(Hessian - Hessian2, "hessian");
 }

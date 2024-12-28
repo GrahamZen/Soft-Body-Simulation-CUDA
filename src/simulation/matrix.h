@@ -327,6 +327,18 @@ __forceinline__ __host__ __device__ void printGLMMatrix(const glm::tmat3x3<Scala
         m[2][0], m[2][1], m[2][2]);
 }
 
+template<typename Scalar>
+__forceinline__ __host__ __device__ void MatrixMultiply(const Matrix<Scalar, 3, 3>& A, const Matrix<Scalar, 3, 3>& B, Matrix<Scalar, 3, 3>& C) {
+    C[0][0] = A[0][0] * B[0][0] + A[0][1] * B[1][0] + A[0][2] * B[2][0];
+    C[0][1] = A[0][0] * B[0][1] + A[0][1] * B[1][1] + A[0][2] * B[2][1];
+    C[0][2] = A[0][0] * B[0][2] + A[0][1] * B[1][2] + A[0][2] * B[2][2];
+    C[1][0] = A[1][0] * B[0][0] + A[1][1] * B[1][0] + A[1][2] * B[2][0];
+    C[1][1] = A[1][0] * B[0][1] + A[1][1] * B[1][1] + A[1][2] * B[2][1];
+    C[1][2] = A[1][0] * B[0][2] + A[1][1] * B[1][2] + A[1][2] * B[2][2];
+    C[2][0] = A[2][0] * B[0][0] + A[2][1] * B[1][0] + A[2][2] * B[2][0];
+    C[2][1] = A[2][0] * B[0][1] + A[2][1] * B[1][1] + A[2][2] * B[2][1];
+    C[2][2] = A[2][0] * B[0][2] + A[2][1] * B[1][2] + A[2][2] * B[2][2];
+}
 
 template <typename Scalar>
 __device__ Matrix9x12<Scalar> ComputePFPx(const glm::tmat3x3<Scalar>& DmInv)
@@ -381,4 +393,45 @@ __device__ Matrix9x12<Scalar> ComputePFPx(const glm::tmat3x3<Scalar>& DmInv)
     PFPx[8][8] = r;
     PFPx[8][11] = u;
     return PFPx;
+}
+
+template <typename Scalar>
+__forceinline__ __host__ __device__ void MatrixMultiplyT3x3(const Scalar* A, const Scalar* B, Scalar* C) {
+
+}
+
+template <typename Scalar>
+__host__ __device__ void ComputeHessian(const Scalar* DmInv, const Matrix9<Scalar>& d2PsidF2, Matrix12<Scalar>& H) {
+    for (size_t i = 0; i < 9; i++)
+    {
+        H[3][i] = d2PsidF2[0][i] * DmInv[0] + d2PsidF2[3][i] * DmInv[3] + d2PsidF2[6][i] * DmInv[6];
+        H[4][i] = d2PsidF2[1][i] * DmInv[0] + d2PsidF2[4][i] * DmInv[3] + d2PsidF2[7][i] * DmInv[6];
+        H[5][i] = d2PsidF2[2][i] * DmInv[0] + d2PsidF2[5][i] * DmInv[3] + d2PsidF2[8][i] * DmInv[6];;
+        H[6][i] = d2PsidF2[0][i] * DmInv[1] + d2PsidF2[3][i] * DmInv[4] + d2PsidF2[6][i] * DmInv[7];
+        H[7][i] = d2PsidF2[1][i] * DmInv[1] + d2PsidF2[4][i] * DmInv[4] + d2PsidF2[7][i] * DmInv[7];
+        H[8][i] = d2PsidF2[2][i] * DmInv[1] + d2PsidF2[5][i] * DmInv[4] + d2PsidF2[8][i] * DmInv[7];
+        H[9][i] = d2PsidF2[0][i] * DmInv[2] + d2PsidF2[3][i] * DmInv[5] + d2PsidF2[6][i] * DmInv[8];
+        H[10][i] = d2PsidF2[1][i] * DmInv[2] + d2PsidF2[4][i] * DmInv[5] + d2PsidF2[7][i] * DmInv[8];
+        H[11][i] = d2PsidF2[2][i] * DmInv[2] + d2PsidF2[5][i] * DmInv[5] + d2PsidF2[8][i] * DmInv[8];
+        H[0][i] = -H[3][i] - H[6][i] - H[9][i];
+        H[1][i] = -H[4][i] - H[7][i] - H[10][i];
+        H[2][i] = -H[5][i] - H[8][i] - H[11][i];
+    }
+    Scalar temp[9];
+    for (size_t i = 0; i < 12; i++)
+    {
+        memcpy(temp, H[i].data(), 9 * sizeof(Scalar));
+        H[i][3] = temp[0] * DmInv[0] + temp[3] * DmInv[3] + temp[6] * DmInv[6];
+        H[i][4] = temp[1] * DmInv[0] + temp[4] * DmInv[3] + temp[7] * DmInv[6];
+        H[i][5] = temp[2] * DmInv[0] + temp[5] * DmInv[3] + temp[8] * DmInv[6];
+        H[i][6] = temp[0] * DmInv[1] + temp[3] * DmInv[4] + temp[6] * DmInv[7];
+        H[i][7] = temp[1] * DmInv[1] + temp[4] * DmInv[4] + temp[7] * DmInv[7];
+        H[i][8] = temp[2] * DmInv[1] + temp[5] * DmInv[4] + temp[8] * DmInv[7];
+        H[i][9] = temp[0] * DmInv[2] + temp[3] * DmInv[5] + temp[6] * DmInv[8];
+        H[i][10] = temp[1] * DmInv[2] + temp[4] * DmInv[5] + temp[7] * DmInv[8];
+        H[i][11] = temp[2] * DmInv[2] + temp[5] * DmInv[5] + temp[8] * DmInv[8];
+        H[i][0] = -H[i][3] - H[i][6] - H[i][9];
+        H[i][1] = -H[i][4] - H[i][7] - H[i][10];
+        H[i][2] = -H[i][5] - H[i][8] - H[i][11];
+    }
 }
