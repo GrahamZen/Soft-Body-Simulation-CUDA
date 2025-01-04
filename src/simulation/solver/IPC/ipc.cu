@@ -146,8 +146,7 @@ bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
 
 void IPCSolver::SearchDirection(SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2)
 {
-    energy.Gradient(solverData, solverParams, h2);
-    energy.Hessian(solverData, solverParams, h2);
+    energy.GradientHessian(solverData, solverParams, h2);
     DOFElimination(solverData);
     linearSolver->Solve(solverData.numVerts * 3, energy.gradient, p, energy.hessianVal, energy.NNZ(solverData), energy.hessianRowIdx, energy.hessianColIdx);
 }

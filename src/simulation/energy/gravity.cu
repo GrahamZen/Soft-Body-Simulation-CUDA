@@ -39,5 +39,10 @@ inline void GravityEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scala
     Gravity::GradientKernel << <numBlocks, blockSize >> > (grad, solverData.mass, solverData.numVerts, g, coef);
 }
 
+template<typename Scalar>
+inline void GravityEnergy<Scalar>::GradientHessian(Scalar* grad, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const
+{
+}
+
 template class GravityEnergy<float>;
 template class GravityEnergy<double>;

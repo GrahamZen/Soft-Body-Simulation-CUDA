@@ -98,6 +98,88 @@ namespace Corotated {
             }
         }
     }
+
+    template <typename Scalar>
+    __global__ void GradHessianKern(Scalar* grad, Scalar* hessianVal, int* hessianRowIdx, int* hessianColIdx, const glm::tvec3<Scalar>* X, const indexType* Tet,
+        const glm::tmat3x3<Scalar>* DmInvs, Scalar* Vol, Scalar* mus, Scalar* lambdas, const indexType numTets, Scalar coef) {
+        int tetIndex = blockIdx.x * blockDim.x + threadIdx.x;
+        if (tetIndex >= numTets) return;
+        const int v0Ind = Tet[tetIndex * 4 + 0] * 3;
+        const int v1Ind = Tet[tetIndex * 4 + 1] * 3;
+        const int v2Ind = Tet[tetIndex * 4 + 2] * 3;
+        const int v3Ind = Tet[tetIndex * 4 + 3] * 3;
+        Scalar mu = mus[tetIndex];
+        Scalar lambda = lambdas[tetIndex];
+
+        glm::tmat3x3<Scalar> DmInv = DmInvs[tetIndex];
+        glm::tmat3x3<Scalar> Ds = Build_Edge_Matrix(X, Tet, tetIndex);
+        glm::tmat3x3<Scalar> F = Ds * DmInv;
+        glm::tmat3x3<Scalar> U, Sigma, V;
+        svdRV(F, U, Sigma, V);
+
+        glm::tmat3x3<Scalar> R = U * glm::transpose(V);
+
+        Vector9<Scalar> g1(R);
+        glm::tmat3x3<Scalar> T0(0, -1, 0, 1, 0, 0, 0, 0, 0);
+        glm::tmat3x3<Scalar> T1(0, 0, 0, 0, 0, 1, 0, -1, 0);
+        glm::tmat3x3<Scalar> T2(0, 0, 1, 0, 0, 0, -1, 0, 0);
+        T0 = 1 / sqrt((Scalar)2) * U * T0 * glm::transpose(V);
+        T1 = 1 / sqrt((Scalar)2) * U * T1 * glm::transpose(V);
+        T2 = 1 / sqrt((Scalar)2) * U * T2 * glm::transpose(V);
+        Vector9<Scalar> t0(T0);
+        Vector9<Scalar> t1(T1);
+        Vector9<Scalar> t2(T2);
+        Scalar s0 = Sigma[0][0];
+        Scalar s1 = Sigma[1][1];
+        Scalar s2 = Sigma[2][2];
+        Scalar lambda0 = 2 / (s0 + s1);
+        Scalar lambda1 = 2 / (s1 + s2);
+        Scalar lambda2 = 2 / (s0 + s2);
+        if (s0 + s1 < 2)
+            lambda0 = 1;
+        if (s1 + s2 < 2)
+            lambda1 = 1;
+        if (s0 + s2 < 2)
+            lambda2 = 1;
+        Scalar lambdaI1Minus2muMinus3lambda = lambda * trace(Sigma) - 2 * mu - 3 * lambda;
+        Matrix9<Scalar> d2PsidF2(2 * mu);
+        d2PsidF2 += lambda * Matrix9<Scalar>(g1, g1);
+        d2PsidF2 += (lambdaI1Minus2muMinus3lambda * lambda0) * (Matrix9<Scalar>(t0, t0));
+        d2PsidF2 += (lambdaI1Minus2muMinus3lambda * lambda1) * (Matrix9<Scalar>(t1, t1));
+        d2PsidF2 += (lambdaI1Minus2muMinus3lambda * lambda2) * (Matrix9<Scalar>(t2, t2));
+        coef *= Vol[tetIndex];
+        d2PsidF2 *= coef;
+        Matrix12<Scalar> Hessian;
+        ComputeHessian(&DmInv[0][0], d2PsidF2, Hessian);
+        for (int i = 0; i < 4; i++) {
+            for (int j = 0; j < 4; j++) {
+                for (int k = 0; k < 3; k++) {
+                    for (int l = 0; l < 3; l++) {
+                        int row = Tet[tetIndex * 4 + i] * 3 + k;
+                        int col = Tet[tetIndex * 4 + j] * 3 + l;
+                        int idx = tetIndex * 144 + (i * 4 + j) * 9 + k * 3 + l;
+                        hessianVal[idx] = Hessian[i * 3 + k][j * 3 + l];
+                        hessianRowIdx[idx] = row;
+                        hessianColIdx[idx] = col;
+                    }
+                }
+            }
+        }
+        glm::tmat3x3<Scalar> P = 2 * mu * (F - R) + lambda * trace(glm::transpose(R) * F - glm::tmat3x3<Scalar>(1)) * R;
+        glm::tmat3x3<Scalar> dPsidx = coef * P * glm::transpose(DmInv);
+        atomicAdd(&grad[v0Ind + 0], -dPsidx[0][0] - dPsidx[1][0] - dPsidx[2][0]);
+        atomicAdd(&grad[v0Ind + 1], -dPsidx[0][1] - dPsidx[1][1] - dPsidx[2][1]);
+        atomicAdd(&grad[v0Ind + 2], -dPsidx[0][2] - dPsidx[1][2] - dPsidx[2][2]);
+        atomicAdd(&grad[v1Ind + 0], dPsidx[0][0]);
+        atomicAdd(&grad[v1Ind + 1], dPsidx[0][1]);
+        atomicAdd(&grad[v1Ind + 2], dPsidx[0][2]);
+        atomicAdd(&grad[v2Ind + 0], dPsidx[1][0]);
+        atomicAdd(&grad[v2Ind + 1], dPsidx[1][1]);
+        atomicAdd(&grad[v2Ind + 2], dPsidx[1][2]);
+        atomicAdd(&grad[v3Ind + 0], dPsidx[2][0]);
+        atomicAdd(&grad[v3Ind + 1], dPsidx[2][1]);
+        atomicAdd(&grad[v3Ind + 2], dPsidx[2][2]);
+    }
 }
 
 
@@ -149,6 +231,14 @@ void CorotatedEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, cons
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     Corotated::HessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx,
+        solverData.X, solverData.Tet, solverData.DmInv, solverData.V0, solverData.mu, solverData.lambda, solverData.numTets, coef);
+}
+
+template <typename Scalar>
+void CorotatedEnergy<Scalar>::GradientHessian(Scalar* grad, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const {
+    int threadsPerBlock = 256;
+    int numBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
+    Corotated::GradHessianKern << <numBlocks, threadsPerBlock >> > (grad, hessianVal, hessianRowIdx, hessianColIdx,
         solverData.X, solverData.Tet, solverData.DmInv, solverData.V0, solverData.mu, solverData.lambda, solverData.numTets, coef);
 }
 
