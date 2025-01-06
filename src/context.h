@@ -3,6 +3,7 @@
 #include <precision.h>
 #include <vector>
 #include <string>
+#include <optional>
 
 class SoftBody;
 class Camera;
@@ -10,6 +11,7 @@ class SimulationCUDAContext;
 class SurfaceShader;
 class TextureCubemap;
 class Mesh;
+class SubMesh;
 
 
 struct SoftBodyAttr
@@ -62,8 +64,13 @@ public:
 
 void cleanupCuda();
 
+
 class Context
 {
+    struct MouseEvent {
+        glm::ivec2 lastPos;
+        bool rayIntersected;
+    };
     enum class ShaderType
     {
         LAMBERT,
@@ -81,6 +88,8 @@ public:
     void Update();
     void ResetCamera();
     void Draw();
+    bool UpdateCursorPos(double xpos, double ypos);
+    std::optional<SubMesh*> GetSubMesh();
     void SetBVHBuildType(int buildType);
     int& GetBVHBuildType();
     void SetShaderType(int shaderType);
@@ -113,11 +122,13 @@ private:
     SurfaceShader* mpProgPhong = nullptr;
     SurfaceShader* mpProgFlat = nullptr;
     SurfaceShader* mpProgSkybox = nullptr;
-    Mesh* mpCube = nullptr;
+    Mesh* mpEnvMapCube = nullptr;
     size_t iteration = 0;
     bool pause = false;
     bool logEnabled = false;
     std::vector<int> DOFs;
     std::vector<int> Eles;
     TextureCubemap* envMap = nullptr;
+    SubMesh* mpSubMesh = nullptr;
+    MouseEvent mMouseEvent;
 };

@@ -2,6 +2,7 @@
 #include <surfaceshader.h>
 #include <context.h>
 #include <Mesh.h>
+#include <submesh.h>
 #include <collision/aabb.h>
 #include <simulation/simulationContext.h>
 #include <utilities.h>
@@ -85,7 +86,7 @@ Ray Camera::RayPick(glm::ivec2 pixel)
 
 Context::Context(const std::string& _filename) :shaderType(ShaderType::PHONG), filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()),
 mpProgPhong(new SurfaceShader()), mpProgHighLight(new SurfaceShader()), mpProgFlat(new SurfaceShader()), mpProgSkybox(new SurfaceShader()),
-width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer())
+width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer()), mpSubMesh(new SubMesh())
 {
     glm::vec3 view = mpCamera->view;
     glm::vec3 up = mpCamera->up;
@@ -113,7 +114,7 @@ Context::~Context()
     delete mcrpSimContext;
     delete guiData;
     delete mpCamera;
-    delete mpCube;
+    delete mpEnvMapCube;
 }
 
 int Context::GetMaxCGThreads()
@@ -185,8 +186,8 @@ void Context::LoadShaders(const std::string& vertShaderFilename, const std::stri
             mpProgSkybox->create("../src/shaders/envMap.vert.glsl", "../src/shaders/envMap.frag.glsl");
             mpProgSkybox->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
             mpProgSkybox->addUniform("u_EnvironmentMap");
-            mpCube = new Mesh();
-            mpCube->createCube();
+            mpEnvMapCube = new Mesh();
+            mpEnvMapCube->createCube();
         }
     }
 }
@@ -405,7 +406,7 @@ void Context::InitDataContainer() {
 
 void Context::InitCuda() {
     LoadSimContext();
-
+    mpSubMesh->createSubMesh();
     // Clean up on program exit
     atexit(cleanupCuda);
 }
@@ -417,12 +418,18 @@ void Context::Draw() {
         envMap->bind(ENV_MAP_CUBE_TEX_SLOT);
         mpProgSkybox->setViewProjMatrix(glm::mat4(glm::mat3(mpCamera->getView())), mpCamera->getProj());
         mpProgSkybox->setUnifInt("u_EnvironmentMap", ENV_MAP_CUBE_TEX_SLOT);
-        mpProgSkybox->draw(*mpCube);
+        mpProgSkybox->draw(*mpEnvMapCube);
         glDepthFunc(GL_LESS);
         glDepthMask(GL_TRUE);
     }
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    if (guiData->ObjectVis) {
+        auto subMesh = GetSubMesh();
+        if (subMesh) {
+            mpProgFlat->draw(*subMesh.value());
+        }
+    }
     switch (shaderType)
     {
     case Context::ShaderType::LAMBERT:
@@ -434,6 +441,37 @@ void Context::Draw() {
     default:
         break;
     }
+}
+
+bool Context::UpdateCursorPos(double xpos, double ypos)
+{
+    mMouseEvent.lastPos = { xpos, ypos };
+    glm::vec3* pos;
+    glm::vec4* nor;
+    mpSubMesh->MapDevicePtr(&pos, &nor);
+    mMouseEvent.rayIntersected = mcrpSimContext->RayIntersect(mpCamera->RayPick(mMouseEvent.lastPos), pos, nor);
+    mpSubMesh->UnMapDevicePtr();
+    return mMouseEvent.rayIntersected;
+}
+
+
+std::optional<SubMesh*> Context::GetSubMesh()
+{
+    if (mMouseEvent.rayIntersected)
+    {
+        mMouseEvent.rayIntersected = false;
+        return mpSubMesh;
+    }
+    Ray ray = mpCamera->RayPick(mMouseEvent.lastPos);
+    glm::vec3* pos;
+    glm::vec4* nor;
+    mpSubMesh->MapDevicePtr(&pos, &nor);
+    bool rayIntersected = mcrpSimContext->RayIntersect(ray, pos, nor);
+    mpSubMesh->UnMapDevicePtr();
+    if (rayIntersected)
+        return mpSubMesh;
+    else
+        return std::nullopt;
 }
 
 void Context::SetBVHBuildType(int buildType)

@@ -93,9 +93,7 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
 }
 
 void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
-    Ray ray = context->mpCamera->RayPick(glm::ivec2(xpos, ypos));
-
-    if (xpos == lastX || ypos == lastY) return; // otherwise, clicking back into window causes re-start
+    if (context->UpdateCursorPos(xpos, ypos) || xpos == lastX || ypos == lastY) return; // otherwise, clicking back into window causes re-start
     if (leftMousePressed) {
         // compute new camera parameters
         context->phi -= (xpos - lastX) / context->width * 3.f;

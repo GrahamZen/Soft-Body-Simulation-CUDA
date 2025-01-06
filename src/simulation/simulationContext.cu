@@ -222,9 +222,24 @@ void SimulationCUDAContext::UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBod
     }
 }
 
-indexType SimulationCUDAContext::RayIntersect(const Ray& ray) const
+template<typename T>
+__global__ void loadFaceData(indexType faceIdx, indexType* Tri, glm::tvec3<T>* X, glm::vec3* pos, glm::vec4* nor) {
+    pos[0] = X[Tri[3 * faceIdx]];
+    pos[1] = X[Tri[3 * faceIdx + 1]];
+    pos[2] = X[Tri[3 * faceIdx + 2]];
+    glm::vec4 normal = getNormal(pos[0], pos[1], pos[2]);
+    nor[0] = normal;
+    nor[1] = normal;
+    nor[2] = normal;
+}
+
+bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos, glm::vec4* nor)
 {
-    return raySimCtxIntersection(ray, mSolverData.numTris, mSolverData.Tri, mSolverData.X);
+    indexType faceIdx = raySimCtxIntersection(ray, mSolverData.numTris, mSolverData.Tri, mSolverData.X);
+    rayIntersected = (faceIdx != -1);
+    if (rayIntersected)
+        loadFaceData << <1, 1 >> > (faceIdx, mSolverData.Tri, mSolverData.X, pos, nor);
+    return rayIntersected;
 }
 
 int SimulationCUDAContext::GetVertCnt() const {
