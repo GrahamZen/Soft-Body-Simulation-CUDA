@@ -1,11 +1,15 @@
 #include <utilities.cuh>
 #include <collision/bvh.h>
+#include <collision/intersections.h>
 #include <simulation/solver/IPC/ipc.h>
 #include <simulation/solver/projective/pdSolver.h>
 #include <simulation/softBody.h>
 #include <simulation/dataLoader.h>
 #include <simulation/simulationContext.h>
 #include <context.h>
+#include <thrust/transform_reduce.h>
+#include <thrust/iterator/counting_iterator.h>
+#include <thrust/for_each.h>
 
 #define ERRORCHECK 1
 
@@ -216,6 +220,11 @@ void SimulationCUDAContext::UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBod
     if (pSoftBodyAttr->lambda) {
         DataLoader<solverPrecision>::FillData(mSolverData.lambda, softBodies[index]->GetAttributes().lambda, mSolverData.Tet, softBodies[index]->GetTetIdxRange());
     }
+}
+
+indexType SimulationCUDAContext::RayIntersect(const Ray& ray) const
+{
+    return raySimCtxIntersection(ray, mSolverData.numTris, mSolverData.Tri, mSolverData.X);
 }
 
 int SimulationCUDAContext::GetVertCnt() const {

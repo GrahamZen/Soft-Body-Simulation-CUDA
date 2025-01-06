@@ -16,6 +16,7 @@ public:
 
     void createQueries(int numVerts);
     void MapDevicePosPtr(glm::vec3** bufPosDevPtr, glm::vec4** bufCol);
+    void BufferData(glm::vec3* pos, glm::vec4* col);
     void UnMapDevicePtr();
 protected:
     cudaGraphicsResource* cuda_bufPos_resource = nullptr;

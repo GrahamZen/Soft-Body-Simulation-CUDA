@@ -73,6 +73,16 @@ Camera& Camera::computeCameraParams()
     return *this;
 }
 
+Ray Camera::RayPick(glm::ivec2 pixel)
+{
+    glm::vec3 rayNDC = { 2 * pixel.x / (float)resolution.x - 1, 1 - 2 * pixel.y / (float)resolution.y, -1 };
+    glm::vec4 rayClip(rayNDC, 1.0);
+    glm::vec4 rayEye = glm::inverse(getProj()) * rayClip;
+    glm::vec4 rayWorld = glm::inverse(getView()) * rayEye;
+    glm::vec3 rayWorldXYZ = glm::vec3(rayWorld) / glm::vec3(rayWorld.w);
+    return Ray{ position, glm::normalize(rayWorldXYZ - position) };
+}
+
 Context::Context(const std::string& _filename) :shaderType(ShaderType::PHONG), filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()),
 mpProgPhong(new SurfaceShader()), mpProgHighLight(new SurfaceShader()), mpProgFlat(new SurfaceShader()), mpProgSkybox(new SurfaceShader()),
 width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer())

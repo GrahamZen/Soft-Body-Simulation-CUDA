@@ -4,6 +4,7 @@
 #include <simulation/solver/solver.h>
 #include <precision.h>
 #include <json.hpp>
+#include <sceneStructs.h>
 
 class SoftBody;
 class SurfaceShader;
@@ -21,6 +22,7 @@ public:
     void UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr);
     void SetBVHBuildType(int);
     void SetGlobalSolver(int val);
+    indexType RayIntersect(const Ray &ray) const;
     void Draw(SurfaceShader*, SurfaceShader*, SurfaceShader*, std::string highLightName = "");
     SolverParams<solverPrecision>* GetSolverParams();
     void SetPerf(bool val);
@@ -44,4 +46,6 @@ private:
     const std::string name;
     SolverParams<solverPrecision> mSolverParams;
     Solver<solverPrecision>* mSolver = nullptr;
+
+    bool rayIntersected = false;
 };

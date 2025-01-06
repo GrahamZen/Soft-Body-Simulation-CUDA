@@ -3,7 +3,9 @@
 #include <preview.h>
 #include <context.h>
 #include <utilities.h>
+#include <simulation/simulationContext.h>
 #include <glm/gtx/transform.hpp>
+#include <glm/gtx/string_cast.hpp>
 #include <cuda_runtime.h>
 #include <iostream>
 
@@ -91,6 +93,8 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
 }
 
 void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
+    Ray ray = context->mpCamera->RayPick(glm::ivec2(xpos, ypos));
+
     if (xpos == lastX || ypos == lastY) return; // otherwise, clicking back into window causes re-start
     if (leftMousePressed) {
         // compute new camera parameters

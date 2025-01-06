@@ -31,6 +31,7 @@ struct Camera {
     Camera(nlohmann::json& camJson);
     Camera(const std::string& _filename);
     Camera& computeCameraParams();
+    Ray RayPick(glm::ivec2 pixel);
     glm::ivec2 resolution;
     glm::vec3 position;
     glm::vec3 lookAt;

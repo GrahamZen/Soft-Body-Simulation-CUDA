@@ -14,6 +14,8 @@
 #include <filesystem>
 #include <set>
 
+using FaceVertIdx = std::tuple<indexType, indexType, indexType>;
+
 template<typename T>
 __host__ __device__ void sortThree(T& a, T& b, T& c);
 
@@ -86,9 +88,9 @@ std::pair<std::vector<indexType>, std::vector<indexType>> DataLoader<Scalar>::lo
         }
     }
     if (numTris == 0) {
-        std::map<std::tuple<indexType, indexType, indexType>, std::tuple<indexType, indexType, indexType>> faceMap;
-        std::set<std::tuple<indexType, indexType, indexType>> uniqueFaces;
-        std::vector<std::tuple<indexType, indexType, indexType>> faces(4);
+        std::map<FaceVertIdx, FaceVertIdx> faceMap;
+        std::set<FaceVertIdx> uniqueFaces;
+        std::vector<FaceVertIdx> faces(4);
         for (size_t i = 0; i < Tet.size(); i += 4) {
             indexType v0 = Tet[i];
             indexType v1 = Tet[i + 1];
@@ -115,7 +117,7 @@ std::pair<std::vector<indexType>, std::vector<indexType>> DataLoader<Scalar>::lo
         Triangle.resize(numTris * 3);
         int i = 0;
         for (const auto& face : uniqueFaces) {
-            std::tuple<indexType, indexType, indexType> orderedFace = faceMap[face];
+            FaceVertIdx orderedFace = faceMap[face];
             Triangle[i++] = std::get<0>(orderedFace);
             Triangle[i++] = std::get<1>(orderedFace);
             Triangle[i++] = std::get<2>(orderedFace);

@@ -147,18 +147,23 @@ void inspectSphere(const Sphere* dev_spheres, int size)
     utilityCore::inspectHost(hstSphere.data(), size);
 }
 
+__host__ __device__ glm::vec4 getNormal(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2)
+{
+    glm::vec3 v0v1 = v1 - v0;
+    glm::vec3 v0v2 = v2 - v0;
+    return glm::vec4(glm::normalize(glm::cross(v0v1, v0v2)), 0.f);
+}
+
 __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int numVerts)
 {
     int index = (blockIdx.x * blockDim.x) + threadIdx.x;
 
     if (index < numVerts)
     {
-        glm::vec3 v0v1 = vertices[index * 3 + 1] - vertices[index * 3 + 0];
-        glm::vec3 v0v2 = vertices[index * 3 + 2] - vertices[index * 3 + 0];
-        glm::vec3 nor = glm::cross(v0v1, v0v2);
-        norms[index * 3 + 0] = glm::vec4(glm::normalize(nor), 0.f);
-        norms[index * 3 + 1] = glm::vec4(glm::normalize(nor), 0.f);
-        norms[index * 3 + 2] = glm::vec4(glm::normalize(nor), 0.f);
+        glm::vec4 nor = getNormal(vertices[index * 3 + 0], vertices[index * 3 + 1], vertices[index * 3 + 2]);
+        norms[index * 3 + 0] = nor;
+        norms[index * 3 + 1] = nor;
+        norms[index * 3 + 2] = nor;
     }
 }
 
