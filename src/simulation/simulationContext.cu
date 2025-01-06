@@ -237,7 +237,7 @@ bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos, glm::ve
 {
     indexType faceIdx = raySimCtxIntersection(ray, mSolverData.numTris, mSolverData.Tri, mSolverData.X);
     rayIntersected = (faceIdx != -1);
-    if (rayIntersected)
+    if (rayIntersected && pos && nor)
         loadFaceData << <1, 1 >> > (faceIdx, mSolverData.Tri, mSolverData.X, pos, nor);
     return rayIntersected;
 }

@@ -173,7 +173,6 @@ namespace NeoHookean08 {
     }
 }
 
-
 template<typename Scalar>
 inline NeoHookean08Energy<Scalar>::NeoHookean08Energy(const SolverData<Scalar>& solverData, int& hessianIdxOffset) :
     ElasticEnergy<Scalar>(hessianIdxOffset)

@@ -445,24 +445,14 @@ void Context::Draw() {
 
 bool Context::UpdateCursorPos(double xpos, double ypos)
 {
-    mMouseEvent.lastPos = { xpos, ypos };
-    glm::vec3* pos;
-    glm::vec4* nor;
-    mpSubMesh->MapDevicePtr(&pos, &nor);
-    mMouseEvent.rayIntersected = mcrpSimContext->RayIntersect(mpCamera->RayPick(mMouseEvent.lastPos), pos, nor);
-    mpSubMesh->UnMapDevicePtr();
-    return mMouseEvent.rayIntersected;
+    lastPos = { xpos, ypos };
+    return mcrpSimContext->RayIntersect(mpCamera->RayPick(lastPos), nullptr, nullptr);
 }
 
 
 std::optional<SubMesh*> Context::GetSubMesh()
 {
-    if (mMouseEvent.rayIntersected)
-    {
-        mMouseEvent.rayIntersected = false;
-        return mpSubMesh;
-    }
-    Ray ray = mpCamera->RayPick(mMouseEvent.lastPos);
+    Ray ray = mpCamera->RayPick(lastPos);
     glm::vec3* pos;
     glm::vec4* nor;
     mpSubMesh->MapDevicePtr(&pos, &nor);

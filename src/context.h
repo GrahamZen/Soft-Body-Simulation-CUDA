@@ -67,10 +67,6 @@ void cleanupCuda();
 
 class Context
 {
-    struct MouseEvent {
-        glm::ivec2 lastPos;
-        bool rayIntersected;
-    };
     enum class ShaderType
     {
         LAMBERT,
@@ -130,5 +126,5 @@ private:
     std::vector<int> Eles;
     TextureCubemap* envMap = nullptr;
     SubMesh* mpSubMesh = nullptr;
-    MouseEvent mMouseEvent;
+    glm::ivec2 lastPos;
 };
