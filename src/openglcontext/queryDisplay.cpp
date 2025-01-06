@@ -74,9 +74,4 @@ void QueryDisplay::UnMapDevicePtr()
 }
 
 void QueryDisplay::create()
-{
-    // Does nothing, as we have two separate VBO data
-    // creation functions: createFromOBJ, which creates
-    // our mesh VBOs from OBJ file data, and createCube,
-    // which you will implement.
-}
+{}

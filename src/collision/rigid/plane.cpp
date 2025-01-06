@@ -30,7 +30,7 @@ void Plane::create()
         glm::vec2(1, 0),
         glm::vec2(1, 1)
     };
-
+    std::vector<glm::vec4> col(pos.size(), glm::vec4(0.43, 0.55, 1.0, 1.0));
     std::vector<indexType> idx{ 0, 1, 2, 2, 1, 3 };
 
     count = 6; // TODO: Set "count" to the number of indices in your index VBO
@@ -50,6 +50,10 @@ void Plane::create()
     generateUV();
     glBindBuffer(GL_ARRAY_BUFFER, bufUV);
     glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(glm::vec2), uvs.data(), GL_STATIC_DRAW);
+
+    generateCol();
+    glBindBuffer(GL_ARRAY_BUFFER, bufCol);
+    glBufferData(GL_ARRAY_BUFFER, col.size() * sizeof(glm::vec4), col.data(), GL_STATIC_DRAW);
 }
 
 BodyType Plane::getType() const

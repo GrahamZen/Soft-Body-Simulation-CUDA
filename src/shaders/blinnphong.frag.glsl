@@ -13,14 +13,14 @@ uniform sampler2D u_Texture;// The texture to be read from by this shader
 in vec4 fs_Nor;
 in vec4 fs_LightVec;
 in vec2 fs_UV;
-
+in vec4 fs_Col;
 layout(location=0)out vec4 out_Col;//This is the final output color that you will see on your screen for the pixel that is currently being processed.
 
 void main()
 {
     // Material base color (before shading)
     // vec4 diffuseColor=texture(u_Texture,fs_UV);
-    vec4 diffuseColor=vec4(0.43, 0.55, 1.0, 1.0);
+    vec4 diffuseColor=fs_Col;
     vec4 lightColor=vec4(1.0, 1.0, 1.0, 1.0);
     
     // Calculate the diffuse term for Lambert shading

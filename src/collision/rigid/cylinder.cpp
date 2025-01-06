@@ -74,6 +74,7 @@ void Cylinder::create()
     }
     count = idx.size();
 
+    std::vector<glm::vec4> col(pos.size(), glm::vec4(0.43, 0.55, 1.0, 1.0));
 
     generateIdx();
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufIdx);
@@ -86,6 +87,10 @@ void Cylinder::create()
     generateNor();
     glBindBuffer(GL_ARRAY_BUFFER, bufNor);
     glBufferData(GL_ARRAY_BUFFER, nor.size() * sizeof(glm::vec4), nor.data(), GL_STATIC_DRAW);
+
+    generateCol();
+    glBindBuffer(GL_ARRAY_BUFFER, bufCol);
+    glBufferData(GL_ARRAY_BUFFER, col.size() * sizeof(glm::vec4), col.data(), GL_STATIC_DRAW);
 }
 
 BodyType Cylinder::getType() const

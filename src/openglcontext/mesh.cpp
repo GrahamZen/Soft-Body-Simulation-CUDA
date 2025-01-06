@@ -142,19 +142,24 @@ void Mesh::createMesh()
         triangles[t * 3 + 1] = t * 3 + 1;
         triangles[t * 3 + 2] = t * 3 + 2;
     }
+    std::vector<glm::vec4> colors(count, glm::vec4(0.43, 0.55, 1.0, 1.0));
     generateIdx();
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufIdx);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(GLuint), triangles.data(), GL_STATIC_DRAW);
 
     generatePos();
     glBindBuffer(GL_ARRAY_BUFFER, bufPos);
-    glBufferData(GL_ARRAY_BUFFER, numTris * 9 * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, count * sizeof(glm::vec3), nullptr, GL_DYNAMIC_DRAW);
     cudaGraphicsGLRegisterBuffer(&cuda_bufPos_resource, bufPos, cudaGraphicsMapFlagsWriteDiscard);
 
     generateNor();
     glBindBuffer(GL_ARRAY_BUFFER, bufNor);
-    glBufferData(GL_ARRAY_BUFFER, numTris * 9 * sizeof(glm::vec4), nullptr, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, count * sizeof(glm::vec4), nullptr, GL_DYNAMIC_DRAW);
     cudaGraphicsGLRegisterBuffer(&cuda_bufNor_resource, bufNor, cudaGraphicsMapFlagsWriteDiscard);
+
+    generateCol();
+    glBindBuffer(GL_ARRAY_BUFFER, bufCol);
+    glBufferData(GL_ARRAY_BUFFER, count * sizeof(glm::vec4), colors.data(), GL_STATIC_DRAW);
 }
 
 void Mesh::MapDevicePtr(glm::vec3** bufPosDevPtr, glm::vec4** bufNorDevPtr)
@@ -174,12 +179,7 @@ void Mesh::UnMapDevicePtr()
 }
 
 void Mesh::create()
-{
-    // Does nothing, as we have two separate VBO data
-    // creation functions: createFromOBJ, which creates
-    // our mesh VBOs from OBJ file data, and createCube,
-    // which you will implement.
-}
+{}
 
 void Mesh::bindTexture() const
 {
