@@ -2,7 +2,6 @@
 #include <surfaceshader.h>
 #include <context.h>
 #include <Mesh.h>
-#include <submesh.h>
 #include <collision/aabb.h>
 #include <simulation/simulationContext.h>
 #include <utilities.h>
@@ -11,6 +10,7 @@
 #include <collision/rigid/plane.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <glm/gtx/transform.hpp>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -86,7 +86,8 @@ Ray Camera::RayPick(glm::ivec2 pixel)
 
 Context::Context(const std::string& _filename) :shaderType(ShaderType::PHONG), filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()),
 mpProgPhong(new SurfaceShader()), mpProgHighLight(new SurfaceShader()), mpProgFlat(new SurfaceShader()), mpProgSkybox(new SurfaceShader()),
-width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer()), mpSubMesh(new SubMesh())
+width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer()),
+mpSelectSPhere(new Sphere(utilityCore::modelMatrix(glm::vec3(0), glm::vec3(0), glm::vec3(5, 5, 5)), 5, 10))
 {
     glm::vec3 view = mpCamera->view;
     glm::vec3 up = mpCamera->up;
@@ -406,12 +407,13 @@ void Context::InitDataContainer() {
 
 void Context::InitCuda() {
     LoadSimContext();
-    mpSubMesh->createSubMesh();
+    mpSelectSPhere->create();
     // Clean up on program exit
     atexit(cleanupCuda);
 }
 
 void Context::Draw() {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     if (mpProgSkybox && envMap->m_isCreated) {
         glDepthFunc(GL_LEQUAL);
         glDepthMask(GL_FALSE);
@@ -425,11 +427,18 @@ void Context::Draw() {
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     if (guiData->ObjectVis) {
-        auto subMesh = GetSubMesh();
-        if (subMesh) {
-            mpProgFlat->draw(*subMesh.value());
+        if (GetSelectSPhere()) {
+            mpProgHighLight->setModelMatrix(glm::translate(glm::mat4(1.f), spherePos));
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glLineWidth(1);
+            mpProgHighLight->draw(*mpSelectSPhere, 0);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
         }
     }
+    if (guiData->WireFrame)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    else
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     switch (shaderType)
     {
     case Context::ShaderType::LAMBERT:
@@ -445,23 +454,14 @@ void Context::Draw() {
 
 bool Context::UpdateCursorPos(double xpos, double ypos)
 {
-    lastPos = { xpos, ypos };
-    return mcrpSimContext->RayIntersect(mpCamera->RayPick(lastPos), nullptr, nullptr);
+    return mcrpSimContext->RayIntersect(mpCamera->RayPick({ xpos, ypos }), nullptr);
 }
 
 
-std::optional<SubMesh*> Context::GetSubMesh()
+bool Context::GetSelectSPhere()
 {
-    Ray ray = mpCamera->RayPick(lastPos);
-    glm::vec3* pos;
-    glm::vec4* nor;
-    mpSubMesh->MapDevicePtr(&pos, &nor);
-    bool rayIntersected = mcrpSimContext->RayIntersect(ray, pos, nor);
-    mpSubMesh->UnMapDevicePtr();
-    if (rayIntersected)
-        return mpSubMesh;
-    else
-        return std::nullopt;
+    Ray ray = mpCamera->RayPick(mouseState.lastPos);
+    return mcrpSimContext->RayIntersect(ray, &spherePos);
 }
 
 void Context::SetBVHBuildType(int buildType)

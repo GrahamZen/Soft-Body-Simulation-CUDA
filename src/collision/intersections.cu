@@ -9,14 +9,6 @@
 #include <thrust/transform_reduce.h>
 #include <thrust/iterator/counting_iterator.h>
 
-struct Intersection {
-    float t = FLT_MAX;
-    indexType faceIdx = (indexType)-1;
-    __host__ __device__ bool operator<(const Intersection& other) const {
-        return t < other.t;
-    }
-};
-
 /**
  * Handy-dandy hash function that provides seeds for random number generation.
  */
@@ -337,21 +329,26 @@ __host__ __device__ Scalar ccdCollisionTest(const Query& query, const glm::tvec3
 template double ccdCollisionTest<double>(const Query& query, const glm::tvec3<double>* Xs, const glm::tvec3<double>* XTildes, glm::tvec3<double>& n);
 template float ccdCollisionTest<float>(const Query& query, const glm::tvec3<float>* Xs, const glm::tvec3<float>* XTildes, glm::tvec3<float>& n);
 
-__host__ __device__ float rayTriangleIntersection(Ray r, glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, bool doubleSided)
+__host__ __device__ Intersection rayTriangleIntersection(Ray r, glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, bool doubleSided)
 {
     glm::vec3 bary;
     bool intersect = false;
     if (doubleSided)
         intersect = glm::intersectRayTriangle(r.origin, r.direction, v2, v1, v0, bary);
     intersect |= glm::intersectRayTriangle(r.origin, r.direction, v0, v1, v2, bary);
-
     if (!intersect) {
-        return -1;
+        return {};
     }
     float t = bary.z;
     if (t < 0.0f || t > 1e38f)
-        return -1;
-    return t;
+        return {};
+    float baryZ = 1.0f - bary.x - bary.y;
+    if (bary.x >= bary.y && bary.x >= baryZ)
+        return { t, 1 };
+    else if (bary.y >= bary.x && bary.y >= baryZ)
+        return { t, 0 };
+    else
+        return { t, 2 };
 }
 
 template<typename Scalar>
@@ -362,12 +359,14 @@ indexType raySimCtxIntersection(Ray r, int numTris, const indexType* Tri, const 
         glm::tvec3<Scalar> v0 = X[Tri[3 * idx]];
         glm::tvec3<Scalar> v1 = X[Tri[3 * idx + 1]];
         glm::tvec3<Scalar> v2 = X[Tri[3 * idx + 2]];
-        float t = rayTriangleIntersection(r, v0, v1, v2, true);
-        return t > 0 ? Intersection{ t, idx } : Intersection{};
+        Intersection intersection = rayTriangleIntersection(r, v0, v1, v2, true);
+        if (intersection.vertIdx != -1)
+            intersection.vertIdx = Tri[3 * idx + intersection.vertIdx];
+        return intersection;
     },
         Intersection(),
         thrust::minimum<Intersection>());
-    return intersection.faceIdx;
+    return intersection.vertIdx;
 }
 
 template indexType raySimCtxIntersection<float>(Ray r, int numTris, const indexType* Tri, const glm::tvec3<float>* X);

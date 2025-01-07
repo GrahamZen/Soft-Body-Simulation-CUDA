@@ -22,7 +22,7 @@ public:
     void UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr);
     void SetBVHBuildType(int);
     void SetGlobalSolver(int val);
-    bool RayIntersect(const Ray& ray, glm::vec3* pos, glm::vec4* nor);
+    bool RayIntersect(const Ray& ray, glm::vec3* pos);
     void Draw(SurfaceShader*, SurfaceShader*, SurfaceShader*, std::string highLightName = "");
     SolverParams<solverPrecision>* GetSolverParams();
     void SetPerf(bool val);

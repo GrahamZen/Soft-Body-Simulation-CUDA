@@ -11,8 +11,7 @@ class SimulationCUDAContext;
 class SurfaceShader;
 class TextureCubemap;
 class Mesh;
-class SubMesh;
-
+class Sphere;
 
 struct SoftBodyAttr
 {
@@ -73,6 +72,16 @@ class Context
         PHONG,
         FLAT
     };
+    struct MouseState 
+    {
+        glm::dvec2 pos;
+        glm::dvec2 lastPos;
+        glm::dvec2 dir;
+        bool leftMousePressed = false;
+        bool rightMousePressed = false;
+        bool middleMousePressed = false;
+        bool rayIntersected = false;
+    };
 public:
     Context(const std::string& _filename);
     ~Context();
@@ -85,7 +94,7 @@ public:
     void ResetCamera();
     void Draw();
     bool UpdateCursorPos(double xpos, double ypos);
-    std::optional<SubMesh*> GetSubMesh();
+    bool GetSelectSPhere();
     void SetBVHBuildType(int buildType);
     int& GetBVHBuildType();
     void SetShaderType(int shaderType);
@@ -105,6 +114,7 @@ public:
     GuiDataContainer* guiData;
     SimulationCUDAContext* mcrpSimContext = nullptr;
     std::vector<SimulationCUDAContext*> mpSimContexts;
+    MouseState mouseState;
 
 private:
     ShaderType shaderType;
@@ -125,6 +135,6 @@ private:
     std::vector<int> DOFs;
     std::vector<int> Eles;
     TextureCubemap* envMap = nullptr;
-    SubMesh* mpSubMesh = nullptr;
-    glm::ivec2 lastPos;
+    Sphere* mpSelectSPhere = nullptr;
+    glm::vec3 spherePos;
 };

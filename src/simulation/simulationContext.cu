@@ -222,23 +222,16 @@ void SimulationCUDAContext::UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBod
     }
 }
 
-template<typename T>
-__global__ void loadFaceData(indexType faceIdx, indexType* Tri, glm::tvec3<T>* X, glm::vec3* pos, glm::vec4* nor) {
-    pos[0] = X[Tri[3 * faceIdx]];
-    pos[1] = X[Tri[3 * faceIdx + 1]];
-    pos[2] = X[Tri[3 * faceIdx + 2]];
-    glm::vec4 normal = getNormal(pos[0], pos[1], pos[2]);
-    nor[0] = normal;
-    nor[1] = normal;
-    nor[2] = normal;
-}
-
-bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos, glm::vec4* nor)
+bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos)
 {
-    indexType faceIdx = raySimCtxIntersection(ray, mSolverData.numTris, mSolverData.Tri, mSolverData.X);
-    rayIntersected = (faceIdx != -1);
-    if (rayIntersected && pos && nor)
-        loadFaceData << <1, 1 >> > (faceIdx, mSolverData.Tri, mSolverData.X, pos, nor);
+    indexType vertIdx = raySimCtxIntersection(ray, mSolverData.numTris, mSolverData.Tri, mSolverData.X);
+    rayIntersected = (vertIdx != -1);
+    if (rayIntersected && pos)
+    {
+        glm::tvec3<solverPrecision>tmpPos;
+        cudaMemcpy(&tmpPos, mSolverData.X + vertIdx, sizeof(tmpPos), cudaMemcpyDeviceToHost);
+        *pos = tmpPos;
+    }
     return rayIntersected;
 }
 

@@ -40,7 +40,7 @@ void Sphere::create()
 
             glm::vec3 normal(sinTheta * cosPhi, cosTheta, sinTheta * sinPhi);
             glm::vec3 vertex = normal;
-            pos.push_back(vertex);
+            pos.push_back(vertex * m_radius);
             nor.push_back(glm::vec4(normal, 0.0f));
             uvs.push_back(glm::vec2(1.0f - float(lon) / float(m_numSides), 1.0f - float(lat) / float(m_numSides)));
         }

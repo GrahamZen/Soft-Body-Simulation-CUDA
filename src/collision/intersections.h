@@ -3,6 +3,13 @@
 #include <collision/aabb.h>
 #include <sceneStructs.h>
 
+struct Intersection {
+    float t = FLT_MAX;
+    indexType vertIdx = (indexType)-1;
+    __host__ __device__ bool operator<(const Intersection& other) const {
+        return t < other.t;
+    }
+};
 /**
  * Handy-dandy hash function that provides seeds for random number generation.
  */
@@ -45,7 +52,7 @@ __host__ __device__ Scalar ccdTriangleIntersectionTest(const glm::tvec3<Scalar>&
     const glm::tvec3<Scalar>& x1, const glm::tvec3<Scalar>& x2, const glm::tvec3<Scalar>& x3, const glm::tvec3<Scalar>& v1, const glm::tvec3<Scalar>& v2, const glm::tvec3<Scalar>& v3,
     const glm::tvec3<Scalar>& xTilde0, const glm::tvec3<Scalar>& xTilde1, const glm::tvec3<Scalar>& xTilde2, const glm::tvec3<Scalar>& xTilde3, glm::tvec3<Scalar>& n);
 
-__host__ __device__ float rayTriangleIntersection(Ray r, glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, bool doubleSided);
+__host__ __device__ Intersection rayTriangleIntersection(Ray r, glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, bool doubleSided);
 
 template<typename Scalar>
 indexType raySimCtxIntersection(Ray r, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X);
