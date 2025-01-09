@@ -72,7 +72,7 @@ namespace IPC {
         }
     }
 
-    __global__ void DOFEliminationHessKernel(int* hessianRowIdx, int* hessianColIdx, double* hessianVal, int nnz, indexType* DBC, int numDBC)
+    __global__ void DOFEliminationHessKernel(int* hessianRowIdx, int* hessianColIdx, double* hessianVal, int nnz, indexType* DBCIdx, int numDBC)
     {
         int idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx >= nnz) return;
@@ -81,21 +81,21 @@ namespace IPC {
         int col = hessianColIdx[idx];
         for (int i = 0; i < numDBC; i++)
         {
-            if (DBC[i] == row / 3 || DBC[i] == col / 3) {
+            if (DBCIdx[i] == row / 3 || DBCIdx[i] == col / 3) {
                 hessianVal[idx] = (row == col);
                 if (row != col)
                     break;
             }
         }
     }
-    __global__ void DOFEliminationGradKernel(double* gradient, int numVerts, indexType* DBC, int numDBC)
+    __global__ void DOFEliminationGradKernel(double* gradient, int numVerts, indexType* DBCIdx, int numDBC)
     {
         int idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx >= numVerts) return;
 
         for (int i = 0; i < numDBC; i++)
         {
-            if (DBC[i] == idx)
+            if (DBCIdx[i] == idx)
             {
                 gradient[idx * 3] = 0;
                 gradient[idx * 3 + 1] = 0;
@@ -168,9 +168,9 @@ void IPCSolver::SearchDirection(SolverData<double>& solverData, const SolverPara
 void IPCSolver::DOFElimination(SolverData<double>& solverData)
 {
     int blocks = (energy.NNZ(solverData) + threadsPerBlock - 1) / threadsPerBlock;
-    IPC::DOFEliminationHessKernel << <blocks, threadsPerBlock >> > (energy.hessianRowIdx, energy.hessianColIdx, energy.hessianVal, energy.NNZ(solverData), solverData.DBC, solverData.numDBC);
+    IPC::DOFEliminationHessKernel << <blocks, threadsPerBlock >> > (energy.hessianRowIdx, energy.hessianColIdx, energy.hessianVal, energy.NNZ(solverData), solverData.DBCIdx, solverData.numDBC);
     blocks = (numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    IPC::DOFEliminationGradKernel << <blocks, threadsPerBlock >> > (energy.gradient, numVerts, solverData.DBC, solverData.numDBC);
+    IPC::DOFEliminationGradKernel << <blocks, threadsPerBlock >> > (energy.gradient, numVerts, solverData.DBCIdx, solverData.numDBC);
 }
 
 bool IPCSolver::EndCondition(double h, double tolerance)

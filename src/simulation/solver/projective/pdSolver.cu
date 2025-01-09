@@ -9,6 +9,7 @@
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/device_ptr.h>
 #include <thrust/fill.h>
+#include <utilities.cuh>
 
 struct gravity_force {
     const float g;
@@ -39,7 +40,6 @@ PdSolver::~PdSolver() {
 void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    int DBCBlocks = (solverData.numDBC + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     float dt = solverParams.dt;
     int len = solverData.numVerts * 3 + 48 * solverData.numTets;
@@ -66,9 +66,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
     size_t offset = 0;
     PdUtil::computeSiTSi << < tetBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, matrix_diag, solverData.V0, solverData.DmInv, solverData.Tet, solverData.mu, solverData.numTets, solverData.numVerts);
     offset += 48 * solverData.numTets;
-    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, offset, solverData.mass, dt * dt, massDt_2s, solverData.numVerts);
-    if (solverData.numDBC > 0)
-        PdUtil::setDBC << < DBCBlocks, threadsPerBlock >> > (ARowIdx, AColIdx, AVal, offset, positional_weight, massDt_2s, solverData.numDBC);
+    PdUtil::setMDt_2 << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, ARowIdx, AColIdx, AVal, offset, solverData.mass, dt * dt, massDt_2s, solverData.DBC, positional_weight);
 
     bHost = (float*)malloc(sizeof(float) * ASize);
     std::vector<int>ARowIdxHost(len);
@@ -137,13 +135,11 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
     float dt = solverParams.dt;
     float const dtInv = 1.0f / dt;
     float const dt2 = dt * dt;
+    float const dt2Inv = dtInv * dtInv;
 
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int vert3Blocks = (solverData.numVerts * 3 + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    int DBCBlocks = 0;
-    if (solverData.numDBC > 0)
-        DBCBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
 
     thrust::device_ptr<float> x_prime_ptr(prev_x);
     thrust::device_ptr<float> x_ptr(sn);
@@ -163,7 +159,7 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
             PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, sn_old, massDt_2s, solverData.numVerts);
             PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets, solverType == PdSolver::SolverType::Jacobi);
             if (solverData.numDBC > 0)
-                PdUtil::computeDBCLocal << < DBCBlocks, threadsPerBlock >> > (solverData.numDBC, solverData.DBC, solverData.X0, positional_weight, b);
+                PdUtil::computeDBCLocal << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, solverData.DBC, solverData.X0, positional_weight * dt2Inv, b);
                 }, perf);
         performanceData[1].second +=
             measureExecutionTime([&]()

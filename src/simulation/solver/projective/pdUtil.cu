@@ -40,29 +40,17 @@ namespace PdUtil {
         }
     }
 
-    __global__ void setMDt_2(int* rowIdx, int* colIdx, float* val, int offset, const float* masses, float dt2, float* massDt_2s, int numVerts)
+    __global__ void setMDt_2(int numVerts, int* rowIdx, int* colIdx, float* val, int offset, const float* masses, float dt2, float* massDt_2s, float* DBC, float weight)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
             int start = index * 3;
-            float massDt_2 = masses[index] / dt2;
+            float massDt_2 = (masses[index] + DBC[index] * weight) / dt2;
             massDt_2s[index] = massDt_2;
             setRowColVal(offset + start + 0, rowIdx, colIdx, val, start, start, massDt_2);
             setRowColVal(offset + start + 1, rowIdx, colIdx, val, start + 1, start + 1, massDt_2);
             setRowColVal(offset + start + 2, rowIdx, colIdx, val, start + 2, start + 2, massDt_2);
-        }
-    }
-    __global__ void setDBC(int* rowIdx, int* colIdx, float* val, int offset, float weight, float* massDt_2s, int numDBC)
-    {
-        int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < numDBC)
-        {
-            int start = index * 3;
-            massDt_2s[index] = weight;
-            setRowColVal(offset + start + 0, rowIdx, colIdx, val, start, start, weight);
-            setRowColVal(offset + start + 1, rowIdx, colIdx, val, start + 1, start + 1, weight);
-            setRowColVal(offset + start + 2, rowIdx, colIdx, val, start + 2, start + 2, weight);
         }
     }
 
@@ -140,15 +128,14 @@ namespace PdUtil {
         }
     }
 
-    __global__ void computeDBCLocal(int numDBC, indexType* DBC, const glm::vec3* x0, const float wi, float* xProj)
+    __global__ void computeDBCLocal(int numVerts, float* DBC, const glm::vec3* x0, const float wi, float* xProj)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < numDBC)
+        if (index < numVerts && DBC[index] > 0)
         {
-            indexType dbcIdx = DBC[index];
-            xProj[dbcIdx * 3 + 0] = x0[dbcIdx].x * wi;
-            xProj[dbcIdx * 3 + 1] = x0[dbcIdx].y * wi;
-            xProj[dbcIdx * 3 + 2] = x0[dbcIdx].z * wi;
+            xProj[index * 3 + 0] = x0[index].x * wi;
+            xProj[index * 3 + 1] = x0[index].y * wi;
+            xProj[index * 3 + 2] = x0[index].z * wi;
         }
     }
 
