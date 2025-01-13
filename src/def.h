@@ -18,7 +18,10 @@ struct SolverData {
     glm::tvec3<Scalar>* X = nullptr;
     glm::tvec3<Scalar>* X0 = nullptr;
     glm::tvec3<Scalar>* XTilde = nullptr;
+    glm::tvec3<Scalar>* DBCX = nullptr;
     Scalar* DBC = nullptr;
+    Scalar* moreDBC = nullptr;
+    glm::tvec3<Scalar>* OffsetX = nullptr;
     indexType* DBCIdx = nullptr;
     Scalar* mass = nullptr;
     Scalar* mu = nullptr;

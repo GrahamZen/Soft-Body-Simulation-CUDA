@@ -159,7 +159,7 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
             PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, sn_old, massDt_2s, solverData.numVerts);
             PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets, solverType == PdSolver::SolverType::Jacobi);
             if (solverData.numDBC > 0)
-                PdUtil::computeDBCLocal << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, solverData.DBC, solverData.X0, positional_weight * dt2Inv, b);
+                PdUtil::computeDBCLocal << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, solverData.DBC, solverData.DBCX, positional_weight * dt2Inv, b);
                 }, perf);
         performanceData[1].second +=
             measureExecutionTime([&]()

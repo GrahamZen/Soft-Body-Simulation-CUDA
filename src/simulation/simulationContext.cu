@@ -14,6 +14,7 @@
 #define ERRORCHECK 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
+#define RADIUS_SQUARED		0.01
 
 // TODO: static variables for device memory, any extra info you need, etc
 // ...
@@ -224,15 +225,53 @@ void SimulationCUDAContext::UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBod
 
 bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos)
 {
-    indexType vertIdx = raySimCtxIntersection(ray, mSolverData.numTris, mSolverData.Tri, mSolverData.X);
-    rayIntersected = (vertIdx != -1);
+    mouseSelection.select_v = raySimCtxIntersection(ray, mSolverData.numTris, mSolverData.Tri, mSolverData.X);
+    bool rayIntersected = (mouseSelection.select_v != -1);
     if (rayIntersected && pos)
     {
-        glm::tvec3<solverPrecision>tmpPos;
-        cudaMemcpy(&tmpPos, mSolverData.X + vertIdx, sizeof(tmpPos), cudaMemcpyDeviceToHost);
-        *pos = tmpPos;
+        glm::tvec3<solverPrecision> diff;
+        cudaMemcpy(&diff, mSolverData.X + mouseSelection.select_v, sizeof(diff), cudaMemcpyDeviceToHost);
+        *pos = diff;
+        diff -= ray.origin;
+        solverPrecision dist = glm::dot(diff, ray.direction);
+        mouseSelection.target = ray.origin + dist * ray.direction;
     }
     return rayIntersected;
+}
+
+__global__ void Control_Kernel(glm::tvec3<solverPrecision>* X, solverPrecision* fixed, solverPrecision* more_fixed, glm::tvec3<solverPrecision>* offset_X, const solverPrecision control_mag, const int number, const int select_v)
+{
+    int i = blockDim.x * blockIdx.x + threadIdx.x;
+    if (i >= number)	return;
+
+    more_fixed[i] = 0;
+    if (fixed[i] == 0 && select_v != -1)
+    {
+        offset_X[i].x = X[i].x - X[select_v].x;
+        offset_X[i].y = X[i].y - X[select_v].y;
+        offset_X[i].z = X[i].z - X[select_v].z;
+
+        solverPrecision dist2 = offset_X[i].x * offset_X[i].x + offset_X[i].y * offset_X[i].y + offset_X[i].z * offset_X[i].z;
+        if (dist2 < RADIUS_SQUARED)	more_fixed[i] = control_mag * (1 - sqrt(dist2 / RADIUS_SQUARED));
+    }
+}
+
+void SimulationCUDAContext::ResetMoreDBC()
+{
+    Control_Kernel << <mSolverData.numVerts / threadsPerBlock + 1, threadsPerBlock >> > (mSolverData.X, mSolverData.DBC, mSolverData.moreDBC, mSolverData.OffsetX, 10, mSolverData.numVerts, mouseSelection.select_v);
+}
+
+void SimulationCUDAContext::UpdateDBC()
+{
+    if (mouseSelection.select_v != -1)
+    {
+        glm::vec3 selectPos;
+        cudaMemcpy(&selectPos, mSolverData.X + mouseSelection.select_v, sizeof(selectPos), cudaMemcpyDeviceToHost);
+        mouseSelection.dir = mouseSelection.target - selectPos;
+        float dir_length = glm::length(mouseSelection.dir);
+        if (dir_length > 0.1)	dir_length = 0.1;
+        mouseSelection.dir = selectPos + dir_length * mouseSelection.dir;
+    }
 }
 
 int SimulationCUDAContext::GetVertCnt() const {

@@ -299,6 +299,7 @@ void DataLoader<Scalar>::AllocData(std::vector<int>& startIndices, SolverData<Sc
     cudaMalloc((void**)&solverData.V, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
     cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
     cudaMalloc((void**)&solverData.DBC, sizeof(Scalar) * totalNumVerts);
+    cudaMalloc((void**)&solverData.DBCX, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
     cudaMemset(solverData.V, 0, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
     cudaMemset(solverData.ExtForce, 0, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
     cudaMemset(solverData.DBC, 0, sizeof(Scalar) * totalNumVerts);
@@ -363,6 +364,7 @@ void DataLoader<Scalar>::AllocData(std::vector<int>& startIndices, SolverData<Sc
         delete[] softBodyAttr.DBC;
     }
     cudaMemcpy(solverData.X0, solverData.X, sizeof(glm::tvec3<Scalar>) * totalNumVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(solverData.DBCX, solverData.X0, sizeof(glm::tvec3<Scalar>) * totalNumVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(solverData.XTilde, solverData.X, sizeof(glm::tvec3<Scalar>) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
 

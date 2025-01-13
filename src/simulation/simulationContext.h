@@ -18,10 +18,12 @@ public:
         const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>&, int threadsPerBlock, int _threadsPerBlockBVH, int _maxThreads, int _numIterations);
     ~SimulationCUDAContext();
     void Update();
+    void UpdateDBC();
     void Reset();
     void UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr);
     void SetBVHBuildType(int);
     void SetGlobalSolver(int val);
+    void ResetMoreDBC();
     bool RayIntersect(const Ray& ray, glm::vec3* pos);
     void Draw(SurfaceShader*, SurfaceShader*, SurfaceShader*, std::string highLightName = "");
     SolverParams<solverPrecision>* GetSolverParams();
@@ -46,6 +48,9 @@ private:
     const std::string name;
     SolverParams<solverPrecision> mSolverParams;
     Solver<solverPrecision>* mSolver = nullptr;
-
-    bool rayIntersected = false;
+    struct MouseSelection {
+    int select_v = -1;
+    glm::vec3 target;
+    glm::vec3 dir;
+    } mouseSelection;
 };
