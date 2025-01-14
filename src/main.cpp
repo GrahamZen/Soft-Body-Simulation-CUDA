@@ -103,6 +103,8 @@ void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
     {
         if (context->UpdateCursorPos(xpos, ypos, true))
             context->mcrpSimContext->ResetMoreDBC();
+        else
+            context->mcrpSimContext->SetDragging(false);
     }
     else
         context->mcrpSimContext->ResetMoreDBC(true);
