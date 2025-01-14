@@ -223,19 +223,21 @@ void SimulationCUDAContext::UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBod
     }
 }
 
-bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos)
+bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos, bool updateV)
 {
-    mouseSelection.select_v = raySimCtxIntersection(ray, mSolverData.numTris, mSolverData.Tri, mSolverData.X);
-    bool rayIntersected = (mouseSelection.select_v != -1);
+    indexType select_v = raySimCtxIntersection(ray, mSolverData.numTris, mSolverData.Tri, mSolverData.X);
+    bool rayIntersected = (select_v != -1);
     if (rayIntersected && pos)
     {
         glm::tvec3<solverPrecision> diff;
-        cudaMemcpy(&diff, mSolverData.X + mouseSelection.select_v, sizeof(diff), cudaMemcpyDeviceToHost);
+        cudaMemcpy(&diff, mSolverData.X + select_v, sizeof(diff), cudaMemcpyDeviceToHost);
         *pos = diff;
         diff -= ray.origin;
         solverPrecision dist = glm::dot(diff, ray.direction);
-        mouseSelection.target = ray.origin + dist * ray.direction;
+        mSolverData.mouseSelection.target = ray.origin + dist * ray.direction;
     }
+    if (updateV)
+        mSolverData.mouseSelection.select_v = select_v;
     return rayIntersected;
 }
 
@@ -256,21 +258,27 @@ __global__ void Control_Kernel(glm::tvec3<solverPrecision>* X, solverPrecision* 
     }
 }
 
-void SimulationCUDAContext::ResetMoreDBC()
+void SimulationCUDAContext::ResetMoreDBC(bool clear)
 {
-    Control_Kernel << <mSolverData.numVerts / threadsPerBlock + 1, threadsPerBlock >> > (mSolverData.X, mSolverData.DBC, mSolverData.moreDBC, mSolverData.OffsetX, 10, mSolverData.numVerts, mouseSelection.select_v);
+    if (clear) {
+        cudaMemset(mSolverData.moreDBC, 0, mSolverData.numVerts * sizeof(solverPrecision));
+        return;
+    }
+    if (mSolverData.mouseSelection.dragging)
+        Control_Kernel << <mSolverData.numVerts / threadsPerBlock + 1, threadsPerBlock >> > (mSolverData.X, mSolverData.DBC, mSolverData.moreDBC, mSolverData.OffsetX, 10, mSolverData.numVerts, mSolverData.mouseSelection.select_v);
+
 }
 
 void SimulationCUDAContext::UpdateDBC()
 {
-    if (mouseSelection.select_v != -1)
+    if (mSolverData.mouseSelection.dragging && mSolverData.mouseSelection.select_v != -1)
     {
         glm::vec3 selectPos;
-        cudaMemcpy(&selectPos, mSolverData.X + mouseSelection.select_v, sizeof(selectPos), cudaMemcpyDeviceToHost);
-        mouseSelection.dir = mouseSelection.target - selectPos;
-        float dir_length = glm::length(mouseSelection.dir);
+        cudaMemcpy(&selectPos, mSolverData.X + mSolverData.mouseSelection.select_v, sizeof(selectPos), cudaMemcpyDeviceToHost);
+        mSolverData.mouseSelection.dir = mSolverData.mouseSelection.target - selectPos;
+        float dir_length = glm::length(mSolverData.mouseSelection.dir);
         if (dir_length > 0.1)	dir_length = 0.1;
-        mouseSelection.dir = selectPos + dir_length * mouseSelection.dir;
+        mSolverData.mouseSelection.dir = selectPos + dir_length * mSolverData.mouseSelection.dir;
     }
 }
 

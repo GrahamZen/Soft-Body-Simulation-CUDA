@@ -23,12 +23,14 @@ public:
     void UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr);
     void SetBVHBuildType(int);
     void SetGlobalSolver(int val);
-    void ResetMoreDBC();
-    bool RayIntersect(const Ray& ray, glm::vec3* pos);
+    void ResetMoreDBC(bool clear = false);
+    bool RayIntersect(const Ray& ray, glm::vec3* pos, bool updateV = true);
     void Draw(SurfaceShader*, SurfaceShader*, SurfaceShader*, std::string highLightName = "");
     SolverParams<solverPrecision>* GetSolverParams();
     void SetPerf(bool val);
     const std::vector<std::pair<std::string, solverPrecision>>& GetPerformanceData() const;
+    MouseSelection GetMouseSelection() const;
+    void SetDragging(bool val);
     int GetTetCnt() const;
     int GetVertCnt() const;
     int GetThreadsPerBlock() const { return threadsPerBlock; }
@@ -48,9 +50,4 @@ private:
     const std::string name;
     SolverParams<solverPrecision> mSolverParams;
     Solver<solverPrecision>* mSolver = nullptr;
-    struct MouseSelection {
-    int select_v = -1;
-    glm::vec3 target;
-    glm::vec3 dir;
-    } mouseSelection;
 };

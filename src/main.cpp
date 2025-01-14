@@ -65,6 +65,9 @@ void keyCallback(GLFWwindow* window, int key, int scancode, int action, int mods
         case GLFW_KEY_R:
             context->ResetCamera();
             break;
+        case GLFW_KEY_S:
+            context->guiData->Step = true;
+            break;
         case GLFW_KEY_SPACE:
             if (context->guiData->softBodyAttr.currSoftBodyId != -1)
                 context->guiData->softBodyAttr.setJump(true);
@@ -85,20 +88,30 @@ void mouseButtonCallback(GLFWwindow* window, int button, int action, int mods) {
     mouseState.leftMousePressed = (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS);
     mouseState.rightMousePressed = (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS);
     mouseState.middleMousePressed = (button == GLFW_MOUSE_BUTTON_MIDDLE && action == GLFW_PRESS);
+    if (!mouseState.leftMousePressed && context->mcrpSimContext->GetMouseSelection().dragging)
+    {
+        context->mcrpSimContext->SetDragging(false);
+        context->mcrpSimContext->ResetMoreDBC(true);
+    }
+    else
+        context->mcrpSimContext->SetDragging(true);
 }
 
 void mousePositionCallback(GLFWwindow* window, double xpos, double ypos) {
     auto& mouseState = context->mouseState;
-    if (xpos == mouseState.lastPos.x || ypos == mouseState.lastPos.y)
+    if (context->mcrpSimContext->GetMouseSelection().dragging)
     {
-        if (!mouseState.leftMousePressed)
-            mouseState.rayIntersected = context->UpdateCursorPos(xpos, ypos);
-        return; // otherwise, clicking back into window causes re-start
+        if (context->UpdateCursorPos(xpos, ypos, true))
+            context->mcrpSimContext->ResetMoreDBC();
     }
+    else
+        context->mcrpSimContext->ResetMoreDBC(true);
+    if (xpos == mouseState.lastPos.x || ypos == mouseState.lastPos.y)
+        return; // otherwise, clicking back into window causes re-start
     double lastX = mouseState.lastPos.x;
     double lastY = mouseState.lastPos.y;
     if (mouseState.leftMousePressed) {
-        if (!mouseState.rayIntersected) {
+        if (!context->mcrpSimContext->GetMouseSelection().dragging) {
             // compute new camera parameters
             context->phi -= (xpos - lastX) / context->width * 3.f;
             context->theta -= (ypos - lastY) / context->height * 3.f;

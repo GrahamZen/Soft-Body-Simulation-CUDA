@@ -32,6 +32,7 @@ void measureExecutionTime(const Func& func, const std::string& message, bool pri
 
 void SimulationCUDAContext::Update()
 {
+    UpdateDBC();
     mSolverParams.handleCollision = (contextGuiData->handleCollision && contextGuiData->BVHEnabled);
     mSolver->Update(mSolverData, mSolverParams);
     if (contextGuiData->handleCollision || contextGuiData->BVHEnabled) {
@@ -61,6 +62,7 @@ void SimulationCUDAContext::Reset()
     cudaMemcpy(mSolverData.X, mSolverData.X0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(mSolverData.XTilde, mSolverData.X0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts, cudaMemcpyDeviceToDevice);
     cudaMemset(mSolverData.V, 0, sizeof(glm::tvec3<solverPrecision>) * mSolverData.numVerts);
+    cudaMemset(mSolverData.moreDBC, 0, sizeof(solverPrecision) * mSolverData.numVerts);
     mSolver->Reset();
 }
 
@@ -106,4 +108,15 @@ void SimulationCUDAContext::SetPerf(bool val)
 const std::vector<std::pair<std::string, solverPrecision>>& SimulationCUDAContext::GetPerformanceData() const
 {
     return mSolver->GetPerformanceData();
+}
+
+MouseSelection SimulationCUDAContext::GetMouseSelection() const
+{
+    return mSolverData.mouseSelection;
+}
+
+void SimulationCUDAContext::SetDragging(bool val)
+{
+    mSolverData.mouseSelection.dragging = val;
+    mSolverData.mouseSelection.select_v = -1;
 }

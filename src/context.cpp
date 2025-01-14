@@ -452,16 +452,16 @@ void Context::Draw() {
     }
 }
 
-bool Context::UpdateCursorPos(double xpos, double ypos)
+bool Context::UpdateCursorPos(double xpos, double ypos, bool updateV)
 {
-    return mcrpSimContext->RayIntersect(mpCamera->RayPick({ xpos, ypos }), nullptr);
+    return mcrpSimContext->RayIntersect(mpCamera->RayPick({ xpos, ypos }), nullptr, updateV);
 }
 
 
 bool Context::GetSelectSPhere()
 {
     Ray ray = mpCamera->RayPick(mouseState.lastPos);
-    return mcrpSimContext->RayIntersect(ray, &spherePos);
+    return mcrpSimContext->RayIntersect(ray, &spherePos, false);
 }
 
 void Context::SetBVHBuildType(int buildType)

@@ -9,6 +9,13 @@ template<typename Scalar>
 class CollisionDetection;
 class Query;
 
+struct MouseSelection {
+    int select_v = -1;
+    bool dragging = false;
+    glm::vec3 target;
+    glm::vec3 dir;
+};
+
 template<typename Scalar>
 struct SolverData {
     indexType* Tri = nullptr;
@@ -42,6 +49,7 @@ struct SolverData {
     int numQueries() const;
     Query* queries() const;
     CollisionDetection<Scalar>* pCollisionDetection = nullptr;
+    MouseSelection mouseSelection;
 };
 
 struct SoftBodyAttribute {

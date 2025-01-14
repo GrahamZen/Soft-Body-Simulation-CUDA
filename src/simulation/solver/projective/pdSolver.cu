@@ -140,12 +140,13 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int vert3Blocks = (solverData.numVerts * 3 + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-
+    //inspectGLM(solverData.DBCX, solverData.numVerts, "DBCX");
     thrust::device_ptr<float> x_prime_ptr(prev_x);
     thrust::device_ptr<float> x_ptr(sn);
     thrust::transform(thrust::device_pointer_cast(solverData.mass), thrust::device_pointer_cast(solverData.mass) + solverData.numVerts,
         thrust::device_pointer_cast(solverData.ExtForce), gravity_force(solverParams.gravity));
-    PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, sn, dt, massDt_2s, solverData.X, solverData.V, solverData.ExtForce);
+    PdUtil::setMDt_2MoreDBC << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, solverData.mass, dt * dt, massDt_2s, solverData.moreDBC, solverData.DBC);
+    PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, sn, dt, massDt_2s, solverData.X, solverData.V, solverData.ExtForce, solverData.moreDBC, solverData.OffsetX, solverData.DBCX, solverData.mouseSelection.dir);
     cudaMemcpy(sn_old, sn, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToDevice);
     if (solverType == PdSolver::SolverType::Jacobi)
         cudaMemcpy(prev_x, sn, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToDevice);
@@ -159,7 +160,7 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
             PdUtil::addM_h2Sn << < vertBlocks, threadsPerBlock >> > (b, sn_old, massDt_2s, solverData.numVerts);
             PdUtil::computeLocal << < tetBlocks, threadsPerBlock >> > (solverData.V0, solverData.mu, b, solverData.DmInv, sn, solverData.Tet, solverData.numTets, solverType == PdSolver::SolverType::Jacobi);
             if (solverData.numDBC > 0)
-                PdUtil::computeDBCLocal << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, solverData.DBC, solverData.DBCX, positional_weight * dt2Inv, b);
+                PdUtil::computeDBCLocal << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, solverData.DBC, solverData.moreDBC, solverData.DBCX, positional_weight * dt2Inv, b);
                 }, perf);
         performanceData[1].second +=
             measureExecutionTime([&]()
@@ -182,6 +183,7 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
                         break;
                     }
                     case PdSolver::SolverType::Jacobi:
+                        // correct massDt_2 with moreDBC
                         PdUtil::getErrorKern << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, next_x, b, massDt_2s, sn, matrix_diag);
                         if (i <= 10)		omega = 1;
                         else if (i == 11)	omega = 2 / (2 - solverParams.rho * solverParams.rho);

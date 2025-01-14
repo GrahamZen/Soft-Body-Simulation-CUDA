@@ -93,7 +93,7 @@ public:
     void Update();
     void ResetCamera();
     void Draw();
-    bool UpdateCursorPos(double xpos, double ypos);
+    bool UpdateCursorPos(double xpos, double ypos, bool updateV = true);
     bool GetSelectSPhere();
     void SetBVHBuildType(int buildType);
     int& GetBVHBuildType();
