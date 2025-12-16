@@ -258,10 +258,6 @@ void RenderImGui()
     ImGui::SetNextItemWidth(availWidth * 0.25f);
     if (ImGui::DragFloat("tolerance", &tol, 0.0001f, 0.0001f, 0.05f, "%.4f"))
         imguiData->solverParams->tol = tol;
-    float kappa = imguiData->solverParams->kappa;
-    ImGui::SetNextItemWidth(availWidth * 0.25f);
-    if (ImGui::DragFloat("kappa", &kappa, 1000.f, 1e2, 1e5, "%.4f"))
-        imguiData->solverParams->kappa = kappa;
     ImGui::SetNextItemWidth(availWidth * 0.25f);
     int maxIterations = imguiData->solverParams->maxIterations;
     ImGui::SameLine();

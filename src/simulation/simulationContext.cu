@@ -36,7 +36,7 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
         mSolverParams.dt = json["dt"].get<float>();
     }
     if (json.contains("kappa")) {
-        mSolverParams.kappa = json["kappa"].get<float>();
+        mSolverData.kappa = json["kappa"].get<float>();
     }
     if (json.contains("tolerance")) {
         mSolverParams.tol = json["tolerance"].get<float>();
@@ -229,11 +229,11 @@ bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos, bool up
     bool rayIntersected = (select_v != -1);
     if (rayIntersected && pos)
     {
-        glm::tvec3<solverPrecision> diff;
+        glm::vec3 diff;
         cudaMemcpy(&diff, mSolverData.X + select_v, sizeof(diff), cudaMemcpyDeviceToHost);
         *pos = diff;
         diff -= ray.origin;
-        solverPrecision dist = glm::dot(diff, ray.direction);
+        float dist = glm::dot(diff, ray.direction);
         mSolverData.mouseSelection.target = ray.origin + dist * ray.direction;
     }
     if (updateV)

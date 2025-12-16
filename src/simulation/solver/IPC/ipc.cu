@@ -46,12 +46,12 @@ void IPCSolver::SolverPrepare(SolverData<double>& solverData, const SolverParams
 }
 namespace IPC {
 
-    __global__ void computeXTilde(glm::dvec3* xTilde, const glm::dvec3* x, glm::dvec3* v, double dt, int numVerts)
+    __global__ void computeXTilde(glm::dvec3* xTilde, const glm::dvec3* x, glm::dvec3* v, double dt, int numVerts, double damp)
     {
         int idx = threadIdx.x + blockIdx.x * blockDim.x;
         if (idx >= numVerts) return;
 
-        xTilde[idx] = x[idx] + dt * v[idx];
+        xTilde[idx] = x[idx] + dt * v[idx] * damp;
     }
     __global__ void computeXMinusAP(glm::dvec3* xPlusAP, const glm::dvec3* x, const double* p, double alpha, int numVerts)
     {
@@ -115,8 +115,9 @@ bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
     performanceData[0].second +=
         measureExecutionTime([&]() {
         cudaMemcpy(x_n, solverData.X, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
-        IPC::computeXTilde << <blocks, threadsPerBlock >> > (solverData.XTilde, solverData.X, solverData.V, h, solverData.numVerts);
+        IPC::computeXTilde << <blocks, threadsPerBlock >> > (solverData.XTilde, solverData.X, solverData.V, h, solverData.numVerts, solverParams.damp);
         solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers, solverParams.dhat);
+        energy.UpdateKappa(solverData, const_cast<SolverParams<double>&>(solverParams), h2);
         E_last = energy.Val(solverData.X, solverData, solverParams, h2);
 
         SearchDirection(solverData, solverParams, h2);
@@ -141,6 +142,10 @@ bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
                     alpha /= 2;
                 else
                     break;
+                if (alpha < std::numeric_limits<double>::epsilon()) {
+                    std::cout << "Line search step too small!" << std::endl;
+                    break;
+                }
             }
             cudaMemcpy(solverData.X, xTmp, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
                 }, perf);

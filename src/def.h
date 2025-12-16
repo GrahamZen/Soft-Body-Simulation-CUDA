@@ -50,6 +50,7 @@ struct SolverData {
     Query* queries() const;
     CollisionDetection<Scalar>* pCollisionDetection = nullptr;
     MouseSelection mouseSelection;
+    Scalar kappa = 1e5;
 };
 
 struct SoftBodyAttribute {
@@ -73,7 +74,6 @@ struct SolverParams {
     Scalar gravity = 9.8f;
     // IPC
     Scalar dhat = 1e-2;
-    Scalar kappa = 1e5;
     Scalar tol = 1e-2;
 
     // Pd(Jacobi)

@@ -12,6 +12,7 @@ public:
     ~IPEnergy();
     double Val(const glm::dvec3* Xs, const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const;
     void GradientHessian(const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const;
+    void UpdateKappa(SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const;
     double InitStepSize(SolverData<double>& solverData, const SolverParams<double>& solverParams, double* p, glm::tvec3<double>* XTmp) const;
     int NNZ(const SolverData<double>& solverData) const;
     double* gradient = nullptr;

@@ -61,7 +61,7 @@ namespace Barrier {
         int qIdx = blockIdx.x * blockDim.x + threadIdx.x;
         if (qIdx >= numQueries) return;
         const Query& q = queries[qIdx];
-        if (q.d > dhat) return;
+        if (q.d > dhat * dhat) return;
         glm::tvec3<Scalar> x0 = Xs[q.v0], x1 = Xs[q.v1], x2 = Xs[q.v2], x3 = Xs[q.v3];
         Vector12<Scalar> localGrad;
         Matrix12<Scalar> localHess;
@@ -157,7 +157,7 @@ Scalar BarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData
     if (num_queries == 0)return 0;
     Query* queries = solverData.queries();
     Scalar dhat = solverParams.dhat;
-    Scalar kappa = solverParams.kappa;
+    Scalar kappa = solverData.kappa;
     Scalar sum = thrust::transform_reduce(
         thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(num_queries),
@@ -181,7 +181,7 @@ void BarrierEnergy<Scalar>::Gradient(Scalar* grad, const SolverData<Scalar>& sol
     if (numQueries == 0)return;
     int threadsPerBlock = 256;
     int numBlocks = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    Barrier::GradientKern << <numBlocks, threadsPerBlock >> > (grad, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverParams.kappa, coef);
+    Barrier::GradientKern << <numBlocks, threadsPerBlock >> > (grad, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverData.kappa, coef);
 }
 
 template <typename Scalar>
@@ -191,7 +191,7 @@ void BarrierEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, const 
     if (numQueries == 0)return;
     int threadsPerBlock = 256;
     int numBlocks = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    Barrier::hessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverParams.kappa, coef);
+    Barrier::hessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverData.kappa, coef);
 }
 
 template <typename Scalar>
@@ -201,7 +201,7 @@ void BarrierEnergy<Scalar>::GradientHessian(Scalar* grad, const SolverData<Scala
     if (numQueries == 0)return;
     int threadsPerBlock = 256;
     int numBlocks = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    Barrier::gradHessianKern << <numBlocks, threadsPerBlock >> > (grad, hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverParams.kappa, coef);
+    Barrier::gradHessianKern << <numBlocks, threadsPerBlock >> > (grad, hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverData.kappa, coef);
 }
 
 template<typename Scalar>
