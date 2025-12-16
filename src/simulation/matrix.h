@@ -179,6 +179,7 @@ public:
         for (int i = 0; i < Rows; ++i) {
             result[i] = value[i] * val;
         }
+        return result;
     }
 
     __host__ __device__ friend Matrix operator*(const Scalar& val, const Matrix& mat) {

@@ -33,7 +33,7 @@ namespace Barrier {
         int qIdx = blockIdx.x * blockDim.x + threadIdx.x;
         if (qIdx >= numQueries) return;
         const Query& q = queries[qIdx];
-        if (q.d > dhat) return;
+        if (q.d > dhat * dhat) return;
         glm::tvec3<Scalar> x0 = Xs[q.v0], x1 = Xs[q.v1], x2 = Xs[q.v2], x3 = Xs[q.v3];
         Vector12<Scalar> localGrad;
         if (q.type == QueryType::EE) {
@@ -96,7 +96,7 @@ namespace Barrier {
         int qIdx = blockIdx.x * blockDim.x + threadIdx.x;
         if (qIdx >= numQueries) return;
         const Query& q = queries[qIdx];
-        if (q.d > dhat) return;
+        if (q.d > dhat * dhat) return;
         glm::tvec3<Scalar> x0 = Xs[q.v0], x1 = Xs[q.v1], x2 = Xs[q.v2], x3 = Xs[q.v3];
         Vector12<Scalar> localGrad;
         Matrix12<Scalar> localHess;
@@ -163,7 +163,7 @@ Scalar BarrierEnergy<Scalar>::Val(const glm::tvec3<Scalar>* Xs, const SolverData
         thrust::counting_iterator<indexType>(num_queries),
         [=] __host__ __device__(indexType qIdx) {
         Scalar d = queries[qIdx].d;
-        if (d < dhat) {
+        if (d < dhat * dhat) {
             return Barrier::barrierSquareFunc(d, dhat, kappa);
         }
         else

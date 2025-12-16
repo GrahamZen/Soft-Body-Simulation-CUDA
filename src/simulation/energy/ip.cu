@@ -32,6 +32,8 @@ void IPEnergy::GradientHessian(const SolverData<double>& solverData, const Solve
 {
     cudaMemset(gradient, 0, sizeof(double) * solverData.numVerts * 3);
     cudaMemset(hessianVal, 0, sizeof(double) * NNZ(solverData));
+    cudaMemset(hessianRowIdx, 0, sizeof(int) * NNZ(solverData));
+    cudaMemset(hessianColIdx, 0, sizeof(int) * NNZ(solverData));
     inertia.GradientHessian(gradient, solverData, solverParams, 1);
     gravity.Gradient(gradient, solverData, solverParams, h2);
     elastic->GradientHessian(gradient, solverData, solverParams, h2);

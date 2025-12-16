@@ -31,7 +31,7 @@ namespace ImplicitBarrier {
                         int rowIdx = idx * 3 + k;
                         int colIdx = idx * 3 + l;
                         int index = idx * 9 + k * 3 + l;
-                        hessianVal[index] = hess[k][l];
+                        hessianVal[index] += hess[k][l];
                         hessianRowIdx[index] = rowIdx;
                         hessianColIdx[index] = colIdx;
                     }

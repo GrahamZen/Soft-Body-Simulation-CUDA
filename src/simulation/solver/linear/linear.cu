@@ -5,6 +5,10 @@
 
 template<typename T>
 void sort_coo(int N, int& nz, T* d_A, int* d_rowIdx, int* d_colIdx, T*& new_A, int*& new_rowIdx, int*& new_colIdx) {
+    if (new_rowIdx) cudaFree(new_rowIdx);
+    if (new_colIdx) cudaFree(new_colIdx);
+    if (new_A)      cudaFree(new_A);
+
     cudaMalloc(&new_rowIdx, nz * sizeof(int));
     cudaMalloc(&new_colIdx, nz * sizeof(int));
     cudaMalloc(&new_A, nz * sizeof(T));
