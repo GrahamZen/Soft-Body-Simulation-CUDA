@@ -58,7 +58,6 @@ CGSolver<T>::~CGSolver()
     CHECK_CUDA(cudaFree(d_r));
     CHECK_CUDA(cudaFree(d_q));
     CHECK_CUDA(cudaFree(d_p));
-    CHECK_CUDA(cudaFree(d_rowPtrA));
     CHECK_CUDA(cudaFree(d_ic));
     CHECK_CUDA(cudaFree(d_bufL));
     CHECK_CUDA(cudaFree(d_bufU));
@@ -89,7 +88,7 @@ void CGSolver<T>::Solve(int N, T* d_b, T* d_x, T* A, int nz, int* rowIdx, int* c
 
     //==============================================================================
     // Sort the COO matrix by row index and convert it to CSR format
-    sort_coo(N, nz, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx);
+    sort_coo(N, nz, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx, capacity);
     cusparseXcoo2csr(cusHandle, d_rowIdx, nz, N, d_rowPtrA, CUSPARSE_INDEX_BASE_ZERO);
     CHECK_CUSPARSE(cusparseCreateCsr(&d_matA, N, N, nz, d_rowPtrA, d_colIdx, d_A,
         CUSPARSE_INDEX_32I, CUSPARSE_INDEX_32I, CUSPARSE_INDEX_BASE_ZERO, dType));

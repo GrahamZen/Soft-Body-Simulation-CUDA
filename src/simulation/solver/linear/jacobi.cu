@@ -71,7 +71,7 @@ void JacobiSolver<T>::Solve(int N, T* d_b, T* d_x, T* A, int nz, int* rowIdx, in
 {
     int blockSize = 256;
     int numBlocks = (N + blockSize - 1) / blockSize;
-    sort_coo(N, nz, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx);
+    sort_coo(N, nz, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx, capacity);
     CHECK_CUSPARSE(cusparseXcoo2csr(cusHandle, d_rowIdx, nz, N, d_rowPtrA, CUSPARSE_INDEX_BASE_ZERO));
 
     CHECK_CUDA(cudaMemset(d_x, 0, N * sizeof(T)));

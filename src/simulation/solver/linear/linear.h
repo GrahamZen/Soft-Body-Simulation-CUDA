@@ -52,7 +52,12 @@ template<typename T>
 class LinearSolver {
 public:
     LinearSolver() = default;
-    virtual ~LinearSolver() = default;
+    virtual ~LinearSolver() {
+        if (d_A) cudaFree(d_A);
+        if (d_rowIdx) cudaFree(d_rowIdx);
+        if (d_colIdx) cudaFree(d_colIdx);
+        if (d_rowPtrA) cudaFree(d_rowPtrA);
+    }
     virtual void Solve(int N, T* d_b, T* d_x, T* A = nullptr, int nz = 0, int* rowIdx = nullptr, int* colIdx = nullptr, T* d_guess = nullptr) = 0;
 protected:
     cudaDataType dType = CUDAType<T>::value;
@@ -60,6 +65,7 @@ protected:
     int* d_rowIdx = nullptr;
     int* d_colIdx = nullptr;
     int* d_rowPtrA = nullptr; // CSR 
+    int capacity = 0;
 };
 template<typename T>
-void sort_coo(int N, int& nz, T* d_A, int* d_rowIdx, int* d_colIdx, T*& new_A, int*& new_rowIdx, int*& new_colIdx);
+void sort_coo(int N, int& nz, T* d_A, int* d_rowIdx, int* d_colIdx, T*& new_A, int*& new_rowIdx, int*& new_colIdx, int& capacity);

@@ -185,18 +185,19 @@ template<class Scalar>
 __global__ void Control_Kernel(glm::tvec3<Scalar>* X, Scalar* fixed, Scalar* more_fixed, glm::tvec3<Scalar>* offset_X, const Scalar control_mag, const int number, const int select_v)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
-    if (i >= number)	return;
+    if (i >= number) return;
+    Scalar stiffness = 0;
 
-    more_fixed[i] = 0;
     if (fixed[i] == 0 && select_v != -1)
     {
-        offset_X[i].x = X[i].x - X[select_v].x;
-        offset_X[i].y = X[i].y - X[select_v].y;
-        offset_X[i].z = X[i].z - X[select_v].z;
-
-        Scalar dist2 = offset_X[i].x * offset_X[i].x + offset_X[i].y * offset_X[i].y + offset_X[i].z * offset_X[i].z;
-        if (dist2 < RADIUS_SQUARED)	more_fixed[i] = control_mag;
+        glm::tvec3<Scalar> diff = X[i] - X[select_v];
+        offset_X[i] = diff;
+        Scalar dist2 = glm::dot(diff, diff);
+        if (dist2 < RADIUS_SQUARED) {
+            stiffness = control_mag;
+        }
     }
+    more_fixed[i] = stiffness;
 }
 
 void SimulationCUDAContext::ResetMoreDBC(bool clear)
