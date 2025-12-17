@@ -15,33 +15,35 @@ Hanting Xu
 
 ## Description
 
-This project is originally a final project for CIS5650 at UPenn and is still under development. The goal of this toy project is to provide a CUDA-accelerated physical simulation framework with dependencies as few as possible, in which various simulation algorithms can be implemented and tested.
+This project is originally a final project for CIS5650 at UPenn. The goal of this toy project is to provide a CUDA-accelerated physical simulation framework with minimal dependencies. The framework is designed to be easily extensible, allowing new simulation algorithms, physical models, linear solvers, and collision detection methods to be added with minimal effort. The currently implemented features are listed below.
 
 ## Features
 
-* Linear solvers
-  * [x] sparse cholesky prefactorization w/ approximate minimum degree ordering
-  * [x] dense cholesky prefactorization
-  * [x] jacobi solver (naive)
-  * [x] cholesky decomposition
-  * [x] preconditioned conjugate gradient
+* Linear Solvers
+    * [x] Sparse Cholesky Prefactorization W/ Approximate Minimum Degree Ordering
+    * [x] Dense Cholesky Prefactorization
+    * [x] Jacobi Solver (Naive)
+    * [x] Cholesky Decomposition
+    * [x] Preconditioned Conjugate Gradient
 
 * FEM
-  * [x] projective dynamics
-      * [x] Direct (cusolver's cholesky)
-      * [x] Chebyshev acceleration
-  * [x] explicit euler
-  * [x] incremental potential
-    *  materials
-         * [x] corotational
-         * [ ] neo-hookean
-    * barrier
-      * [x] spheres, planes, cylinders
-      * [ ] soft bodies
-* Collision detection
-  * [x] real-time bvh
-  * [x] ccd
-  * [ ] robust collision handling
+    * [x] Projective Dynamics
+      * [x] Direct (Cusolver's Cholesky)
+      * [x] Chebyshev Acceleration
+    * [x] Explicit Euler
+    * [x] Incremental Potential Contact (IPC)
+      * [x] Barrier
+      * [ ] Frictional Contact
+      * [ ] Dirichlet Boundary Conditions
+        * [x] Equality Constraints
+      * Materials
+         * [x] Corotational
+         * [x] Neo-Hookean
+
+* Collision Detection
+    * [x] Real-Time Bvh
+    * [x] Ccd
+    * [ ] Robust Collision Handling
 
 ## Dependencies
 

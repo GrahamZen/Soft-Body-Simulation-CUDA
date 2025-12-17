@@ -74,6 +74,7 @@ namespace Barrier {
             localHess = ipc::point_triangle_distance_hessian(x0, x1, x2, x3, q.dType);
         }
         localHess = coef * barrierSquareFuncHess((Scalar)q.d, dhat, kappa, localGrad, localHess);
+        makePD<Scalar, 12>(localHess);
         indexType v[4] = { q.v0, q.v1, q.v2, q.v3 };
         for (int i = 0; i < 4; i++) {
             int row = v[i] * 3;
@@ -110,6 +111,7 @@ namespace Barrier {
         }
         localGrad = coef * barrierSquareFuncDerivative((Scalar)q.d, dhat, kappa) * localGrad;
         localHess = coef * barrierSquareFuncHess((Scalar)q.d, dhat, kappa, localGrad, localHess);
+        makePD<Scalar, 12>(localHess);
         atomicAdd(&grad[q.v0 * 3 + 0], localGrad[0]);
         atomicAdd(&grad[q.v0 * 3 + 1], localGrad[1]);
         atomicAdd(&grad[q.v0 * 3 + 2], localGrad[2]);

@@ -436,3 +436,84 @@ __host__ __device__ void ComputeHessian(const Scalar* DmInv, const Matrix9<Scala
         H[i][2] = -H[i][5] - H[i][8] - H[i][11];
     }
 }
+
+template <typename Scalar, int N>
+__device__ void makePD(Matrix<Scalar, N, N>& symM, int maxSweeps = 20, Scalar eps = 1e-9) {
+    Matrix<Scalar, N, N> V;
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            V[i][j] = (i == j) ? Scalar(1.0) : Scalar(0.0);
+        }
+    }
+
+    for (int sweep = 0; sweep < maxSweeps; ++sweep) {
+        bool converged = true;
+        
+        for (int p = 0; p < N; ++p) {
+            for (int q = p + 1; q < N; ++q) {
+                
+                Scalar apq = symM[p][q];
+                if (fabs(apq) < eps) continue; 
+                converged = false;
+                Scalar app = symM[p][p];
+                Scalar aqq = symM[q][q];
+                Scalar theta = 0.5 * (aqq - app) / apq;
+                Scalar t;
+                if (fabs(theta) > 1e10) {
+                    t = 0.5 / theta;
+                } else {
+                    Scalar sgn = (theta >= 0) ? 1.0 : -1.0;
+                    t = sgn / (fabs(theta) + sqrt(1.0 + theta * theta));
+                }
+                Scalar c = 1.0 / sqrt(1.0 + t * t);
+                Scalar s = t * c;
+
+                symM[p][q] = 0.0;
+                symM[q][p] = 0.0;
+                symM[p][p] = c * c * app - 2.0 * s * c * apq + s * s * aqq;
+                symM[q][q] = s * s * app + 2.0 * s * c * apq + c * c * aqq;
+
+                for (int k = 0; k < N; ++k) {
+                    if (k != p && k != q) {
+                        Scalar akp = symM[k][p];
+                        Scalar akq = symM[k][q];
+                        symM[k][p] = c * akp - s * akq;
+                        symM[p][k] = symM[k][p];
+                        
+                        symM[k][q] = s * akp + c * akq;
+                        symM[q][k] = symM[k][q];
+                    }
+                }
+
+                for (int k = 0; k < N; ++k) {
+                    Scalar vkp = V[k][p];
+                    Scalar vkq = V[k][q];
+                    V[k][p] = c * vkp - s * vkq;
+                    V[k][q] = s * vkp + c * vkq;
+                }
+            }
+        }
+        if (converged) break;
+    }
+
+    Scalar minEig = 1e-6; 
+    for (int i = 0; i < N; ++i) {
+        if (symM[i][i] < minEig) {
+            symM[i][i] = minEig;
+        }
+    }
+
+    Matrix<Scalar, N, N> result;
+    for (int i = 0; i < N; ++i) { 
+        for (int j = 0; j < N; ++j) {
+            Scalar sum = 0.0;
+            for (int k = 0; k < N; ++k) {
+                sum += V[i][k] * symM[k][k] * V[j][k];
+            }
+            result[i][j] = sum;
+        }
+    }
+
+    symM = result;
+}
+

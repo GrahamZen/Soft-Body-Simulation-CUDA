@@ -24,6 +24,7 @@ namespace ImplicitBarrier {
             if (d < dhat)
             {
                 glm::tmat3x3<Scalar> hess = coef * barrierFuncHess(floorUp, d, dhat, plane.kappa, contact_area[idx]);
+                makePD<Scalar>(hess);
                 for (int k = 0; k < 3; k++)
                 {
                     for (int l = 0; l < 3; l++)
@@ -50,6 +51,7 @@ namespace ImplicitBarrier {
             if (d < dhat)
             {
                 glm::tmat3x3<Scalar> hess = coef * barrierFuncHess(normal, d, dhat, cy.kappa, contact_area[idx]);
+                makePD<Scalar>(hess);
                 for (int k = 0; k < 3; k++)
                 {
                     for (int l = 0; l < 3; l++)
@@ -74,6 +76,7 @@ namespace ImplicitBarrier {
             if (d < dhat)
             {
                 glm::tmat3x3<Scalar> hess = coef * barrierFuncHess(normal, d, dhat, sphere.kappa, contact_area[idx]);
+                makePD<Scalar>(hess);
                 for (int k = 0; k < 3; k++)
                 {
                     for (int l = 0; l < 3; l++)
@@ -163,6 +166,7 @@ namespace ImplicitBarrier {
                 grad[idx * 3 + 1] += gradient.y;
                 grad[idx * 3 + 2] += gradient.z;
                 glm::tmat3x3<Scalar> hess = coef * barrierFuncHess(floorUp, d, dhat, plane.kappa, contact_area[idx]);
+                makePD<Scalar>(hess);
                 for (int k = 0; k < 3; k++)
                 {
                     for (int l = 0; l < 3; l++)
@@ -170,7 +174,7 @@ namespace ImplicitBarrier {
                         int rowIdx = idx * 3 + k;
                         int colIdx = idx * 3 + l;
                         int index = idx * 9 + k * 3 + l;
-                        hessianVal[index] = hess[k][l];
+                        hessianVal[index] += hess[k][l];
                         hessianRowIdx[index] = rowIdx;
                         hessianColIdx[index] = colIdx;
                     }
@@ -193,6 +197,7 @@ namespace ImplicitBarrier {
                 grad[idx * 3 + 1] += gradient.y;
                 grad[idx * 3 + 2] += gradient.z;
                 glm::tmat3x3<Scalar> hess = coef * barrierFuncHess(normal, d, dhat, cy.kappa, contact_area[idx]);
+                makePD<Scalar>(hess);
                 for (int k = 0; k < 3; k++)
                 {
                     for (int l = 0; l < 3; l++)
@@ -221,6 +226,7 @@ namespace ImplicitBarrier {
                 grad[idx * 3 + 1] += gradient.y;
                 grad[idx * 3 + 2] += gradient.z;
                 glm::tmat3x3<Scalar> hess = coef * barrierFuncHess(normal, d, dhat, sphere.kappa, contact_area[idx]);
+                makePD<Scalar>(hess);
                 for (int k = 0; k < 3; k++)
                 {
                     for (int l = 0; l < 3; l++)
