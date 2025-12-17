@@ -2,7 +2,10 @@
 #include <glm/glm.hpp>
 
 using indexType = unsigned int;
-
+enum class Precision { 
+    Float32, 
+    Float64 
+};
 class FixedBodyData;
 
 template<typename Scalar>
@@ -60,6 +63,21 @@ struct SoftBodyAttribute {
     indexType* DBC = nullptr;
     size_t numDBC = 0;
     bool jump = false;
+};
+
+struct SolverParamsUI {
+    SoftBodyAttribute softBodyAttr;
+    size_t numIterations = 1;
+    size_t maxIterations = 100;
+    double dt = 0.001;
+    double damp = 0.999;
+    double muN = 0.5;
+    double muT = 0.5;
+    double gravity = 9.8;
+    double dhat = 1e-2;
+    double tol = 1e-2;
+    double rho = 0.9992;
+    bool handleCollision = true;
 };
 
 template<typename Scalar>

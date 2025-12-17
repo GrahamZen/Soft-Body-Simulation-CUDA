@@ -236,8 +236,15 @@ void RenderImGui()
         context->SetBVHBuildType(context->GetBVHBuildType());
     }
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
-    const std::vector<const char*> pdSolverTypeNameItems = { "Cholesky(Eigen)", "Cholesky(CUSOLVER)", "Jacobi" };
-    bool globalSolverChanged = ImGui::Combo("Global Solver", &imguiData->pdSolverType, pdSolverTypeNameItems.data(), pdSolverTypeNameItems.size());
+    const std::vector<const char*> sgpcSolverTypeNameItems = { "Cholesky(Eigen)", "Cholesky(CUSOLVER)", "Jacobi" };
+    const std::vector<const char*> dbpcSolverTypeNameItems = { "IPC" };
+    bool globalSolverChanged;
+    if (context->mcrpSimContext->GetPrecision() == Precision::Float32) {
+        globalSolverChanged = ImGui::Combo("Global Solver", &imguiData->solverType, sgpcSolverTypeNameItems.data(), sgpcSolverTypeNameItems.size());
+    }
+    else {
+        globalSolverChanged = ImGui::Combo("Global Solver", &imguiData->solverType, dbpcSolverTypeNameItems.data(), dbpcSolverTypeNameItems.size());
+    }
     imguiData->Reset = ImGui::Button("Reset");
     ImGui::SameLine();
     imguiData->Pause = ImGui::Button("Pause");

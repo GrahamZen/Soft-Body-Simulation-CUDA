@@ -10,60 +10,59 @@
 #include <thrust/transform_reduce.h>
 #include <thrust/iterator/counting_iterator.h>
 #include <thrust/for_each.h>
+#include <type_traits>
 
 #define ERRORCHECK 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define RADIUS_SQUARED		0.01
 
-// TODO: static variables for device memory, any extra info you need, etc
-// ...
-
-/**
- * Wrapper for the __global__ call that sets up the kernel calls and does a ton
- * of memory management
- */
-
-SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _name, nlohmann::json& json,
-    const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int maxThreads, int _numIterations)
-    :contextGuiData(ctx->guiData), threadsPerBlock(_threadsPerBlock), fixedBodies(_fixedBodies), name(_name)
+template<class Scalar>
+void SimulationCUDAContext::Impl<Scalar>::Init(Context* ctx, nlohmann::json& json,
+    const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int _maxThreads, int _numIterations)
 {
-    DataLoader<solverPrecision> dataLoader(threadsPerBlock);
+    threadsPerBlock = _threadsPerBlock;
+    threadsPerBlockBVH = _threadsPerBlockBVH;
+    maxThreads = _maxThreads;
+    numIterations = _numIterations;
+
+    auto guiData = ctx->guiData;
+    DataLoader<Scalar> dataLoader(threadsPerBlock);
     std::vector<const char*> namesSoftBodies;
-    mSolverData.pCollisionDetection = new CollisionDetection<solverPrecision>{ ctx, _threadsPerBlockBVH, 1 << 16 };
-    mSolverParams.numIterations = _numIterations;
+    data.pCollisionDetection = new CollisionDetection<Scalar>{ ctx, _threadsPerBlockBVH, 1 << 16 };
+    params.numIterations = _numIterations;
     if (json.contains("dt")) {
-        mSolverParams.dt = json["dt"].get<float>();
+        params.dt = json["dt"].get<Scalar>();
     }
     if (json.contains("kappa")) {
-        mSolverData.kappa = json["kappa"].get<float>();
+        data.kappa = json["kappa"].get<Scalar>();
     }
     if (json.contains("tolerance")) {
-        mSolverParams.tol = json["tolerance"].get<float>();
+        params.tol = json["tolerance"].get<Scalar>();
     }
     if (json.contains("maxIterations")) {
-        mSolverParams.maxIterations = json["maxIterations"].get<int>();
+        params.maxIterations = json["maxIterations"].get<int>();
     }
     if (json.contains("pauseIter")) {
-        contextGuiData->PauseIter = json["pauseIter"].get<int>();
+        guiData->PauseIter = json["pauseIter"].get<int>();
     }
     if (json.contains("dhat")) {
-        mSolverParams.dhat = json["dhat"].get<float>();
+        params.dhat = json["dhat"].get<Scalar>();
     }
     if (json.contains("gravity")) {
-        mSolverParams.gravity = json["gravity"].get<float>();
+        params.gravity = json["gravity"].get<Scalar>();
     }
     if (json.contains("pause")) {
-        contextGuiData->Pause = json["pause"].get<bool>();
+        guiData->Pause = json["pause"].get<bool>();
     }
     if (json.contains("damp")) {
-        float damp = json["damp"].get<float>();
+        params.damp = json["damp"].get<Scalar>();
     }
     if (json.contains("muN")) {
-        float muN = json["muN"].get<float>();
+        params.muN = json["muN"].get<Scalar>();
     }
     if (json.contains("muT")) {
-        float muT = json["muT"].get<float>();
+        params.muT = json["muT"].get<Scalar>();
     }
     if (json.contains("softBodies")) {
         for (const auto& sbJson : json["softBodies"]) {
@@ -180,68 +179,84 @@ SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _n
             }
 
         }
-        dataLoader.AllocData(startIndices, mSolverData, softBodies, namesSoftBodies);
-        mSolverData.pCollisionDetection->Init(mSolverData.numTris, mSolverData.numVerts, maxThreads);
-        cudaMalloc((void**)&mSolverData.dev_Normals, mSolverData.numVerts * sizeof(glm::vec3));
-        cudaMalloc((void**)&mSolverData.dev_tIs, mSolverData.numVerts * sizeof(solverPrecision));
+        dataLoader.AllocData(startIndices, data, softBodies, namesSoftBodies);
+        data.pCollisionDetection->Init(data.numTris, data.numVerts, maxThreads);
+        cudaMalloc((void**)&data.dev_Normals, data.numVerts * sizeof(glm::vec3));
+        cudaMalloc((void**)&data.dev_tIs, data.numVerts * sizeof(Scalar));
     }
-    mSolverData.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
-    mSolver = new PdSolver{ threadsPerBlock, mSolverData };
-    mSolver->SetPerf(true);
+    fixedBodies = _fixedBodies;
+    data.pFixedBodies = new FixedBodyData{ _threadsPerBlock, _fixedBodies };
+
+    if constexpr (std::is_same_v<Scalar, double>) {
+        solver = std::make_unique<IPCSolver>(threadsPerBlock, data);
+    }
+    else {
+        solver = std::make_unique<PdSolver>(threadsPerBlock, data);
+    }
+    solver->SetPerf(true);
 }
 
-SimulationCUDAContext::~SimulationCUDAContext()
+template<class Scalar>
+SimulationCUDAContext::Impl<Scalar>::~Impl()
 {
-    cudaFree(mSolverData.X);
-    cudaFree(mSolverData.Tet);
-    cudaFree(mSolverData.V);
-    cudaFree(mSolverData.Force);
-    cudaFree(mSolverData.X0);
-    cudaFree(mSolverData.XTilde);
-    cudaFree(mSolverData.ExtForce);
-    cudaFree(mSolverData.DBC);
-    cudaFree(mSolverData.mass);
-    cudaFree(mSolverData.mu);
-    cudaFree(mSolverData.lambda);
-    cudaFree(mSolverData.dev_Edges);
-    cudaFree(mSolverData.dev_TriFathers);
+    cudaFree(data.X);
+    cudaFree(data.Tet);
+    cudaFree(data.V);
+    cudaFree(data.Force);
+    cudaFree(data.X0);
+    cudaFree(data.XTilde);
+    cudaFree(data.ExtForce);
+    cudaFree(data.DBC);
+    cudaFree(data.mass);
+    cudaFree(data.mu);
+    cudaFree(data.lambda);
+    cudaFree(data.dev_Edges);
+    cudaFree(data.dev_TriFathers);
+    cudaFree(data.dev_Normals);
+    cudaFree(data.dev_tIs);
 
     for (auto softbody : softBodies) {
         delete softbody;
     }
-    cudaFree(mSolverData.dev_Normals);
-    delete mSolver;
+    delete data.pCollisionDetection;
 }
 
 void SimulationCUDAContext::UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr)
 {
-    if (pSoftBodyAttr->mu) {
-        DataLoader<solverPrecision>::FillData(mSolverData.mu, softBodies[index]->GetAttributes().mu, mSolverData.Tet, softBodies[index]->GetTetIdxRange());
-    }
-    if (pSoftBodyAttr->lambda) {
-        DataLoader<solverPrecision>::FillData(mSolverData.lambda, softBodies[index]->GetAttributes().lambda, mSolverData.Tet, softBodies[index]->GetTetIdxRange());
-    }
+    VisitImpl([&](auto& impl) {
+        using Scalar = typename std::decay_t<decltype(impl)>::ScalarType;
+        if (pSoftBodyAttr->mu) {
+            DataLoader<Scalar>::FillData(impl.data.mu, impl.softBodies[index]->GetAttributes().mu, impl.data.Tet, impl.softBodies[index]->GetTetIdxRange());
+        }
+        if (pSoftBodyAttr->lambda) {
+            DataLoader<Scalar>::FillData(impl.data.lambda, impl.softBodies[index]->GetAttributes().lambda, impl.data.Tet, impl.softBodies[index]->GetTetIdxRange());
+        }
+        });
 }
 
 bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos, bool updateV)
 {
-    indexType select_v = raySimCtxIntersection(ray, mSolverData.numTris, mSolverData.Tri, mSolverData.X);
-    bool rayIntersected = (select_v != -1);
-    if (rayIntersected && pos)
-    {
-        glm::vec3 diff;
-        cudaMemcpy(&diff, mSolverData.X + select_v, sizeof(diff), cudaMemcpyDeviceToHost);
-        *pos = diff;
-        diff -= ray.origin;
-        float dist = glm::dot(diff, ray.direction);
-        mSolverData.mouseSelection.target = ray.origin + dist * ray.direction;
-    }
-    if (updateV)
-        mSolverData.mouseSelection.select_v = select_v;
-    return rayIntersected;
+    return VisitImpl([&](auto& impl) {
+        using Scalar = typename std::decay_t<decltype(impl)>::ScalarType;
+        indexType select_v = raySimCtxIntersection(ray, impl.data.numTris, impl.data.Tri, impl.data.X);
+        bool rayIntersected = (select_v != static_cast<indexType>(-1));
+        if (rayIntersected && pos)
+        {
+            glm::vec3 diff;
+            cudaMemcpy(&diff, impl.data.X + select_v, sizeof(diff), cudaMemcpyDeviceToHost);
+            *pos = diff;
+            diff -= ray.origin;
+            float dist = glm::dot(diff, ray.direction);
+            impl.data.mouseSelection.target = ray.origin + dist * ray.direction;
+        }
+        if (updateV)
+            impl.data.mouseSelection.select_v = select_v;
+        return rayIntersected;
+        });
 }
 
-__global__ void Control_Kernel(glm::tvec3<solverPrecision>* X, solverPrecision* fixed, solverPrecision* more_fixed, glm::tvec3<solverPrecision>* offset_X, const solverPrecision control_mag, const int number, const int select_v)
+template<class Scalar>
+__global__ void Control_Kernel(glm::tvec3<Scalar>* X, Scalar* fixed, Scalar* more_fixed, glm::tvec3<Scalar>* offset_X, const Scalar control_mag, const int number, const int select_v)
 {
     int i = blockDim.x * blockIdx.x + threadIdx.x;
     if (i >= number)	return;
@@ -253,55 +268,64 @@ __global__ void Control_Kernel(glm::tvec3<solverPrecision>* X, solverPrecision* 
         offset_X[i].y = X[i].y - X[select_v].y;
         offset_X[i].z = X[i].z - X[select_v].z;
 
-        solverPrecision dist2 = offset_X[i].x * offset_X[i].x + offset_X[i].y * offset_X[i].y + offset_X[i].z * offset_X[i].z;
+        Scalar dist2 = offset_X[i].x * offset_X[i].x + offset_X[i].y * offset_X[i].y + offset_X[i].z * offset_X[i].z;
         if (dist2 < RADIUS_SQUARED)	more_fixed[i] = control_mag * (1 - sqrt(dist2 / RADIUS_SQUARED));
     }
 }
 
 void SimulationCUDAContext::ResetMoreDBC(bool clear)
 {
-    if (clear) {
-        cudaMemset(mSolverData.moreDBC, 0, mSolverData.numVerts * sizeof(solverPrecision));
-        return;
-    }
-    if (mSolverData.mouseSelection.dragging)
-        Control_Kernel << <mSolverData.numVerts / threadsPerBlock + 1, threadsPerBlock >> > (mSolverData.X, mSolverData.DBC, mSolverData.moreDBC, mSolverData.OffsetX, 10, mSolverData.numVerts, mSolverData.mouseSelection.select_v);
-
+    VisitImpl([&](auto& impl) {
+        using Scalar = typename std::decay_t<decltype(impl)>::ScalarType;
+        if (clear) {
+            cudaMemset(impl.data.moreDBC, 0, impl.data.numVerts * sizeof(Scalar));
+            return;
+        }
+        if (impl.data.mouseSelection.dragging)
+            Control_Kernel << <impl.data.numVerts / impl.threadsPerBlock + 1, impl.threadsPerBlock >> > (impl.data.X, impl.data.DBC, impl.data.moreDBC, impl.data.OffsetX, static_cast<Scalar>(10), impl.data.numVerts, impl.data.mouseSelection.select_v);
+        });
 }
 
 void SimulationCUDAContext::UpdateDBC()
 {
-    if (mSolverData.mouseSelection.dragging && mSolverData.mouseSelection.select_v != -1)
-    {
-        glm::vec3 selectPos;
-        cudaMemcpy(&selectPos, mSolverData.X + mSolverData.mouseSelection.select_v, sizeof(selectPos), cudaMemcpyDeviceToHost);
-        mSolverData.mouseSelection.dir = mSolverData.mouseSelection.target - selectPos;
-        float dir_length = glm::length(mSolverData.mouseSelection.dir);
-        if (dir_length > 0.1)	dir_length = 0.1;
-        mSolverData.mouseSelection.dir = selectPos + dir_length * mSolverData.mouseSelection.dir;
-    }
+    VisitImpl([&](auto& impl) {
+        if (impl.data.mouseSelection.dragging && impl.data.mouseSelection.select_v != -1)
+        {
+            glm::vec3 selectPos;
+            cudaMemcpy(&selectPos, impl.data.X + impl.data.mouseSelection.select_v, sizeof(selectPos), cudaMemcpyDeviceToHost);
+            impl.data.mouseSelection.dir = impl.data.mouseSelection.target - selectPos;
+            float dir_length = glm::length(impl.data.mouseSelection.dir);
+            if (dir_length > 0.1)	dir_length = 0.1;
+            impl.data.mouseSelection.dir = selectPos + dir_length * impl.data.mouseSelection.dir;
+        }
+        });
 }
 
-int SimulationCUDAContext::GetVertCnt() const {
-    return mSolverData.numVerts;
-}
-
-int SimulationCUDAContext::GetNumQueries() const {
-    return mSolverData.pCollisionDetection->GetNumQueries();
-}
-
-int SimulationCUDAContext::GetTetCnt() const {
-    return mSolverData.numTets;
+void SimulationCUDAContext::Reset()
+{
+    VisitImpl([&](auto& impl) {
+        using Scalar = typename std::decay_t<decltype(impl)>::ScalarType;
+        cudaMemcpy(impl.data.X, impl.data.X0, sizeof(glm::tvec3<Scalar>) * impl.data.numVerts, cudaMemcpyDeviceToDevice);
+        cudaMemcpy(impl.data.XTilde, impl.data.X0, sizeof(glm::tvec3<Scalar>) * impl.data.numVerts, cudaMemcpyDeviceToDevice);
+        cudaMemset(impl.data.V, 0, sizeof(glm::tvec3<Scalar>) * impl.data.numVerts);
+        cudaMemset(impl.data.moreDBC, 0, sizeof(Scalar) * impl.data.numVerts);
+        impl.solver->Reset();
+        });
 }
 
 void SimulationCUDAContext::PrepareRenderData() {
-    for (auto softbody : softBodies) {
-        glm::vec3* pos;
-        glm::vec4* nor;
-        softbody->Mesh::MapDevicePtr(&pos, &nor);
-        dim3 numThreadsPerBlock(softbody->GetNumTris() / threadsPerBlock + 1);
-        PopulateTriPos << <numThreadsPerBlock, threadsPerBlock >> > (pos, mSolverData.X, softbody->GetSoftBodyData().Tri, softbody->GetNumTris());
-        RecalculateNormals << <softbody->GetNumTris() / threadsPerBlock + 1, threadsPerBlock >> > (nor, pos, softbody->GetNumTris());
-        softbody->Mesh::UnMapDevicePtr();
-    }
+    VisitImpl([&](auto& impl) {
+        for (auto softbody : impl.softBodies) {
+            glm::vec3* pos;
+            glm::vec4* nor;
+            softbody->Mesh::MapDevicePtr(&pos, &nor);
+            dim3 numThreadsPerBlock(softbody->GetNumTris() / impl.threadsPerBlock + 1);
+            PopulateTriPos << <numThreadsPerBlock, impl.threadsPerBlock >> > (pos, impl.data.X, softbody->GetSoftBodyData().Tri, softbody->GetNumTris());
+            RecalculateNormals << <softbody->GetNumTris() / impl.threadsPerBlock + 1, impl.threadsPerBlock >> > (nor, pos, softbody->GetNumTris());
+            softbody->Mesh::UnMapDevicePtr();
+        }
+        });
 }
+
+template struct SimulationCUDAContext::Impl<float>;
+template struct SimulationCUDAContext::Impl<double>;

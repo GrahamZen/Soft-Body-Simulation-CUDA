@@ -1,6 +1,5 @@
 #pragma once
 #include <def.h>
-#include <precision.h>
 #include <vector>
 #include <string>
 #include <optional>
@@ -33,7 +32,7 @@ class GuiDataContainer
 public:
     GuiDataContainer();
     ~GuiDataContainer();
-    SolverParams<solverPrecision>* solverParams = nullptr;
+    SolverParamsUI* solverParams = nullptr;
     size_t PauseIter = (size_t)-1;
     float PointSize = 5;
     float LineWidth = 1;
@@ -48,7 +47,7 @@ public:
     bool Reset = false;
     bool Pause = false;
     bool Step = false;
-    int pdSolverType = 1;
+    int solverType = 0;
     int CurrQueryId = 0;
     std::string HighLightObjId;
     float theta, phi;
@@ -72,7 +71,7 @@ class Context
         PHONG,
         FLAT
     };
-    struct MouseState 
+    struct MouseState
     {
         glm::dvec2 pos;
         glm::dvec2 lastPos;

@@ -29,19 +29,19 @@ __forceinline__ __host__ __device__ void printGLMVector(const glm::tvec3<Scalar>
 }
 
 template <typename Scalar>
-__forceinline__ __host__ __device__ Scalar barrierFunc(Scalar d, Scalar dhat, float kappa, Scalar contact_area) {
+__forceinline__ __host__ __device__ Scalar barrierFunc(Scalar d, Scalar dhat, Scalar kappa, Scalar contact_area) {
     Scalar s = d / dhat;
     return contact_area * dhat * kappa * 0.5 * (s - 1) * log(s);
 }
 
 template <typename Scalar>
-__forceinline__ __host__ __device__ glm::tvec3<Scalar> barrierFuncGrad(const glm::tvec3<Scalar>& normal, Scalar d, Scalar dhat, float kappa, Scalar contact_area) {
+__forceinline__ __host__ __device__ glm::tvec3<Scalar> barrierFuncGrad(const glm::tvec3<Scalar>& normal, Scalar d, Scalar dhat, Scalar kappa, Scalar contact_area) {
     Scalar s = d / dhat;
     return contact_area * dhat * (kappa / 2 * (log(s) / dhat + (s - 1) / d)) * normal;
 }
 
 template <typename Scalar>
-__forceinline__ __host__ __device__ glm::tmat3x3<Scalar> barrierFuncHess(const glm::tvec3<Scalar>& normal, Scalar d, Scalar dhat, float kappa, Scalar contact_area) {
+__forceinline__ __host__ __device__ glm::tmat3x3<Scalar> barrierFuncHess(const glm::tvec3<Scalar>& normal, Scalar d, Scalar dhat, Scalar kappa, Scalar contact_area) {
     return contact_area * dhat * kappa / (2 * d * d * dhat) * (d + dhat) * glm::outerProduct(normal, normal);
 }
 
@@ -156,17 +156,16 @@ template <typename Scalar>
 __device__ void makePD(glm::tmat3x3<Scalar>& symM, int maxSweeps = 20, Scalar eps = 1e-9) {
     const int N = 3;
     glm::tmat3x3<Scalar> V(1.0);
-    
     for (int sweep = 0; sweep < maxSweeps; ++sweep) {
         // Unroll the pairs manually for 3x3
-        int p_indices[3] = {0, 0, 1};
-        int q_indices[3] = {1, 2, 2};
+        int p_indices[3] = { 0, 0, 1 };
+        int q_indices[3] = { 1, 2, 2 };
 
         for (int k = 0; k < 3; ++k) {
             int p = p_indices[k];
             int q = q_indices[k];
-            Scalar apq = symM[q][p]; 
-            if (fabs(apq) < eps) continue; 
+            Scalar apq = symM[q][p];
+            if (fabs(apq) < eps) continue;
 
             Scalar app = symM[p][p];
             Scalar aqq = symM[q][q];
@@ -175,7 +174,8 @@ __device__ void makePD(glm::tmat3x3<Scalar>& symM, int maxSweeps = 20, Scalar ep
             Scalar t;
             if (fabs(theta) > 1e10) {
                 t = 0.5 / theta;
-            } else {
+            }
+            else {
                 Scalar sgn = (theta >= 0) ? 1.0 : -1.0;
                 t = sgn / (fabs(theta) + sqrt(1.0 + theta * theta));
             }
@@ -187,7 +187,7 @@ __device__ void makePD(glm::tmat3x3<Scalar>& symM, int maxSweeps = 20, Scalar ep
             symM[p][p] = c * c * app - 2.0 * s * c * apq + s * s * aqq;
             symM[q][q] = s * s * app + 2.0 * s * c * apq + c * c * aqq;
 
-            int other = 3 - p - q; 
+            int other = 3 - p - q;
 
             Scalar a_other_p = symM[p][other]; // Col p, Row other
             Scalar a_other_q = symM[q][other]; // Col q, Row other

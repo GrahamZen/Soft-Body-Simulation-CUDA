@@ -399,7 +399,7 @@ void Context::InitDataContainer() {
     guiData->theta = theta;
     guiData->cameraLookAt = ogLookAt;
     guiData->zoom = zoom;
-    guiData->solverParams = mcrpSimContext->GetSolverParams();
+    guiData->solverParams = mcrpSimContext->GetSolverParamsUI();
     guiData->Pause = false;
     guiData->softBodyAttr.currSoftBodyId = -1;
     guiData->currSimContextId = 0;
@@ -489,9 +489,9 @@ void Context::Update() {
     if (panelModified) {
         if (guiData->currSimContextId != -1) {
             mcrpSimContext = mpSimContexts[guiData->currSimContextId];
-            guiData->solverParams = mcrpSimContext->GetSolverParams();
+            guiData->solverParams = mcrpSimContext->GetSolverParamsUI();
         }
-        mcrpSimContext->SetGlobalSolver(guiData->pdSolverType);
+        mcrpSimContext->SetGlobalSolver(guiData->solverType);
         phi = guiData->phi;
         theta = guiData->theta;
         mpCamera->lookAt = guiData->cameraLookAt;

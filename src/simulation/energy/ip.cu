@@ -89,12 +89,15 @@ void IPEnergy::UpdateKappa(SolverData<double>& solverData, const SolverParams<do
     else {
         solverData.kappa = min_kappa;
     }
-    std::cout << "Updated Kappa: " << solverData.kappa << " (Max Elastic: " << max_grad_elastic << ", Max Barrier: " << max_grad_barrier << ")" << std::endl;
 }
 
 double IPEnergy::InitStepSize(SolverData<double>& solverData, const SolverParams<double>& solverParams, double* p, glm::tvec3<double>* XTmp) const
 {
-    return std::min(1.0, 0.95 * std::min(implicitBarrier.InitStepSize(solverData, p), barrier.InitStepSize(solverData, p, XTmp)));
+    double step = 0.95 * std::min(implicitBarrier.InitStepSize(solverData, p), barrier.InitStepSize(solverData, p, XTmp));
+    if (step < 1e-12) {
+        return 0.0;
+    }
+    return std::min(1.0, step);
 }
 
 int IPEnergy::NNZ(const SolverData<double>& solverData) const
