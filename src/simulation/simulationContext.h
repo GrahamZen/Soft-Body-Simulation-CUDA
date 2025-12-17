@@ -20,7 +20,6 @@ public:
         const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>&, int threadsPerBlock, int _threadsPerBlockBVH, int _maxThreads, int _numIterations);
     ~SimulationCUDAContext();
     void Update();
-    void UpdateDBC();
     void Reset();
     void UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr);
     void SetBVHBuildType(int);

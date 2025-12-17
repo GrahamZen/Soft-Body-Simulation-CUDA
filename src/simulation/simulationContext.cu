@@ -233,25 +233,25 @@ void SimulationCUDAContext::UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBod
         }
         });
 }
-
 bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos, bool updateV)
 {
     return VisitImpl([&](auto& impl) {
-        using Scalar = typename std::decay_t<decltype(impl)>::ScalarType;
-        indexType select_v = raySimCtxIntersection(ray, impl.data.numTris, impl.data.Tri, impl.data.X);
-        bool rayIntersected = (select_v != static_cast<indexType>(-1));
-        if (rayIntersected && pos)
-        {
-            glm::vec3 diff;
-            cudaMemcpy(&diff, impl.data.X + select_v, sizeof(diff), cudaMemcpyDeviceToHost);
-            *pos = diff;
-            diff -= ray.origin;
-            float dist = glm::dot(diff, ray.direction);
-            impl.data.mouseSelection.target = ray.origin + dist * ray.direction;
+        auto& ms = impl.data.mouseSelection;
+        indexType hit_v = -1;
+        if (ms.dragging && ms.select_v != -1) {
+            hit_v = ms.select_v;
         }
-        if (updateV)
-            impl.data.mouseSelection.select_v = select_v;
-        return rayIntersected;
+        else {
+            hit_v = raySimCtxIntersection(ray, impl.data.numTris, impl.data.Tri, impl.data.X);
+            if (updateV) ms.select_v = hit_v;
+        }
+        if (hit_v == static_cast<indexType>(-1)) return false;
+        glm::vec3 p;
+        cudaMemcpy(&p, impl.data.X + hit_v, sizeof(p), cudaMemcpyDeviceToHost);
+        if (pos) *pos = p;
+        float dist = glm::dot(p - ray.origin, ray.direction);
+        ms.target = ray.origin + dist * ray.direction;
+        return true;
         });
 }
 
@@ -269,7 +269,7 @@ __global__ void Control_Kernel(glm::tvec3<Scalar>* X, Scalar* fixed, Scalar* mor
         offset_X[i].z = X[i].z - X[select_v].z;
 
         Scalar dist2 = offset_X[i].x * offset_X[i].x + offset_X[i].y * offset_X[i].y + offset_X[i].z * offset_X[i].z;
-        if (dist2 < RADIUS_SQUARED)	more_fixed[i] = control_mag * (1 - sqrt(dist2 / RADIUS_SQUARED));
+        if (dist2 < RADIUS_SQUARED)	more_fixed[i] = control_mag;
     }
 }
 
@@ -283,21 +283,6 @@ void SimulationCUDAContext::ResetMoreDBC(bool clear)
         }
         if (impl.data.mouseSelection.dragging)
             Control_Kernel << <impl.data.numVerts / impl.threadsPerBlock + 1, impl.threadsPerBlock >> > (impl.data.X, impl.data.DBC, impl.data.moreDBC, impl.data.OffsetX, static_cast<Scalar>(10), impl.data.numVerts, impl.data.mouseSelection.select_v);
-        });
-}
-
-void SimulationCUDAContext::UpdateDBC()
-{
-    VisitImpl([&](auto& impl) {
-        if (impl.data.mouseSelection.dragging && impl.data.mouseSelection.select_v != -1)
-        {
-            glm::vec3 selectPos;
-            cudaMemcpy(&selectPos, impl.data.X + impl.data.mouseSelection.select_v, sizeof(selectPos), cudaMemcpyDeviceToHost);
-            impl.data.mouseSelection.dir = impl.data.mouseSelection.target - selectPos;
-            float dir_length = glm::length(impl.data.mouseSelection.dir);
-            if (dir_length > 0.1)	dir_length = 0.1;
-            impl.data.mouseSelection.dir = selectPos + dir_length * impl.data.mouseSelection.dir;
-        }
         });
 }
 

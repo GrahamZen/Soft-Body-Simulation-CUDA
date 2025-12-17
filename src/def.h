@@ -16,7 +16,6 @@ struct MouseSelection {
     int select_v = -1;
     bool dragging = false;
     glm::vec3 target;
-    glm::vec3 dir;
 };
 
 template<typename Scalar>

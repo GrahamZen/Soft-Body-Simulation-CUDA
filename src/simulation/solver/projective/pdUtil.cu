@@ -76,24 +76,22 @@ namespace PdUtil {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
-            if (more_fixed[index]) {
-                fixed_X[index] = offset_X[index] + dir;
-            }
-
             int offset = index * 3;
-            float massDt_2 = massDt_2s[index];
-            float dt2_m_1 = 1 / massDt_2;
 
-            float3 my_pos{ pos[index].x, pos[index].y, pos[index].z };
-            float3 my_vel{ vel[index].x, vel[index].y, vel[index].z };
-            float3 my_force{ force[index].x, force[index].y, force[index].z };
-            float3 sn_val{ my_pos.x + dt * my_vel.x + dt2_m_1 * my_force.x,
-                my_pos.y + dt * my_vel.y + dt2_m_1 * my_force.y,
-                my_pos.z + dt * my_vel.z + dt2_m_1 * my_force.z };
+            if (more_fixed[index] > 0) {
+                glm::vec3 target_pos = dir + offset_X[index];
 
-            sn[offset + 0] = sn_val.x;
-            sn[offset + 1] = sn_val.y;
-            sn[offset + 2] = sn_val.z;
+                sn[offset + 0] = target_pos.x;
+                sn[offset + 1] = target_pos.y;
+                sn[offset + 2] = target_pos.z;
+                fixed_X[index] = target_pos;
+            }
+            else {
+                float dt2_m_1 = 1.0f / (massDt_2s[index]);
+                sn[offset + 0] = pos[index].x + dt * vel[index].x + dt2_m_1 * force[index].x;
+                sn[offset + 1] = pos[index].y + dt * vel[index].y + dt2_m_1 * force[index].y;
+                sn[offset + 2] = pos[index].z + dt * vel[index].z + dt2_m_1 * force[index].z;
+            }
         }
     }
 
@@ -180,25 +178,34 @@ namespace PdUtil {
             b[offset + 2] = massDt_2 * sn[offset + 2];
         }
     }
-
-    __global__ void updateVelPos(float* newPos, float dt_1, glm::vec3* pos, glm::vec3* vel, int numVerts)
+    __global__ void updateVelPos(float* newPos, float dt_1, glm::vec3* pos, glm::vec3* vel, int numVerts, const float* more_fixed)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
             int offset = 3 * index;
             glm::vec3 newPosition = glm::vec3(newPos[offset], newPos[offset + 1], newPos[offset + 2]);
-            // sn is of size 3*numVerts
-            vel[index] = (newPosition - pos[index]) * dt_1;
+            if (more_fixed[index] > 0) 
+                vel[index] = glm::vec3(0.0f);
+            else 
+                vel[index] = (newPosition - pos[index]) * dt_1;
             pos[index] = newPosition;
         }
     }
 
-    __global__ void getErrorKern(int numVerts, float* next_x, const float* b, const float* massDt_2s, const float* sn, const float* matrix_diag)
+    __global__ void getErrorKern(int numVerts, float* next_x, const float* b, const float* massDt_2s, const float* sn, const float* matrix_diag, const float* more_fixed)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
+
+            if (more_fixed[index] > 0) {
+                next_x[index * 3 + 0] = sn[index * 3 + 0];
+                next_x[index * 3 + 1] = sn[index * 3 + 1];
+                next_x[index * 3 + 2] = sn[index * 3 + 2];
+                return;
+            }
+
             float c = massDt_2s[index];
             float md = matrix_diag[index];
             next_x[index * 3 + 0] = (b[index * 3 + 0] - c * sn[index * 3 + 0]) / (c + md) + sn[index * 3 + 0];

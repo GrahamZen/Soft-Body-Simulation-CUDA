@@ -77,7 +77,6 @@ SimulationCUDAContext::~SimulationCUDAContext() = default;
 
 void SimulationCUDAContext::Update()
 {
-    UpdateDBC();
     uiParams_.handleCollision = (contextGuiData->handleCollision && contextGuiData->BVHEnabled);
 
     VisitImpl([&](auto& impl) {
