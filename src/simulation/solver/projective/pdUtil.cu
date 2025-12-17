@@ -3,7 +3,6 @@
 #include <simulation/solver/projective/pdUtil.cuh>
 
 namespace PdUtil {
-    // Should compute SiTAiTAiSi, which is a sparse matrix
     // Ai here is I
     // size of row, col, val are 48 * numTets + numVerts
     // row, col, val are used to initialize sparse matrix SiTSi
@@ -185,9 +184,9 @@ namespace PdUtil {
         {
             int offset = 3 * index;
             glm::vec3 newPosition = glm::vec3(newPos[offset], newPos[offset + 1], newPos[offset + 2]);
-            if (more_fixed[index] > 0) 
+            if (more_fixed[index] > 0)
                 vel[index] = glm::vec3(0.0f);
-            else 
+            else
                 vel[index] = (newPosition - pos[index]) * dt_1;
             pos[index] = newPosition;
         }

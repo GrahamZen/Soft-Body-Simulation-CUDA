@@ -17,6 +17,20 @@
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
 #define RADIUS_SQUARED		0.002
 
+template <typename T>
+void getJsonVal(const nlohmann::json& j, const char* key, T& target) {
+    if (j.contains(key)) target = j[key].get<T>();
+}
+
+void getJsonVec3(const nlohmann::json& j, const char* key, const nlohmann::json& defJ, const char* defKey, glm::vec3& target) {
+    if (j.contains(key))
+        target = glm::vec3(j[key][0], j[key][1], j[key][2]);
+    else if (defJ.contains(defKey))
+        target = glm::vec3(defJ[defKey][0], defJ[defKey][1], defJ[defKey][2]);
+    else
+        target = glm::vec3(0.f);
+}
+
 template<class Scalar>
 void SimulationCUDAContext::Impl<Scalar>::Init(Context* ctx, nlohmann::json& json,
     const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& _fixedBodies, int _threadsPerBlock, int _threadsPerBlockBVH, int _maxThreads, int _numIterations)
@@ -31,134 +45,46 @@ void SimulationCUDAContext::Impl<Scalar>::Init(Context* ctx, nlohmann::json& jso
     std::vector<const char*> namesSoftBodies;
     data.pCollisionDetection = new CollisionDetection<Scalar>{ ctx, _threadsPerBlockBVH, 1 << 16 };
     params.numIterations = _numIterations;
-    if (json.contains("dt")) {
-        params.dt = json["dt"].get<Scalar>();
-    }
-    if (json.contains("kappa")) {
-        data.kappa = json["kappa"].get<Scalar>();
-    }
-    if (json.contains("tolerance")) {
-        params.tol = json["tolerance"].get<Scalar>();
-    }
-    if (json.contains("maxIterations")) {
-        params.maxIterations = json["maxIterations"].get<int>();
-    }
-    if (json.contains("pauseIter")) {
-        guiData->PauseIter = json["pauseIter"].get<int>();
-    }
-    if (json.contains("dhat")) {
-        params.dhat = json["dhat"].get<Scalar>();
-    }
-    if (json.contains("gravity")) {
-        params.gravity = json["gravity"].get<Scalar>();
-    }
-    if (json.contains("pause")) {
-        guiData->Pause = json["pause"].get<bool>();
-    }
-    if (json.contains("damp")) {
-        params.damp = json["damp"].get<Scalar>();
-    }
-    if (json.contains("muN")) {
-        params.muN = json["muN"].get<Scalar>();
-    }
-    if (json.contains("muT")) {
-        params.muT = json["muT"].get<Scalar>();
-    }
+    getJsonVal(json, "dt", params.dt);
+    getJsonVal(json, "kappa", data.kappa);
+    getJsonVal(json, "tolerance", params.tol);
+    getJsonVal(json, "maxIterations", params.maxIterations);
+    getJsonVal(json, "pauseIter", guiData->PauseIter);
+    getJsonVal(json, "dhat", params.dhat);
+    getJsonVal(json, "gravity", params.gravity);
+    getJsonVal(json, "pause", guiData->Pause);
+    getJsonVal(json, "damp", params.damp);
+    getJsonVal(json, "muN", params.muN);
+    getJsonVal(json, "muT", params.muT);
     if (json.contains("softBodies")) {
         for (const auto& sbJson : json["softBodies"]) {
             auto& sbDefJson = softBodyDefs.at(std::string(sbJson["name"]));
-            std::string nodeFile;
-            std::string mshFile;
-            std::string eleFile;
-            if (sbDefJson.contains("nodeFile")) {
-                nodeFile = sbDefJson["nodeFile"];
-                eleFile = sbDefJson["eleFile"];
-            }
-            if (sbDefJson.contains("mshFile")) {
-                mshFile = sbDefJson["mshFile"];
-            }
-            std::string faceFile;
-            if (sbDefJson.contains("faceFile")) {
-                faceFile = sbDefJson["faceFile"];
-            }
+            std::string nodeFile = sbDefJson.value("nodeFile", "");
+            std::string eleFile = sbDefJson.value("eleFile", "");
+            std::string mshFile = sbDefJson.value("mshFile", "");
+            std::string faceFile = sbDefJson.value("faceFile", "");
             glm::vec3 pos;
             glm::vec3 scale;
             glm::vec3 rot;
             float mass;
             float mu;
             float lambda;
+            getJsonVec3(sbJson, "pos", sbDefJson, "pos", pos);
+            getJsonVec3(sbJson, "scale", sbDefJson, "scale", scale);
+            getJsonVec3(sbJson, "rot", sbDefJson, "rot", rot);
+            mass = sbJson.value("mass", sbDefJson.value("mass", 1.0f));
+            mu = sbJson.value("mu", sbDefJson.value("mu", 1000.0f));
+            lambda = sbJson.value("lambda", sbDefJson.value("lambda", 1000.0f));
             std::vector<indexType> DBC;
-            indexType* host_DBC;
-            if (!sbJson.contains("pos")) {
-                if (sbDefJson.contains("pos")) {
-                    pos = glm::vec3(sbDefJson["pos"][0].get<float>(), sbDefJson["pos"][1].get<float>(), sbDefJson["pos"][2].get<float>());
-                }
-                else {
-                    pos = glm::vec3(0.f);
-                }
+            const auto& dbcSource = sbJson.contains("DBC") ? sbJson["DBC"] : sbDefJson["DBC"];
+            if (!dbcSource.is_null()) {
+                for (auto& dbc : dbcSource) DBC.push_back(dbc.get<int>());
             }
-            else {
-                pos = glm::vec3(sbJson["pos"][0].get<float>(), sbJson["pos"][1].get<float>(), sbJson["pos"][2].get<float>());
-            }
-            if (!sbJson.contains("scale")) {
-                if (sbDefJson.contains("scale")) {
-                    scale = glm::vec3(sbDefJson["scale"][0].get<float>(), sbDefJson["scale"][1].get<float>(), sbDefJson["scale"][2].get<float>());
-                }
-                else {
-                    scale = glm::vec3(1.f);
-                }
-            }
-            else {
-                scale = glm::vec3(sbJson["scale"][0].get<float>(), sbJson["scale"][1].get<float>(), sbJson["scale"][2].get<float>());
-            }
-            if (!sbJson.contains("rot")) {
-                if (sbDefJson.contains("rot")) {
-                    rot = glm::vec3(sbDefJson["rot"][0].get<float>(), sbDefJson["rot"][1].get<float>(), sbDefJson["rot"][2].get<float>());
-                }
-                else {
-                    rot = glm::vec3(0.f);
-                }
-            }
-            else {
-                rot = glm::vec3(sbJson["rot"][0].get<float>(), sbJson["rot"][1].get<float>(), sbJson["rot"][2].get<float>());
-            }
-            if (!sbJson.contains("mass")) {
-                mass = sbDefJson["mass"].get<float>();
-            }
-            else {
-                mass = sbJson["mass"].get<float>();
-            }
-            if (!sbJson.contains("mu")) {
-                mu = sbDefJson["mu"].get<float>();
-            }
-            else {
-                mu = sbJson["mu"].get<float>();
-            }
-            if (!sbJson.contains("lambda")) {
-                lambda = sbDefJson["lambda"].get<float>();
-            }
-            else {
-                lambda = sbJson["lambda"].get<float>();
-            }
-            if (!sbJson.contains("DBC")) {
-                for (auto dbc : sbDefJson["DBC"]) {
-                    DBC.push_back(dbc.get<int>());
-                }
-            }
-            else {
-                for (auto dbc : sbJson["DBC"]) {
-                    DBC.push_back(dbc.get<int>());
-                }
-            }
-            if (!DBC.empty()) {
-                host_DBC = new indexType[DBC.size()];
-                std::copy(DBC.begin(), DBC.end(), host_DBC);
-            }
-            else {
-                host_DBC = nullptr;
-            }
-            bool centralize = sbDefJson["centralize"].get<bool>();
-            int startIndex = sbDefJson["start index"].get<int>();
+
+            indexType* host_DBC = DBC.empty() ? nullptr : new indexType[DBC.size()];
+            if (host_DBC) std::copy(DBC.begin(), DBC.end(), host_DBC);
+            bool centralize = sbDefJson.value("centralize", false);
+            int startIndex = sbDefJson.value("start index", 0);
             SoftBodyAttribute attr{ mass, mu, lambda, host_DBC, DBC.size() };
             if (!mshFile.empty()) {
                 std::string baseName = mshFile.substr(nodeFile.find_last_of('/') + 1);

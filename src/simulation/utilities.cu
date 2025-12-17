@@ -147,23 +147,36 @@ void inspectSphere(const Sphere* dev_spheres, int size)
     utilityCore::inspectHost(hstSphere.data(), size);
 }
 
-__host__ __device__ glm::vec4 getNormal(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2)
+__device__ glm::vec4 getNormalFast(const glm::vec3& v1, const glm::vec3& v2, const glm::vec3& v3)
 {
-    glm::vec3 v0v1 = v1 - v0;
-    glm::vec3 v0v2 = v2 - v0;
-    return glm::vec4(glm::normalize(glm::cross(v0v1, v0v2)), 0.f);
+    glm::vec3 edge1 = v2 - v1;
+    glm::vec3 edge2 = v3 - v1;
+    glm::vec3 cross = glm::cross(edge1, edge2);
+
+    float lenSq = glm::dot(cross, cross);
+    if (lenSq > 1e-12f) {
+        cross *= rsqrtf(lenSq);
+    }
+    return glm::vec4(cross, 0.f);
 }
 
-__global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int numVerts)
+__global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* vertices, int numTris)
 {
-    int index = (blockIdx.x * blockDim.x) + threadIdx.x;
+    int i = (blockIdx.x * blockDim.x) + threadIdx.x;
 
-    if (index < numVerts)
+    if (i < numTris)
     {
-        glm::vec4 nor = getNormal(vertices[index * 3 + 0], vertices[index * 3 + 1], vertices[index * 3 + 2]);
-        norms[index * 3 + 0] = nor;
-        norms[index * 3 + 1] = nor;
-        norms[index * 3 + 2] = nor;
+        const int idx0 = i * 3 + 0;
+        const int idx1 = idx0 + 1;
+        const int idx2 = idx0 + 2;
+
+        glm::vec3 v0 = vertices[idx0];
+        glm::vec3 v1 = vertices[idx1];
+        glm::vec3 v2 = vertices[idx2];
+        glm::vec4 nor = getNormalFast(v0, v1, v2);
+        norms[idx0] = nor;
+        norms[idx1] = nor;
+        norms[idx2] = nor;
     }
 }
 
