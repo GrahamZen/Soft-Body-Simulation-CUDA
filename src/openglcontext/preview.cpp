@@ -236,7 +236,7 @@ void RenderImGui()
         context->SetBVHBuildType(context->GetBVHBuildType());
     }
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
-    const std::vector<const char*> sgpcSolverTypeNameItems = { "Cholesky(Eigen)", "Cholesky(CUSOLVER)", "Jacobi" };
+    const std::vector<const char*> sgpcSolverTypeNameItems = {"Jacobi",  "Cholesky(CUSOLVER)", "Cholesky(Eigen)"};
     const std::vector<const char*> dbpcSolverTypeNameItems = { "IPC" };
     bool globalSolverChanged;
     if (context->mcrpSimContext->GetPrecision() == Precision::Float32) {

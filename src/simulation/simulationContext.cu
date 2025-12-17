@@ -15,7 +15,7 @@
 #define ERRORCHECK 1
 
 #define FILENAME (strrchr(__FILE__, '/') ? strrchr(__FILE__, '/') + 1 : __FILE__)
-#define RADIUS_SQUARED		0.01
+#define RADIUS_SQUARED		0.002
 
 template<class Scalar>
 void SimulationCUDAContext::Impl<Scalar>::Init(Context* ctx, nlohmann::json& json,

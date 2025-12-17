@@ -123,7 +123,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
     {
         std::cerr << e.what() << ", " << "Cholesky decomposition(Eigen) failed" << std::endl;
     }
-
+    cudaMemcpy(solverData.DBCX, solverData.X0, sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
 
     cudaFree(ARowIdx);
     cudaFree(AColIdx);
