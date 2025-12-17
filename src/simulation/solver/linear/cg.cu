@@ -1,6 +1,7 @@
 #include <linear/cg.h>
 #include <linear/cuUtils.cuh>
 #include <iostream>
+#include <utilities.cuh>
 
 template<typename T>
 CGSolver<T>::CGSolver(int N, int max_iter, T tolerance) : N(N), max_iter(max_iter), tolerance(tolerance)
@@ -85,7 +86,6 @@ void CGSolver<T>::Solve(int N, T* d_b, T* d_x, T* A, int nz, int* rowIdx, int* c
     assert(A != nullptr);
     assert(rowIdx != nullptr);
     assert(colIdx != nullptr);
-    CHECK_CUDA(cudaMemset(d_x, 0, N * sizeof(T)));
 
     //==============================================================================
     // Sort the COO matrix by row index and convert it to CSR format
@@ -184,6 +184,11 @@ void CGSolver<T>::Solve(int N, T* d_b, T* d_x, T* A, int nz, int* rowIdx, int* c
         CHECK_CUSPARSE(cusparseSpMV(cusHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, &one, d_matA,
             dvec_x, &zero, dvec_q, dType, CUSPARSE_SPMV_CSR_ALG1, d_bufL));
         CHECK_CUBLAS(cublasAxpy(cubHandle, N, (T)-1, d_q, 1, d_r, 1));
+    }
+    else
+    {
+        // x = 0, r0 = b  (since x == 0, b - A*x = b)
+        CHECK_CUDA(cudaMemset(d_x, 0, N * sizeof(T)));
     }
 
     //==============================================================================

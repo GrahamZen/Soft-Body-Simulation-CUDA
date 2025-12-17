@@ -40,39 +40,46 @@ namespace PdUtil {
         }
     }
 
-    __global__ void setMDt_2(int* rowIdx, int* colIdx, float* val, int offset, const float* masses, float dt2, float* massDt_2s, int numVerts)
+    __global__ void setMDt_2(int numVerts, int* rowIdx, int* colIdx, float* val, int offset, const float* masses, float dt2, float* massDt_2s, float* DBC, float weight)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
             int start = index * 3;
-            float massDt_2 = masses[index] / dt2;
+            float massDt_2 = (masses[index] + DBC[index] * weight) / dt2;
             massDt_2s[index] = massDt_2;
             setRowColVal(offset + start + 0, rowIdx, colIdx, val, start, start, massDt_2);
             setRowColVal(offset + start + 1, rowIdx, colIdx, val, start + 1, start + 1, massDt_2);
             setRowColVal(offset + start + 2, rowIdx, colIdx, val, start + 2, start + 2, massDt_2);
         }
     }
-    __global__ void setDBC(int* rowIdx, int* colIdx, float* val, int offset, float weight, float* massDt_2s, int numDBC)
+
+    __global__ void setMDt_2MoreDBC(int numVerts, const float* masses, float dt2, float* massDt_2s, float* moreDBC, float* DBC)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < numDBC)
+        if (index < numVerts && DBC[index] == 0)
         {
-            int start = index * 3;
-            massDt_2s[index] = weight;
-            setRowColVal(offset + start + 0, rowIdx, colIdx, val, start, start, weight);
-            setRowColVal(offset + start + 1, rowIdx, colIdx, val, start + 1, start + 1, weight);
-            setRowColVal(offset + start + 2, rowIdx, colIdx, val, start + 2, start + 2, weight);
+            float wi = moreDBC[index];
+            if (wi > 0) {
+                massDt_2s[index] = (masses[index] + wi) / dt2;
+            }
+            else {
+                massDt_2s[index] = masses[index] / dt2;
+            }
         }
     }
 
     // dt2_m_1 is dt^2 / mass
     // s(n) = q(n) + dt*v(n) + dt^2 * M^(-1) * fext(n)
-    __global__ void computeSn(int numVerts, float* sn, float dt, const float* massDt_2s, glm::vec3* pos, glm::vec3* vel, const glm::vec3* force)
+    __global__ void computeSn(int numVerts, float* sn, float dt, const float* massDt_2s, glm::vec3* pos, glm::vec3* vel, const glm::vec3* force, const float* more_fixed, const glm::vec3* offset_X, glm::vec3* fixed_X, glm::vec3 dir)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
         if (index < numVerts)
         {
+            if (more_fixed[index]) {
+                fixed_X[index] = offset_X[index] + dir;
+            }
+
             int offset = index * 3;
             float massDt_2 = massDt_2s[index];
             float dt2_m_1 = 1 / massDt_2;
@@ -140,15 +147,24 @@ namespace PdUtil {
         }
     }
 
-    __global__ void computeDBCLocal(int numDBC, indexType* DBC, const glm::vec3* x0, const float wi, float* xProj)
+    __global__ void computeDBCLocal(int numVerts, float* DBC, float* moreDBC, const glm::vec3* x0, const float wi, float* xProj)
     {
         int index = (blockIdx.x * blockDim.x) + threadIdx.x;
-        if (index < numDBC)
+        if (index < numVerts)
         {
-            indexType dbcIdx = DBC[index];
-            xProj[dbcIdx * 3 + 0] = x0[dbcIdx].x * wi;
-            xProj[dbcIdx * 3 + 1] = x0[dbcIdx].y * wi;
-            xProj[dbcIdx * 3 + 2] = x0[dbcIdx].z * wi;
+            float moreWi = moreDBC[index];
+            if (DBC[index] > 0)
+            {
+                xProj[index * 3 + 0] = x0[index].x * wi;
+                xProj[index * 3 + 1] = x0[index].y * wi;
+                xProj[index * 3 + 2] = x0[index].z * wi;
+            }
+            else if (moreWi > 0)
+            {
+                xProj[index * 3 + 0] = x0[index].x * moreWi;
+                xProj[index * 3 + 1] = x0[index].y * moreWi;
+                xProj[index * 3 + 2] = x0[index].z * moreWi;
+            }
         }
     }
 

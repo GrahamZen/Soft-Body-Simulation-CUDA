@@ -40,7 +40,7 @@ void Sphere::create()
 
             glm::vec3 normal(sinTheta * cosPhi, cosTheta, sinTheta * sinPhi);
             glm::vec3 vertex = normal;
-            pos.push_back(vertex);
+            pos.push_back(vertex * m_radius);
             nor.push_back(glm::vec4(normal, 0.0f));
             uvs.push_back(glm::vec2(1.0f - float(lon) / float(m_numSides), 1.0f - float(lat) / float(m_numSides)));
         }
@@ -66,6 +66,8 @@ void Sphere::create()
     }
     count = idx.size();
 
+    std::vector<glm::vec4> colors(pos.size(), glm::vec4(0.43, 0.55, 1.0, 1.0));
+
     generateIdx();
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bufIdx);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, idx.size() * sizeof(indexType), idx.data(), GL_STATIC_DRAW);
@@ -77,6 +79,10 @@ void Sphere::create()
     generateNor();
     glBindBuffer(GL_ARRAY_BUFFER, bufNor);
     glBufferData(GL_ARRAY_BUFFER, nor.size() * sizeof(glm::vec4), nor.data(), GL_STATIC_DRAW);
+
+    generateCol();
+    glBindBuffer(GL_ARRAY_BUFFER, bufCol);
+    glBufferData(GL_ARRAY_BUFFER, colors.size() * sizeof(glm::vec4), colors.data(), GL_STATIC_DRAW);
 }
 
 BodyType Sphere::getType() const

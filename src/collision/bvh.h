@@ -9,8 +9,6 @@ class SoftBody;
 class Context;
 class SurfaceShader;
 
-void removeUnknowns(Query* dev_queries, size_t& numQueries);
-
 template<typename Scalar>
 class BVH : public Wireframe {
 public:

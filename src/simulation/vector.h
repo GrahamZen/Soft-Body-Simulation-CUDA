@@ -93,7 +93,7 @@ public:
 
     __host__ __device__ Vector() {
         for (int i = 0; i < N; ++i) {
-            value[i] = 0.0f;
+            value[i] = Scalar(0);
         }
     }
 
@@ -115,7 +115,7 @@ public:
         }
     }
 
-    __host__ __device__ Vector operator=(const Vector& vec) {
+    __host__ __device__ Vector& operator=(const Vector& vec) {
         for (int i = 0; i < N; ++i) {
             value[i] = vec[i];
         }

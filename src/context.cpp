@@ -10,6 +10,7 @@
 #include <collision/rigid/plane.h>
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <glm/gtx/transform.hpp>
 #include <iostream>
 #include <fstream>
 #include <sstream>
@@ -73,9 +74,20 @@ Camera& Camera::computeCameraParams()
     return *this;
 }
 
+Ray Camera::RayPick(glm::ivec2 pixel)
+{
+    glm::vec3 rayNDC = { 2 * pixel.x / (float)resolution.x - 1, 1 - 2 * pixel.y / (float)resolution.y, -1 };
+    glm::vec4 rayClip(rayNDC, 1.0);
+    glm::vec4 rayEye = glm::inverse(getProj()) * rayClip;
+    glm::vec4 rayWorld = glm::inverse(getView()) * rayEye;
+    glm::vec3 rayWorldXYZ = glm::vec3(rayWorld) / glm::vec3(rayWorld.w);
+    return Ray{ position, glm::normalize(rayWorldXYZ - position) };
+}
+
 Context::Context(const std::string& _filename) :shaderType(ShaderType::PHONG), filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()),
 mpProgPhong(new SurfaceShader()), mpProgHighLight(new SurfaceShader()), mpProgFlat(new SurfaceShader()), mpProgSkybox(new SurfaceShader()),
-width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer())
+width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer()),
+mpSelectSPhere(new Sphere(utilityCore::modelMatrix(glm::vec3(0), glm::vec3(0), glm::vec3(5, 5, 5)), 5, 10))
 {
     glm::vec3 view = mpCamera->view;
     glm::vec3 up = mpCamera->up;
@@ -103,7 +115,7 @@ Context::~Context()
     delete mcrpSimContext;
     delete guiData;
     delete mpCamera;
-    delete mpCube;
+    delete mpEnvMapCube;
 }
 
 int Context::GetMaxCGThreads()
@@ -175,8 +187,8 @@ void Context::LoadShaders(const std::string& vertShaderFilename, const std::stri
             mpProgSkybox->create("../src/shaders/envMap.vert.glsl", "../src/shaders/envMap.frag.glsl");
             mpProgSkybox->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
             mpProgSkybox->addUniform("u_EnvironmentMap");
-            mpCube = new Mesh();
-            mpCube->createCube();
+            mpEnvMapCube = new Mesh();
+            mpEnvMapCube->createCube();
         }
     }
 }
@@ -387,7 +399,7 @@ void Context::InitDataContainer() {
     guiData->theta = theta;
     guiData->cameraLookAt = ogLookAt;
     guiData->zoom = zoom;
-    guiData->solverParams = mcrpSimContext->GetSolverParams();
+    guiData->solverParams = mcrpSimContext->GetSolverParamsUI();
     guiData->Pause = false;
     guiData->softBodyAttr.currSoftBodyId = -1;
     guiData->currSimContextId = 0;
@@ -395,24 +407,38 @@ void Context::InitDataContainer() {
 
 void Context::InitCuda() {
     LoadSimContext();
-
+    mpSelectSPhere->create();
     // Clean up on program exit
     atexit(cleanupCuda);
 }
 
 void Context::Draw() {
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     if (mpProgSkybox && envMap->m_isCreated) {
         glDepthFunc(GL_LEQUAL);
         glDepthMask(GL_FALSE);
         envMap->bind(ENV_MAP_CUBE_TEX_SLOT);
         mpProgSkybox->setViewProjMatrix(glm::mat4(glm::mat3(mpCamera->getView())), mpCamera->getProj());
         mpProgSkybox->setUnifInt("u_EnvironmentMap", ENV_MAP_CUBE_TEX_SLOT);
-        mpProgSkybox->draw(*mpCube);
+        mpProgSkybox->draw(*mpEnvMapCube);
         glDepthFunc(GL_LESS);
         glDepthMask(GL_TRUE);
     }
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    if (guiData->ObjectVis) {
+        if (GetSelectSPhere()) {
+            mpProgHighLight->setModelMatrix(glm::translate(glm::mat4(1.f), spherePos));
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+            glLineWidth(1);
+            mpProgHighLight->draw(*mpSelectSPhere, 0);
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+    }
+    if (guiData->WireFrame)
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    else
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     switch (shaderType)
     {
     case Context::ShaderType::LAMBERT:
@@ -424,6 +450,18 @@ void Context::Draw() {
     default:
         break;
     }
+}
+
+bool Context::UpdateCursorPos(double xpos, double ypos, bool updateV)
+{
+    return mcrpSimContext->RayIntersect(mpCamera->RayPick({ xpos, ypos }), nullptr, updateV);
+}
+
+
+bool Context::GetSelectSPhere()
+{
+    Ray ray = mpCamera->RayPick(mouseState.lastPos);
+    return mcrpSimContext->RayIntersect(ray, &spherePos, false);
 }
 
 void Context::SetBVHBuildType(int buildType)
@@ -451,9 +489,9 @@ void Context::Update() {
     if (panelModified) {
         if (guiData->currSimContextId != -1) {
             mcrpSimContext = mpSimContexts[guiData->currSimContextId];
-            guiData->solverParams = mcrpSimContext->GetSolverParams();
+            guiData->solverParams = mcrpSimContext->GetSolverParamsUI();
         }
-        mcrpSimContext->SetGlobalSolver(guiData->pdSolverType);
+        mcrpSimContext->SetGlobalSolver(guiData->solverType);
         phi = guiData->phi;
         theta = guiData->theta;
         mpCamera->lookAt = guiData->cameraLookAt;

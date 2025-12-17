@@ -1,8 +1,8 @@
 #pragma once
 #include <def.h>
-#include <precision.h>
 #include <vector>
 #include <string>
+#include <optional>
 
 class SoftBody;
 class Camera;
@@ -10,7 +10,7 @@ class SimulationCUDAContext;
 class SurfaceShader;
 class TextureCubemap;
 class Mesh;
-
+class Sphere;
 
 struct SoftBodyAttr
 {
@@ -32,7 +32,7 @@ class GuiDataContainer
 public:
     GuiDataContainer();
     ~GuiDataContainer();
-    SolverParams<solverPrecision>* solverParams = nullptr;
+    SolverParamsUI* solverParams = nullptr;
     size_t PauseIter = (size_t)-1;
     float PointSize = 5;
     float LineWidth = 1;
@@ -47,7 +47,7 @@ public:
     bool Reset = false;
     bool Pause = false;
     bool Step = false;
-    int pdSolverType = 1;
+    int solverType = 0;
     int CurrQueryId = 0;
     std::string HighLightObjId;
     float theta, phi;
@@ -62,6 +62,7 @@ public:
 
 void cleanupCuda();
 
+
 class Context
 {
     enum class ShaderType
@@ -69,6 +70,16 @@ class Context
         LAMBERT,
         PHONG,
         FLAT
+    };
+    struct MouseState
+    {
+        glm::dvec2 pos;
+        glm::dvec2 lastPos;
+        glm::dvec2 dir;
+        bool leftMousePressed = false;
+        bool rightMousePressed = false;
+        bool middleMousePressed = false;
+        bool rayIntersected = false;
     };
 public:
     Context(const std::string& _filename);
@@ -81,6 +92,8 @@ public:
     void Update();
     void ResetCamera();
     void Draw();
+    bool UpdateCursorPos(double xpos, double ypos, bool updateV = true);
+    bool GetSelectSPhere();
     void SetBVHBuildType(int buildType);
     int& GetBVHBuildType();
     void SetShaderType(int shaderType);
@@ -100,6 +113,7 @@ public:
     GuiDataContainer* guiData;
     SimulationCUDAContext* mcrpSimContext = nullptr;
     std::vector<SimulationCUDAContext*> mpSimContexts;
+    MouseState mouseState;
 
 private:
     ShaderType shaderType;
@@ -113,11 +127,13 @@ private:
     SurfaceShader* mpProgPhong = nullptr;
     SurfaceShader* mpProgFlat = nullptr;
     SurfaceShader* mpProgSkybox = nullptr;
-    Mesh* mpCube = nullptr;
+    Mesh* mpEnvMapCube = nullptr;
     size_t iteration = 0;
     bool pause = false;
     bool logEnabled = false;
     std::vector<int> DOFs;
     std::vector<int> Eles;
     TextureCubemap* envMap = nullptr;
+    Sphere* mpSelectSPhere = nullptr;
+    glm::vec3 spherePos;
 };

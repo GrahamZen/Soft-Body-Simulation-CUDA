@@ -163,7 +163,8 @@ void RenderQueryDisplay(const float& availWidth) {
 
 std::vector<ImU32> colors;
 
-void RenderTimeBar(const std::vector<std::pair<std::string, float>>& times)
+template<typename Scalar>
+void RenderTimeBar(const std::vector<std::pair<std::string, Scalar>>& times)
 {
     size_t timeSize = times.size();
     if (timeSize == 0) return;
@@ -235,8 +236,15 @@ void RenderImGui()
         context->SetBVHBuildType(context->GetBVHBuildType());
     }
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
-    const std::vector<const char*> pdSolverTypeNameItems = { "Cholesky(Eigen)", "Cholesky(CUSOLVER)", "Jacobi" };
-    bool globalSolverChanged = ImGui::Combo("Global Solver", &imguiData->pdSolverType, pdSolverTypeNameItems.data(), pdSolverTypeNameItems.size());
+    const std::vector<const char*> sgpcSolverTypeNameItems = { "Cholesky(Eigen)", "Cholesky(CUSOLVER)", "Jacobi" };
+    const std::vector<const char*> dbpcSolverTypeNameItems = { "IPC" };
+    bool globalSolverChanged;
+    if (context->mcrpSimContext->GetPrecision() == Precision::Float32) {
+        globalSolverChanged = ImGui::Combo("Global Solver", &imguiData->solverType, sgpcSolverTypeNameItems.data(), sgpcSolverTypeNameItems.size());
+    }
+    else {
+        globalSolverChanged = ImGui::Combo("Global Solver", &imguiData->solverType, dbpcSolverTypeNameItems.data(), dbpcSolverTypeNameItems.size());
+    }
     imguiData->Reset = ImGui::Button("Reset");
     ImGui::SameLine();
     imguiData->Pause = ImGui::Button("Pause");
@@ -257,10 +265,6 @@ void RenderImGui()
     ImGui::SetNextItemWidth(availWidth * 0.25f);
     if (ImGui::DragFloat("tolerance", &tol, 0.0001f, 0.0001f, 0.05f, "%.4f"))
         imguiData->solverParams->tol = tol;
-    float kappa = imguiData->solverParams->kappa;
-    ImGui::SetNextItemWidth(availWidth * 0.25f);
-    if (ImGui::DragFloat("kappa", &kappa, 1000.f, 1e2, 1e5, "%.4f"))
-        imguiData->solverParams->kappa = kappa;
     ImGui::SetNextItemWidth(availWidth * 0.25f);
     int maxIterations = imguiData->solverParams->maxIterations;
     ImGui::SameLine();
@@ -325,10 +329,6 @@ void mainLoop() {
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_DEPTH_TEST);
         glEnable(GL_MULTISAMPLE);
-        if (imguiData->WireFrame)
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-        else
-            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
         // VAO, shader program, and texture already bound
         context->Draw();

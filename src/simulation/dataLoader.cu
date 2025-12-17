@@ -14,6 +14,8 @@
 #include <filesystem>
 #include <set>
 
+using FaceVertIdx = std::tuple<indexType, indexType, indexType>;
+
 template<typename T>
 __host__ __device__ void sortThree(T& a, T& b, T& c);
 
@@ -86,9 +88,9 @@ std::pair<std::vector<indexType>, std::vector<indexType>> DataLoader<Scalar>::lo
         }
     }
     if (numTris == 0) {
-        std::map<std::tuple<indexType, indexType, indexType>, std::tuple<indexType, indexType, indexType>> faceMap;
-        std::set<std::tuple<indexType, indexType, indexType>> uniqueFaces;
-        std::vector<std::tuple<indexType, indexType, indexType>> faces(4);
+        std::map<FaceVertIdx, FaceVertIdx> faceMap;
+        std::set<FaceVertIdx> uniqueFaces;
+        std::vector<FaceVertIdx> faces(4);
         for (size_t i = 0; i < Tet.size(); i += 4) {
             indexType v0 = Tet[i];
             indexType v1 = Tet[i + 1];
@@ -115,7 +117,7 @@ std::pair<std::vector<indexType>, std::vector<indexType>> DataLoader<Scalar>::lo
         Triangle.resize(numTris * 3);
         int i = 0;
         for (const auto& face : uniqueFaces) {
-            std::tuple<indexType, indexType, indexType> orderedFace = faceMap[face];
+            FaceVertIdx orderedFace = faceMap[face];
             Triangle[i++] = std::get<0>(orderedFace);
             Triangle[i++] = std::get<1>(orderedFace);
             Triangle[i++] = std::get<2>(orderedFace);
@@ -296,12 +298,18 @@ void DataLoader<Scalar>::AllocData(std::vector<int>& startIndices, SolverData<Sc
     cudaMalloc((void**)&solverData.XTilde, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
     cudaMalloc((void**)&solverData.V, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
     cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.OffsetX, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
+    cudaMalloc((void**)&solverData.DBC, sizeof(Scalar) * totalNumVerts);
+    cudaMalloc((void**)&solverData.moreDBC, sizeof(Scalar) * totalNumVerts);
+    cudaMalloc((void**)&solverData.DBCX, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
     cudaMemset(solverData.V, 0, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
     cudaMemset(solverData.ExtForce, 0, sizeof(glm::tvec3<Scalar>) * totalNumVerts);
+    cudaMemset(solverData.DBC, 0, sizeof(Scalar) * totalNumVerts);
+    cudaMemset(solverData.moreDBC, 0, sizeof(Scalar) * totalNumVerts);
     cudaMalloc((void**)&solverData.Tet, sizeof(indexType) * totalNumTets * 4);
     cudaMalloc((void**)&solverData.Tri, sizeof(indexType) * totalNumTris * 3);
     if (totalNumDBC > 0) {
-        cudaMalloc((void**)&solverData.DBC, sizeof(indexType) * totalNumDBC);
+        cudaMalloc((void**)&solverData.DBCIdx, sizeof(indexType) * totalNumDBC);
     }
     cudaMalloc((void**)&solverData.contact_area, sizeof(Scalar) * totalNumVerts);
     cudaMalloc((void**)&solverData.mass, sizeof(Scalar) * totalNumVerts);
@@ -322,9 +330,12 @@ void DataLoader<Scalar>::AllocData(std::vector<int>& startIndices, SolverData<Sc
             thrust::host_vector<indexType> hDBC(softBodyAttr.DBC, softBodyAttr.DBC + softBodyAttr.numDBC);
             thrust::device_vector<indexType> dDBC(softBodyAttr.numDBC);
             thrust::copy(hDBC.begin(), hDBC.end(), dDBC.begin());
-            thrust::device_ptr<indexType> dDBCPtr(solverData.DBC + dbcOffset);
+            thrust::device_ptr<indexType> dDBCPtr(solverData.DBCIdx + dbcOffset);
             thrust::transform(dDBC.begin(), dDBC.end(), dDBCPtr, [vertOffset] __device__(indexType x) {
                 return x + vertOffset;
+            });
+            thrust::for_each(dDBC.begin(), dDBC.end(), [vertOffset, solverData] __device__(indexType x) {
+                solverData.DBC[x + vertOffset] = 1;
             });
         }
         thrust::transform(softBodySolverData.Tet, softBodySolverData.Tet + softBodySolverData.numTets * 4, thrust::device_pointer_cast(solverData.Tet) + tetOffset, [vertOffset] __device__(indexType x) {
@@ -356,6 +367,7 @@ void DataLoader<Scalar>::AllocData(std::vector<int>& startIndices, SolverData<Sc
         delete[] softBodyAttr.DBC;
     }
     cudaMemcpy(solverData.X0, solverData.X, sizeof(glm::tvec3<Scalar>) * totalNumVerts, cudaMemcpyDeviceToDevice);
+    cudaMemcpy(solverData.DBCX, solverData.X0, sizeof(glm::tvec3<Scalar>) * totalNumVerts, cudaMemcpyDeviceToDevice);
     cudaMemcpy(solverData.XTilde, solverData.X, sizeof(glm::tvec3<Scalar>) * totalNumVerts, cudaMemcpyDeviceToDevice);
 }
 

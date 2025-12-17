@@ -179,6 +179,7 @@ public:
         for (int i = 0; i < Rows; ++i) {
             result[i] = value[i] * val;
         }
+        return result;
     }
 
     __host__ __device__ friend Matrix operator*(const Scalar& val, const Matrix& mat) {
@@ -327,6 +328,18 @@ __forceinline__ __host__ __device__ void printGLMMatrix(const glm::tmat3x3<Scala
         m[2][0], m[2][1], m[2][2]);
 }
 
+template<typename Scalar>
+__forceinline__ __host__ __device__ void MatrixMultiply(const Matrix<Scalar, 3, 3>& A, const Matrix<Scalar, 3, 3>& B, Matrix<Scalar, 3, 3>& C) {
+    C[0][0] = A[0][0] * B[0][0] + A[0][1] * B[1][0] + A[0][2] * B[2][0];
+    C[0][1] = A[0][0] * B[0][1] + A[0][1] * B[1][1] + A[0][2] * B[2][1];
+    C[0][2] = A[0][0] * B[0][2] + A[0][1] * B[1][2] + A[0][2] * B[2][2];
+    C[1][0] = A[1][0] * B[0][0] + A[1][1] * B[1][0] + A[1][2] * B[2][0];
+    C[1][1] = A[1][0] * B[0][1] + A[1][1] * B[1][1] + A[1][2] * B[2][1];
+    C[1][2] = A[1][0] * B[0][2] + A[1][1] * B[1][2] + A[1][2] * B[2][2];
+    C[2][0] = A[2][0] * B[0][0] + A[2][1] * B[1][0] + A[2][2] * B[2][0];
+    C[2][1] = A[2][0] * B[0][1] + A[2][1] * B[1][1] + A[2][2] * B[2][1];
+    C[2][2] = A[2][0] * B[0][2] + A[2][1] * B[1][2] + A[2][2] * B[2][2];
+}
 
 template <typename Scalar>
 __device__ Matrix9x12<Scalar> ComputePFPx(const glm::tmat3x3<Scalar>& DmInv)
@@ -382,3 +395,125 @@ __device__ Matrix9x12<Scalar> ComputePFPx(const glm::tmat3x3<Scalar>& DmInv)
     PFPx[8][11] = u;
     return PFPx;
 }
+
+template <typename Scalar>
+__forceinline__ __host__ __device__ void MatrixMultiplyT3x3(const Scalar* A, const Scalar* B, Scalar* C) {
+
+}
+
+template <typename Scalar>
+__host__ __device__ void ComputeHessian(const Scalar* DmInv, const Matrix9<Scalar>& d2PsidF2, Matrix12<Scalar>& H) {
+    for (size_t i = 0; i < 9; i++)
+    {
+        H[3][i] = d2PsidF2[0][i] * DmInv[0] + d2PsidF2[3][i] * DmInv[3] + d2PsidF2[6][i] * DmInv[6];
+        H[4][i] = d2PsidF2[1][i] * DmInv[0] + d2PsidF2[4][i] * DmInv[3] + d2PsidF2[7][i] * DmInv[6];
+        H[5][i] = d2PsidF2[2][i] * DmInv[0] + d2PsidF2[5][i] * DmInv[3] + d2PsidF2[8][i] * DmInv[6];;
+        H[6][i] = d2PsidF2[0][i] * DmInv[1] + d2PsidF2[3][i] * DmInv[4] + d2PsidF2[6][i] * DmInv[7];
+        H[7][i] = d2PsidF2[1][i] * DmInv[1] + d2PsidF2[4][i] * DmInv[4] + d2PsidF2[7][i] * DmInv[7];
+        H[8][i] = d2PsidF2[2][i] * DmInv[1] + d2PsidF2[5][i] * DmInv[4] + d2PsidF2[8][i] * DmInv[7];
+        H[9][i] = d2PsidF2[0][i] * DmInv[2] + d2PsidF2[3][i] * DmInv[5] + d2PsidF2[6][i] * DmInv[8];
+        H[10][i] = d2PsidF2[1][i] * DmInv[2] + d2PsidF2[4][i] * DmInv[5] + d2PsidF2[7][i] * DmInv[8];
+        H[11][i] = d2PsidF2[2][i] * DmInv[2] + d2PsidF2[5][i] * DmInv[5] + d2PsidF2[8][i] * DmInv[8];
+        H[0][i] = -H[3][i] - H[6][i] - H[9][i];
+        H[1][i] = -H[4][i] - H[7][i] - H[10][i];
+        H[2][i] = -H[5][i] - H[8][i] - H[11][i];
+    }
+    Scalar temp[9];
+    for (size_t i = 0; i < 12; i++)
+    {
+        memcpy(temp, H[i].data(), 9 * sizeof(Scalar));
+        H[i][3] = temp[0] * DmInv[0] + temp[3] * DmInv[3] + temp[6] * DmInv[6];
+        H[i][4] = temp[1] * DmInv[0] + temp[4] * DmInv[3] + temp[7] * DmInv[6];
+        H[i][5] = temp[2] * DmInv[0] + temp[5] * DmInv[3] + temp[8] * DmInv[6];
+        H[i][6] = temp[0] * DmInv[1] + temp[3] * DmInv[4] + temp[6] * DmInv[7];
+        H[i][7] = temp[1] * DmInv[1] + temp[4] * DmInv[4] + temp[7] * DmInv[7];
+        H[i][8] = temp[2] * DmInv[1] + temp[5] * DmInv[4] + temp[8] * DmInv[7];
+        H[i][9] = temp[0] * DmInv[2] + temp[3] * DmInv[5] + temp[6] * DmInv[8];
+        H[i][10] = temp[1] * DmInv[2] + temp[4] * DmInv[5] + temp[7] * DmInv[8];
+        H[i][11] = temp[2] * DmInv[2] + temp[5] * DmInv[5] + temp[8] * DmInv[8];
+        H[i][0] = -H[i][3] - H[i][6] - H[i][9];
+        H[i][1] = -H[i][4] - H[i][7] - H[i][10];
+        H[i][2] = -H[i][5] - H[i][8] - H[i][11];
+    }
+}
+
+template <typename Scalar, int N>
+__device__ void makePD(Matrix<Scalar, N, N>& symM, int maxSweeps = 20, Scalar eps = 1e-9) {
+    Matrix<Scalar, N, N> V;
+    for (int i = 0; i < N; ++i) {
+        for (int j = 0; j < N; ++j) {
+            V[i][j] = (i == j) ? Scalar(1.0) : Scalar(0.0);
+        }
+    }
+
+    for (int sweep = 0; sweep < maxSweeps; ++sweep) {
+        bool converged = true;
+        
+        for (int p = 0; p < N; ++p) {
+            for (int q = p + 1; q < N; ++q) {
+                
+                Scalar apq = symM[p][q];
+                if (fabs(apq) < eps) continue; 
+                converged = false;
+                Scalar app = symM[p][p];
+                Scalar aqq = symM[q][q];
+                Scalar theta = 0.5 * (aqq - app) / apq;
+                Scalar t;
+                if (fabs(theta) > 1e10) {
+                    t = 0.5 / theta;
+                } else {
+                    Scalar sgn = (theta >= 0) ? 1.0 : -1.0;
+                    t = sgn / (fabs(theta) + sqrt(1.0 + theta * theta));
+                }
+                Scalar c = 1.0 / sqrt(1.0 + t * t);
+                Scalar s = t * c;
+
+                symM[p][q] = 0.0;
+                symM[q][p] = 0.0;
+                symM[p][p] = c * c * app - 2.0 * s * c * apq + s * s * aqq;
+                symM[q][q] = s * s * app + 2.0 * s * c * apq + c * c * aqq;
+
+                for (int k = 0; k < N; ++k) {
+                    if (k != p && k != q) {
+                        Scalar akp = symM[k][p];
+                        Scalar akq = symM[k][q];
+                        symM[k][p] = c * akp - s * akq;
+                        symM[p][k] = symM[k][p];
+                        
+                        symM[k][q] = s * akp + c * akq;
+                        symM[q][k] = symM[k][q];
+                    }
+                }
+
+                for (int k = 0; k < N; ++k) {
+                    Scalar vkp = V[k][p];
+                    Scalar vkq = V[k][q];
+                    V[k][p] = c * vkp - s * vkq;
+                    V[k][q] = s * vkp + c * vkq;
+                }
+            }
+        }
+        if (converged) break;
+    }
+
+    Scalar minEig = 1e-6; 
+    for (int i = 0; i < N; ++i) {
+        if (symM[i][i] < minEig) {
+            symM[i][i] = minEig;
+        }
+    }
+
+    Matrix<Scalar, N, N> result;
+    for (int i = 0; i < N; ++i) { 
+        for (int j = 0; j < N; ++j) {
+            Scalar sum = 0.0;
+            for (int k = 0; k < N; ++k) {
+                sum += V[i][k] * symM[k][k] * V[j][k];
+            }
+            result[i][j] = sum;
+        }
+    }
+
+    symM = result;
+}
+

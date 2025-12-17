@@ -45,6 +45,17 @@ void QueryDisplay::createQueries(int _numVerts) {
     cudaGraphicsGLRegisterBuffer(&cuda_bufCol_resource, bufCol, cudaGraphicsMapFlagsWriteDiscard);
 }
 
+void QueryDisplay::BufferData(glm::vec3* pos, glm::vec4* col) {
+    if (pos) {
+        glBindBuffer(GL_ARRAY_BUFFER, bufPos);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, count * sizeof(glm::vec3), pos);
+    }
+    if (col) {
+        glBindBuffer(GL_ARRAY_BUFFER, bufCol);
+        glBufferSubData(GL_ARRAY_BUFFER, 0, count * sizeof(glm::vec4), col);
+    }
+}
+
 void QueryDisplay::MapDevicePosPtr(glm::vec3** bufPosDevPtr, glm::vec4** bufColDevPtr)
 {
     size_t size;
@@ -63,9 +74,4 @@ void QueryDisplay::UnMapDevicePtr()
 }
 
 void QueryDisplay::create()
-{
-    // Does nothing, as we have two separate VBO data
-    // creation functions: createFromOBJ, which creates
-    // our mesh VBOs from OBJ file data, and createCube,
-    // which you will implement.
-}
+{}

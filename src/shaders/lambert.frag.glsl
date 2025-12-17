@@ -11,6 +11,7 @@ uniform sampler2D u_Texture;// The texture to be read from by this shader
 //These are the interpolated values out of the rasterizer, so you can't know
 //their specific values without knowing the vertices that contributed to them
 in vec4 fs_Nor;
+in vec4 fs_Col;
 in vec4 fs_LightVec;
 in vec2 fs_UV;
 
@@ -20,7 +21,7 @@ void main()
 {
     // Material base color (before shading)
     // vec4 diffuseColor=texture(u_Texture,fs_UV);
-    vec4 diffuseColor=vec4(0.5569, 0.6392, 0.8471, 1.0);
+    vec4 diffuseColor=fs_Col;
     
     // Calculate the diffuse term for Lambert shading
     float diffuseTerm=dot(normalize(fs_Nor),normalize(fs_LightVec));

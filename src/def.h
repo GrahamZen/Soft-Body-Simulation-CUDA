@@ -2,12 +2,22 @@
 #include <glm/glm.hpp>
 
 using indexType = unsigned int;
-
+enum class Precision { 
+    Float32, 
+    Float64 
+};
 class FixedBodyData;
 
 template<typename Scalar>
 class CollisionDetection;
 class Query;
+
+struct MouseSelection {
+    int select_v = -1;
+    bool dragging = false;
+    glm::vec3 target;
+    glm::vec3 dir;
+};
 
 template<typename Scalar>
 struct SolverData {
@@ -18,7 +28,11 @@ struct SolverData {
     glm::tvec3<Scalar>* X = nullptr;
     glm::tvec3<Scalar>* X0 = nullptr;
     glm::tvec3<Scalar>* XTilde = nullptr;
-    indexType* DBC = nullptr;
+    glm::tvec3<Scalar>* DBCX = nullptr;
+    Scalar* DBC = nullptr;
+    Scalar* moreDBC = nullptr;
+    glm::tvec3<Scalar>* OffsetX = nullptr;
+    indexType* DBCIdx = nullptr;
     Scalar* mass = nullptr;
     Scalar* mu = nullptr;
     Scalar* lambda = nullptr;
@@ -38,6 +52,8 @@ struct SolverData {
     int numQueries() const;
     Query* queries() const;
     CollisionDetection<Scalar>* pCollisionDetection = nullptr;
+    MouseSelection mouseSelection;
+    Scalar kappa = 1e5;
 };
 
 struct SoftBodyAttribute {
@@ -47,6 +63,21 @@ struct SoftBodyAttribute {
     indexType* DBC = nullptr;
     size_t numDBC = 0;
     bool jump = false;
+};
+
+struct SolverParamsUI {
+    SoftBodyAttribute softBodyAttr;
+    size_t numIterations = 1;
+    size_t maxIterations = 100;
+    double dt = 0.001;
+    double damp = 0.999;
+    double muN = 0.5;
+    double muT = 0.5;
+    double gravity = 9.8;
+    double dhat = 1e-2;
+    double tol = 1e-2;
+    double rho = 0.9992;
+    bool handleCollision = true;
 };
 
 template<typename Scalar>
@@ -61,7 +92,6 @@ struct SolverParams {
     Scalar gravity = 9.8f;
     // IPC
     Scalar dhat = 1e-2;
-    Scalar kappa = 1e5;
     Scalar tol = 1e-2;
 
     // Pd(Jacobi)

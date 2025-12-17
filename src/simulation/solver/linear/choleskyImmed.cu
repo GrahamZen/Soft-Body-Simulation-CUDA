@@ -17,6 +17,9 @@ CholeskySpImmedSolver<T>::~CholeskySpImmedSolver()
     cusparseDestroyMatDescr(descrA);
     cusolverSpDestroy(cusolverHandle);
     cudaFree(d_rowPtrA);
+    if (LinearSolver<T>::d_A) cudaFree(LinearSolver<T>::d_A);
+    if (LinearSolver<T>::d_rowIdx) cudaFree(LinearSolver<T>::d_rowIdx);
+    if (LinearSolver<T>::d_colIdx) cudaFree(LinearSolver<T>::d_colIdx);
 }
 
 template class CholeskySpImmedSolver<float>;
