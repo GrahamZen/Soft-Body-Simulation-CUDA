@@ -4,7 +4,7 @@
 #include <collision/bvh.cuh>
 #include <collision/bvh.h>
 #include <simulation/simulationContext.h>
-#include <distance/distance_type.h>
+#include <distance/distance_type.cuh>
 #include <collision/intersections.h>
 #include <thrust/sort.h>
 #include <thrust/unique.h>

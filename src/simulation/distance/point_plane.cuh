@@ -1,3 +1,5 @@
+#pragma once
+
 #include "point_plane.h"
 #include <cuda_runtime.h>
 

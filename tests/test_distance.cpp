@@ -2,7 +2,7 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_approx.hpp>
 #include <linear/cg.h>
-#include <distance/distance_type.h>
+#include <distance/distance_type.cuh>
 #include <matrix.h>
 #include <finitediff.hpp>
 

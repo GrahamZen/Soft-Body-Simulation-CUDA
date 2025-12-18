@@ -2,7 +2,7 @@
 #include <collision/bvh.h>
 #include <solverUtil.cuh>
 #include <matrix.h>
-#include <distance/distance_type.h>
+#include <distance/distance_type.cuh>
 #include <thrust/transform_reduce.h>
 #include <thrust/iterator/counting_iterator.h>
 

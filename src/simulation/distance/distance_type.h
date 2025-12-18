@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <aabb.h>
-#include <distance/point_triangle.h>
-#include <distance/edge_edge.h>
+#include <distance/point_triangle.cuh>
+#include <distance/edge_edge.cuh>
 #include <cuda_runtime.h>
 
 template <typename Scalar>

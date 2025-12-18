@@ -1,3 +1,5 @@
+#pragma once
+
 #include "point_line.h"
 #include <glm/gtx/norm.hpp> 
 
