@@ -12,7 +12,7 @@ class PdSolver : public FEMSolver<float> {
 public:
     enum class SolverType
     {
-        EigenCholesky, CuSolverCholesky, Jacobi
+        Jacobi, CuSolverCholesky, EigenCholesky
     };
     PdSolver(int threadsPerBlock, const SolverData<float>&);
     ~PdSolver();
@@ -27,7 +27,7 @@ private:
     LinearSolver<float>* jacobiSolver = nullptr;
     SolverType solverType;
 
-    const float positional_weight = 1e9;
+    const float positional_weight = 1e6;
     float* massDt_2s;
     float* sn;
     float* sn_old;

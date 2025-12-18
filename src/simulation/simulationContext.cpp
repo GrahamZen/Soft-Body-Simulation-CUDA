@@ -1,6 +1,7 @@
 #include <utilities.h>
 #include <surfaceshader.h>
-#include <simulation/solver/projective/pdSolver.h>
+#include <projective/pdSolver.h>
+#include <IPC/ipc.h>
 #include <simulation/simulationContext.h>
 #include <simulation/softBody.h>
 #include <collision/bvh.h>
@@ -77,7 +78,6 @@ SimulationCUDAContext::~SimulationCUDAContext() = default;
 
 void SimulationCUDAContext::Update()
 {
-    UpdateDBC();
     uiParams_.handleCollision = (contextGuiData->handleCollision && contextGuiData->BVHEnabled);
 
     VisitImpl([&](auto& impl) {
@@ -106,6 +106,9 @@ void SimulationCUDAContext::SetGlobalSolver(int val)
     VisitImpl([&](auto& impl) {
         if (auto pdsolver = dynamic_cast<PdSolver*>(impl.solver.get())) {
             pdsolver->SetGlobalSolver(static_cast<PdSolver::SolverType>(val));
+        }
+        if (auto ipcSolver = dynamic_cast<IPCSolver*>(impl.solver.get())) {
+            ipcSolver->SetLinearSolver(static_cast<IPCSolver::SolverType>(val));
         }
         });
 }

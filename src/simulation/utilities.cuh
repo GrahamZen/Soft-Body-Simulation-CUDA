@@ -51,8 +51,6 @@ __global__ void PopulatePos(glm::vec3* vertices, glm::tvec3<Scalar>* X, indexTyp
 template<typename Scalar>
 __global__ void PopulateTriPos(glm::vec3* vertices, glm::tvec3<Scalar>* X, indexType* Tet, int numTris);
 
-__host__ __device__ glm::vec4 getNormal(glm::vec3 v0, glm::vec3 v1, glm::vec3 v2);
-
 __global__ void RecalculateNormals(glm::vec4* norms, glm::vec3* X, int numVerts);
 template<typename Scalar>
 __global__ void populateBVHNodeAABBPos(BVHNode<Scalar>* nodes, glm::vec3* pos, int numNodes);

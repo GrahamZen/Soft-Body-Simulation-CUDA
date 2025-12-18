@@ -84,7 +84,6 @@ CholeskySpLinearSolver<T>::~CholeskySpLinearSolver()
     cudaFree(buffer_gpu);
     cudaFree(dev_x_permuted);
     cudaFree(dev_b_permuted);
-    cudaFree(d_rowPtrA);
 }
 
 template<typename T>
@@ -150,7 +149,7 @@ void CholeskySpLinearSolver<T>::ComputeAMD(cusolverSpHandle_t handle, int rowsA,
 
 template<typename T>
 CholeskySpLinearSolver<T>::CholeskySpLinearSolver(int threadsPerBlock, int* rowIdx, int* colIdx, T* A, int ASize, int len) {
-    sort_coo(ASize, len, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx);
+    sort_coo(ASize, len, A, rowIdx, colIdx, d_A, d_rowIdx, d_colIdx, capacity);
     int nnz = len;
     cudaMalloc((void**)&d_rowPtrA, sizeof(int) * (ASize + 1));
     cusparseHandle_t handle;

@@ -15,10 +15,7 @@
     },
     "environmentMap": {
         "path":"../assets/envmap/Yokohama",
-        "on": true
-    },
-    "external force": {
-        "jump": [0, 1000, 0]
+        "on": false
     },
     "softBodies": [
         {
@@ -121,8 +118,9 @@
     ],
     "contexts": [
         {
-            "name": "armadillo&house",
-            "load": false,
+            "name": "Armadillo&house",
+            "precision": "float",
+            "load": true,
             "dt": 0.01,
             "gravity": 98,
             "damp": 0.999,
@@ -150,8 +148,9 @@
             ]
         },
         {
-            "name": "massive armadillo",
+            "name": "Massive armadillo",
             "load": false,
+            "precision": "float",
             "dt": 0.02,
             "gravity": 200,
             "damp": 0.999,
@@ -189,16 +188,45 @@
             ]
         },
         {
-            "name": "example of intersection",
+            "name": "Cube & house & sphere",
             "load": true,
-            "dt": 0.03,
+            "precision": "double",
+            "dt": 0.05,
             "gravity": 9.8,
             "damp": 0.9,
             "muN": 0.5,
             "muT": 0.5,
-            "tolerance": 1e-2,
+            "tolerance": 5e-2,
             "kappa": 1e5,
-            "dhat": 1e-1,
+            "dhat": 5e-2,
+            "maxIterations": 1000,
+            "pauseIter": -1,
+            "softBodies": [
+                { "name": "cube", "pos": [10.0, 100.0, 0.0], "rot": [0.0, 0.0, 0.0]},
+                { "name": "house1", "pos": [0.0, 25.0, 0.0], "rot": [0.0, 0.0, 0.0]},
+                { "name": "softSphere", "pos": [0.0, 70.0, 0.0], "rot": [30.0, 30.0, 30.0]}
+            ],
+            "fixedBodies": [
+                { "name": "bottom plane", "pos": [0.0, 0.0, 0.0]},
+                { "name": "upper plane"},
+                { "name": "right plane"},
+                { "name": "left plane"},
+                { "name": "front plane"},
+                { "name": "back plane"}
+            ]
+        },
+        {
+            "name": "Example of intersection",
+            "load": true,
+            "precision": "double",
+            "dt": 0.05,
+            "gravity": 9.8,
+            "damp": 0.9,
+            "muN": 0.5,
+            "muT": 0.5,
+            "tolerance": 5e-2,
+            "kappa": 1e5,
+            "dhat": 5e-2,
             "maxIterations": 1000,
             "pauseIter": -1,
             "softBodies": [

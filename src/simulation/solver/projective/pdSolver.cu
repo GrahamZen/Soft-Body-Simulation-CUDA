@@ -19,7 +19,7 @@ struct gravity_force {
 
 float computeError(thrust::device_ptr<float> sn, thrust::device_ptr<float> sn_old, int size);
 
-PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver(threadsPerBlock, solverData), solverType(SolverType::CuSolverCholesky)
+PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : FEMSolver(threadsPerBlock, solverData), solverType(SolverType::Jacobi)
 {
     cudaMalloc((void**)&solverData.ExtForce, sizeof(glm::vec3) * solverData.numVerts);
     cudaMemset(solverData.ExtForce, 0, sizeof(glm::vec3) * solverData.numVerts);
@@ -123,7 +123,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
     {
         std::cerr << e.what() << ", " << "Cholesky decomposition(Eigen) failed" << std::endl;
     }
-
+    cudaMemcpy(solverData.DBCX, solverData.X0, sizeof(glm::vec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
 
     cudaFree(ARowIdx);
     cudaFree(AColIdx);
@@ -146,7 +146,7 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
     thrust::transform(thrust::device_pointer_cast(solverData.mass), thrust::device_pointer_cast(solverData.mass) + solverData.numVerts,
         thrust::device_pointer_cast(solverData.ExtForce), gravity_force(solverParams.gravity));
     PdUtil::setMDt_2MoreDBC << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, solverData.mass, dt * dt, massDt_2s, solverData.moreDBC, solverData.DBC);
-    PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, sn, dt, massDt_2s, solverData.X, solverData.V, solverData.ExtForce, solverData.moreDBC, solverData.OffsetX, solverData.DBCX, solverData.mouseSelection.dir);
+    PdUtil::computeSn << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, sn, dt, massDt_2s, solverData.X, solverData.V, solverData.ExtForce, solverData.moreDBC, solverData.OffsetX, solverData.DBCX, solverData.mouseSelection.target);
     cudaMemcpy(sn_old, sn, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToDevice);
     if (solverType == PdSolver::SolverType::Jacobi)
         cudaMemcpy(prev_x, sn, sizeof(float) * (solverData.numVerts * 3), cudaMemcpyDeviceToDevice);
@@ -184,7 +184,7 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
                     }
                     case PdSolver::SolverType::Jacobi:
                         // correct massDt_2 with moreDBC
-                        PdUtil::getErrorKern << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, next_x, b, massDt_2s, sn, matrix_diag);
+                        PdUtil::getErrorKern << < vertBlocks, threadsPerBlock >> > (solverData.numVerts, next_x, b, massDt_2s, sn, matrix_diag, solverData.moreDBC);
                         if (i <= 10)		omega = 1;
                         else if (i == 11)	omega = 2 / (2 - solverParams.rho * solverParams.rho);
                         else			omega = 4 / (4 - solverParams.rho * solverParams.rho * omega);
@@ -195,7 +195,7 @@ bool PdSolver::SolverStep(SolverData<float>& solverData, const SolverParams<floa
                     }
                 }, perf);
     }
-    PdUtil::updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilde, solverData.V, solverData.numVerts);
+    PdUtil::updateVelPos << < vertBlocks, threadsPerBlock >> > (sn, dtInv, solverData.XTilde, solverData.V, solverData.numVerts, solverData.moreDBC);
     return true;
 }
 

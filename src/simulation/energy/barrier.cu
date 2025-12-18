@@ -76,16 +76,18 @@ namespace Barrier {
         localHess = coef * barrierSquareFuncHess((Scalar)q.d, dhat, kappa, localGrad, localHess);
         makePD<Scalar, 12>(localHess);
         indexType v[4] = { q.v0, q.v1, q.v2, q.v3 };
+        int flat_idx = 0;
         for (int i = 0; i < 4; i++) {
             int row = v[i] * 3;
             for (int j = 0; j < 4; j++) {
                 int col = v[j] * 3;
                 for (int k = 0; k < 3; k++) {
                     for (int l = 0; l < 3; l++) {
-                        int idx = qIdx * 144 + (i * 4 + j) * 9 + k * 3 + l;
+                        int idx = flat_idx * numQueries + qIdx;
                         hessianVal[idx] = localHess[i * 3 + k][j * 3 + l];
                         hessianRowIdx[idx] = row + k;
                         hessianColIdx[idx] = col + l;
+                        flat_idx++;
                     }
                 }
             }
@@ -99,18 +101,28 @@ namespace Barrier {
         const Query& q = queries[qIdx];
         if (q.d > dhat * dhat) return;
         glm::tvec3<Scalar> x0 = Xs[q.v0], x1 = Xs[q.v1], x2 = Xs[q.v2], x3 = Xs[q.v3];
-        Vector12<Scalar> localGrad;
-        Matrix12<Scalar> localHess;
+        Vector12<Scalar> distGrad;
+        Matrix12<Scalar> distHess;
+
         if (q.type == QueryType::EE) {
-            localGrad = ipc::edge_edge_distance_gradient(x0, x1, x2, x3, q.dType);
-            localHess = ipc::edge_edge_distance_hessian(x0, x1, x2, x3, q.dType);
+            distGrad = ipc::edge_edge_distance_gradient(x0, x1, x2, x3, q.dType);
+            distHess = ipc::edge_edge_distance_hessian(x0, x1, x2, x3, q.dType);
         }
         else if (q.type == QueryType::VF) {
-            localGrad = ipc::point_triangle_distance_gradient(x0, x1, x2, x3, q.dType);
-            localHess = ipc::point_triangle_distance_hessian(x0, x1, x2, x3, q.dType);
+            distGrad = ipc::point_triangle_distance_gradient(x0, x1, x2, x3, q.dType);
+            distHess = ipc::point_triangle_distance_hessian(x0, x1, x2, x3, q.dType);
         }
-        localGrad = coef * barrierSquareFuncDerivative((Scalar)q.d, dhat, kappa) * localGrad;
-        localHess = coef * barrierSquareFuncHess((Scalar)q.d, dhat, kappa, localGrad, localHess);
+        Scalar d_sqr = (Scalar)q.d;
+        Scalar dhat_sqr = dhat * dhat;
+        Scalar s = d_sqr / dhat_sqr;
+
+        Scalar term_common = (log(s) / dhat_sqr + (s - 1.0) / d_sqr);
+        Scalar grad_coeff = 0.5 * dhat * (kappa / 8.0 * term_common);
+        Scalar hess_term1_coeff = 0.5 * dhat * (kappa / (8.0 * d_sqr * d_sqr * dhat_sqr) * (d_sqr + dhat_sqr));
+        Scalar hess_term2_coeff = grad_coeff;
+        Vector12<Scalar> localGrad = (coef * grad_coeff) * distGrad;
+        Matrix12<Scalar> localHess = coef * (hess_term1_coeff * Matrix12<Scalar>(distGrad, distGrad) + hess_term2_coeff * distHess);
+
         makePD<Scalar, 12>(localHess);
         atomicAdd(&grad[q.v0 * 3 + 0], localGrad[0]);
         atomicAdd(&grad[q.v0 * 3 + 1], localGrad[1]);
@@ -125,16 +137,18 @@ namespace Barrier {
         atomicAdd(&grad[q.v3 * 3 + 1], localGrad[10]);
         atomicAdd(&grad[q.v3 * 3 + 2], localGrad[11]);
         indexType v[4] = { q.v0, q.v1, q.v2, q.v3 };
+        int flat_idx = 0;
         for (int i = 0; i < 4; i++) {
             int row = v[i] * 3;
             for (int j = 0; j < 4; j++) {
                 int col = v[j] * 3;
                 for (int k = 0; k < 3; k++) {
                     for (int l = 0; l < 3; l++) {
-                        int idx = qIdx * 144 + (i * 4 + j) * 9 + k * 3 + l;
+                        int idx = flat_idx * numQueries + qIdx;
                         hessianVal[idx] = localHess[i * 3 + k][j * 3 + l];
                         hessianRowIdx[idx] = row + k;
                         hessianColIdx[idx] = col + l;
+                        flat_idx++;
                     }
                 }
             }
