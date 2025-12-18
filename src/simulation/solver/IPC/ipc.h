@@ -16,10 +16,11 @@ public:
 protected:
     virtual void SolverPrepare(SolverData<double>& solverData, const SolverParams<double>& solverParams) override;
     virtual bool SolverStep(SolverData<double>& solverData, const SolverParams<double>& solverParams) override;
-    void SearchDirection(SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2);
+    bool SearchDirection(SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2);
     void DOFElimination(SolverData<double>& solverData);
 private:
     bool failed = false;
+    bool* d_isFixed;
     int numVerts = 0;
     // Hessian(sparse)
     double* p = nullptr; // search direction
