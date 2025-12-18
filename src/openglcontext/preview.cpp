@@ -237,7 +237,7 @@ void RenderImGui()
     }
     ImGui::Checkbox("Show all objects", &imguiData->ObjectVis);
     const std::vector<const char*> sgpcSolverTypeNameItems = { "Jacobi",  "Cholesky(CUSOLVER)", "Cholesky(Eigen)" };
-    const std::vector<const char*> linearSolverTypeNameItems = { "CuSolverCholesky", "CG", "Jacobi" };
+    const std::vector<const char*> linearSolverTypeNameItems = { "CuSolverCholesky", "Incomplete Cholesky PCG", "Jacobi PCG", "Jacobi" };
     bool globalSolverChanged;
     if (context->mcrpSimContext->GetPrecision() == Precision::Float32) {
         globalSolverChanged = ImGui::Combo("Global Solver", &imguiData->solverType, sgpcSolverTypeNameItems.data(), sgpcSolverTypeNameItems.size());

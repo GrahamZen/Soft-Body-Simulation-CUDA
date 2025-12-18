@@ -59,6 +59,22 @@ Below are included in the project:
 * glfw
 * catch2
 
+## Note on Configuration
+
+The complete environment configuration is specified in context.json.
+
+### Scene
+
+The framework supports configuration of predefined soft bodies, rigid bodies, and camera parameters. Multiple contexts (scenes) can be loaded simultaneously, where each context may contain different combinations of soft and rigid objects, as well as distinct camera settings.
+
+Each context can be configured independently with physical parameters such as time step size, gravity, damping coefficients, and friction coefficients, and supports real-time switching between contexts.
+
+### Solver
+
+The behavior of the solver can be adjusted by modifying parameters in each context. Currently, solvers supporting two floating-point precisions are available. When defining a context, setting the precision parameter to float uses the projective dynamics solver, while setting it to double uses the IPC solver. Only the parameters relevant to the active solver take effect.
+
+The PD solver supports interactive object dragging within the scene. The IPC solver is significantly slower and consumes more GPU memory; therefore, it is not recommended for scenes involving objects with a large number of degrees of freedom. Different solvers expose different global solver and linear solver options in the ImGui combo box, which can be switched in real time. However, since solvers consume a substantial amount of GPU memory, frequent switching may lead to performance degradation. It is recommended to select the desired solver before starting the simulation and avoid switching after the simulation has begun.
+
 ## Screenshots
 
 https://github.com/user-attachments/assets/1c088da8-6842-4ba1-9514-9ba6ddd2cf92

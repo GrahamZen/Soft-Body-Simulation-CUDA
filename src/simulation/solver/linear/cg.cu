@@ -196,10 +196,7 @@ void CGSolver<T>::Solve(int N, T* d_b, T* d_x, T* A, int nz, int* rowIdx, int* c
     {
         // if ||rk|| < tolerance
         CHECK_CUBLAS(cublasnrm2(cubHandle, N, d_r, 1, &rTr));
-        if (rTr < tolerance)
-        {
-            break;
-        }
+        if (rTr < tolerance) break;
         // Solve L*y = rk
         CHECK_CUSPARSE(cusparseSpSV_solve(cusHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, &one,
             d_matL, dvec_r, dvec_y, dType, CUSPARSE_SPSV_ALG_DEFAULT, spsvDescrL));

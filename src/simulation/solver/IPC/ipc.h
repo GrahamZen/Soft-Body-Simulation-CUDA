@@ -13,7 +13,7 @@ class IPCSolver : public FEMSolver<double> {
 public:
     enum class SolverType
     {
-        CuSolverCholesky, CG, Jacobi
+        CuSolverCholesky, ICPCG, PCGJacobi, Jacobi
     };
     IPCSolver(int threadsPerBlock, const SolverData<double>&);
     ~IPCSolver();
