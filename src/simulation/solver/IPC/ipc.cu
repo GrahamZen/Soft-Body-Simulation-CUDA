@@ -1,6 +1,8 @@
 #include <IPC/ipc.h>
 #include <collision/bvh.h>
 #include <linear/choleskyImmed.h>
+#include <linear/cg.h>
+#include <linear/jacobi.h>
 #include <utilities.cuh>
 #include <thrust/sort.h>
 #include <thrust/transform_reduce.h>
@@ -83,13 +85,16 @@ namespace IPC {
 
 IPCSolver::IPCSolver(int threadsPerBlock, const SolverData<double>& solverData)
     : numVerts(solverData.numVerts), FEMSolver(threadsPerBlock, solverData),
-    energy(solverData), linearSolver(new CholeskySpImmedSolver<double>(solverData.numVerts * 3))
+    energy(solverData)
 {
     cudaMalloc((void**)&p, sizeof(double) * solverData.numVerts * 3);
     cudaMalloc((void**)&xTmp, sizeof(glm::dvec3) * solverData.numVerts);
     cudaMalloc((void**)&x_n, sizeof(glm::dvec3) * solverData.numVerts);
     cudaMalloc((void**)&d_isFixed, sizeof(bool) * solverData.numVerts);
-
+    linearSolver[0] = std::make_unique<CholeskySpImmedSolver<double>>(solverData.numVerts * 3);
+    linearSolver[1] = std::make_unique<CGSolver<double>>(solverData.numVerts * 3);
+    linearSolver[2] = std::make_unique<JacobiSolver<double>>(solverData.numVerts * 3);
+    currLinearSolver = linearSolver[static_cast<int>(solverType)].get();
     performanceData = { {"Init search dir", 0.0f},{"Line search", 0.0f} ,{"CCD", 0.0f} ,{"Compute search dir", 0.0f} };
 }
 
@@ -115,6 +120,11 @@ void IPCSolver::Reset()
 {
     Solver::Reset();
     failed = false;
+}
+
+void IPCSolver::SetLinearSolver(SolverType val)
+{
+    currLinearSolver = linearSolver[static_cast<int>(val)].get();
 }
 
 void IPCSolver::SolverPrepare(SolverData<double>& solverData, const SolverParams<double>& solverParams)
@@ -206,7 +216,7 @@ bool IPCSolver::SearchDirection(SolverData<double>& solverData, const SolverPara
     if (IPC::ContainsNaN(energy.gradient, solverData.numVerts * 3, "Gradient"))
         return false;
     DOFElimination(solverData);
-    linearSolver->Solve(solverData.numVerts * 3, energy.gradient, p, energy.hessianVal, energy.NNZ(solverData), energy.hessianRowIdx, energy.hessianColIdx, (double*)solverData.X);
+    currLinearSolver->Solve(solverData.numVerts * 3, energy.gradient, p, energy.hessianVal, energy.NNZ(solverData), energy.hessianRowIdx, energy.hessianColIdx, (double*)solverData.X);
     return true;
 }
 

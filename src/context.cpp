@@ -414,7 +414,7 @@ void Context::InitCuda() {
 
 void Context::Draw() {
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    if (mpProgSkybox && envMap->m_isCreated) {
+    if (mpProgSkybox && envMap && envMap->m_isCreated) {
         glDepthFunc(GL_LEQUAL);
         glDepthMask(GL_FALSE);
         envMap->bind(ENV_MAP_CUBE_TEX_SLOT);
