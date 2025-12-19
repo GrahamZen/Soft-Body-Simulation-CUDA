@@ -38,6 +38,8 @@ DataLoader<Scalar>::~DataLoader() = default;
 template<typename Scalar>
 std::pair<std::vector<indexType>, std::vector<indexType>> DataLoader<Scalar>::loadEleFaceFile(const std::string& EleFilename, int startIndex, int& numTets, int& numTris, std::string faceFilename)
 {
+    numTets = 0;
+    numTris = 0;
     std::string line;
     std::ifstream file(EleFilename);
 
@@ -342,9 +344,13 @@ void DataLoader<Scalar>::AllocData(std::vector<int>& startIndices, SolverData<Sc
             return x + vertOffset;
         });
         if (softBodyData.Tri) {
-            thrust::for_each(thrust::device_pointer_cast(softBodyData.Tri), thrust::device_pointer_cast(softBodyData.Tri) + softBodyData.numTris * 3, [vertOffset] __device__(indexType & x) {
-                x += vertOffset;
-            });
+            auto first = thrust::device_pointer_cast(softBodyData.Tri);
+            auto last = first + softBodyData.numTris * 3;
+            thrust::transform(first, last, first,
+                [vertOffset] __device__(indexType x) {
+                return x + vertOffset;
+            }
+            );
             cudaMemcpy(solverData.Tri + triOffset, softBodyData.Tri, sizeof(indexType) * softBodyData.numTris * 3, cudaMemcpyDeviceToDevice);
         }
         thrust::fill(thrust::device_pointer_cast(solverData.dev_TriFathers) + triOffset / 3, thrust::device_pointer_cast(solverData.dev_TriFathers) + triOffset / 3 + softBodyData.numTris, i);
