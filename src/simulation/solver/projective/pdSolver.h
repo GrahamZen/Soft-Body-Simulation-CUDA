@@ -4,6 +4,7 @@
 #include <Eigen/SparseCore>
 #include <simulation/solver/femSolver.h>
 #include <Eigen/Dense>
+#include <memory>
 
 template<typename T>
 class LinearSolver;
@@ -23,8 +24,8 @@ protected:
     virtual void SolverPrepare(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
     virtual bool SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
 private:
-    LinearSolver<float>* ls = nullptr;
-    LinearSolver<float>* jacobiSolver = nullptr;
+    std::unique_ptr<LinearSolver<float>> ls;
+    std::unique_ptr<LinearSolver<float>> jacobiSolver;
     SolverType solverType;
 
     const float positional_weight = 1e6;

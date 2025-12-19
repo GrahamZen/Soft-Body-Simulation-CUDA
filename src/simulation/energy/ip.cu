@@ -17,8 +17,11 @@ struct AbsOp {
     }
 };
 
-IPEnergy::IPEnergy(const SolverData<double>& solverData) : inertia(solverData, nnz, solverData.numVerts, solverData.mass),
-elastic(new CorotatedEnergy<double>(solverData, nnz)), implicitBarrier(solverData, nnz), barrier(solverData, nnz)
+IPEnergy::IPEnergy(const SolverData<double>& solverData)
+    : inertia(solverData, nnz, solverData.numVerts, solverData.mass),
+    elastic(std::make_unique<CorotatedEnergy<double>>(solverData, nnz)),
+    implicitBarrier(solverData, nnz),
+    barrier(solverData, nnz)
 {
     hessianCapacity = nnz;
     cudaMalloc((void**)&gradient, sizeof(double) * solverData.numVerts * 3);
@@ -38,7 +41,6 @@ IPEnergy::~IPEnergy()
     cudaFree(hessianVal);
     cudaFree(hessianRowIdx);
     cudaFree(hessianColIdx);
-    if (elastic) delete elastic;
 }
 
 double IPEnergy::Val(const glm::dvec3* Xs, const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const

@@ -5,6 +5,7 @@
 #include <energy/gravity.h>
 #include <energy/elasticity.h>
 #include <energy/implicitBarrier.h>
+#include <memory>
 
 class IPEnergy {
 public:
@@ -30,6 +31,6 @@ private:
     InertiaEnergy<double> inertia;
     GravityEnergy<double> gravity;
     ImplicitBarrierEnergy<double> implicitBarrier;
-    ElasticEnergy<double>* elastic = nullptr;
+    std::unique_ptr<ElasticEnergy<double>> elastic;
     BarrierEnergy<double> barrier;
 };

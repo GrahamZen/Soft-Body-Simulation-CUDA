@@ -27,9 +27,6 @@ PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : F
 }
 
 PdSolver::~PdSolver() {
-    if (ls) {
-        free(ls);
-    }
     cudaFree(sn);
     cudaFree(sn_old);
     cudaFree(b);
@@ -117,7 +114,7 @@ void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<f
         cudaMemcpy(AColIdx, AColIdxHost.data(), sizeof(int) * nnz, cudaMemcpyHostToDevice);
         cudaMemcpy(AVal, tmpValHost.data(), sizeof(float) * nnz, cudaMemcpyHostToDevice);
 
-        ls = new CholeskySpLinearSolver<float>(threadsPerBlock, ARowIdx, AColIdx, AVal, ASize, nnz);
+        ls = std::make_unique<CholeskySpLinearSolver<float>>(threadsPerBlock, ARowIdx, AColIdx, AVal, ASize, nnz);
     }
     catch (const std::exception& e)
     {
