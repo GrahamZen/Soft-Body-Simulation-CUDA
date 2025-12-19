@@ -11,6 +11,12 @@ public:
     virtual ~JacobiSolver() override;
     virtual void Solve(int N, T* d_b, T* d_x, T* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, T* d_guess = nullptr) override;
 private:
+    using LinearSolver<T>::d_A;
+    using LinearSolver<T>::d_rowIdx;
+    using LinearSolver<T>::d_colIdx;
+    using LinearSolver<T>::d_rowPtrA;
+    using LinearSolver<T>::capacity;
+
     int maxIter;
     cusparseHandle_t cusHandle = nullptr;
     T* x_prime = nullptr;

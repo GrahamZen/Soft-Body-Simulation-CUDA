@@ -11,6 +11,20 @@
 #include <thrust/remove.h>
 #include <thrust/device_vector.h>
 
+namespace {
+__device__ inline size_t atomicAddSizeT(size_t* address, size_t val) {
+    if constexpr (sizeof(size_t) == sizeof(unsigned long long)) {
+        return static_cast<size_t>(atomicAdd(
+            reinterpret_cast<unsigned long long*>(address),
+            static_cast<unsigned long long>(val)));
+    } else {
+        return static_cast<size_t>(atomicAdd(
+            reinterpret_cast<unsigned int*>(address),
+            static_cast<unsigned int>(val)));
+    }
+}
+} // namespace
+
 //input the aabb box of a Tetrahedron
 //generate a 30-bit morton code
 template<typename Scalar>
@@ -341,7 +355,7 @@ __global__ void traverseTree(int numTris, const BVHNode<Scalar>* nodes, const in
                 // 1 faces * 3 verts + 3 edges * 3 edges
                 if ((!ignoreSelfCollision || triFathers[myNode.TriangleIndex] != triFathers[leftChild.TriangleIndex]) && myNode.TriangleIndex != leftChild.TriangleIndex && !isAdjacentTriangle(tris[myNode.TriangleIndex * 3 + 0], tris[myNode.TriangleIndex * 3 + 1], tris[myNode.TriangleIndex * 3 + 2],
                     tris[leftChild.TriangleIndex * 3 + 0], tris[leftChild.TriangleIndex * 3 + 1], tris[leftChild.TriangleIndex * 3 + 2])) {
-                    int qIdx = atomicAdd(queryCount, 12);
+                    size_t qIdx = atomicAddSizeT(queryCount, static_cast<size_t>(12));
                     if (qIdx + 12 < maxNumQueries) {
                         Query* qBegin = &queries[qIdx];
                         fillQuery(qBegin, myNode.TriangleIndex, leftChild.TriangleIndex, tris);
@@ -365,7 +379,7 @@ __global__ void traverseTree(int numTris, const BVHNode<Scalar>* nodes, const in
             {
                 if ((!ignoreSelfCollision || triFathers[myNode.TriangleIndex] != triFathers[rightChild.TriangleIndex]) && myNode.TriangleIndex != rightChild.TriangleIndex && !isAdjacentTriangle(tris[myNode.TriangleIndex * 3 + 0], tris[myNode.TriangleIndex * 3 + 1], tris[myNode.TriangleIndex * 3 + 2],
                     tris[rightChild.TriangleIndex * 3 + 0], tris[rightChild.TriangleIndex * 3 + 1], tris[rightChild.TriangleIndex * 3 + 2])) {
-                    int qIdx = atomicAdd(queryCount, 12);
+                    size_t qIdx = atomicAddSizeT(queryCount, static_cast<size_t>(12));
                     if (qIdx + 12 < maxNumQueries) {
                         Query* qBegin = &queries[qIdx];
                         fillQuery(qBegin, myNode.TriangleIndex, rightChild.TriangleIndex, tris);
@@ -401,7 +415,7 @@ bool CollisionDetection<Scalar>::DetectCollisionCandidates(const BVHNode<Scalar>
             overflowHappened = true;
             maxNumQueries *= 2;
             std::cerr << "Query buffer overflow, resizing to " << maxNumQueries << std::endl;
-            if (maxNumQueries > 1 << 31) {
+            if (maxNumQueries > (static_cast<size_t>(1) << 31)) {
                 std::cerr << "Number of queries exceeds 2^31, aborting" << std::endl;
                 exit(1);
                 return false;

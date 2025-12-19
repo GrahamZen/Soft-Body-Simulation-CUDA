@@ -327,7 +327,7 @@ void ImplicitBarrierEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData
 {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    ImplicitBarrier::hessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.numVerts,
+    ImplicitBarrier::hessianKern << <numBlocks, threadsPerBlock >> > (this->hessianVal, this->hessianRowIdx, this->hessianColIdx, solverData.X, solverData.numVerts,
         solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes, solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, solverData.pFixedBodies->dev_spheres, solverData.pFixedBodies->numSpheres, solverParams.dhat, solverData.contact_area, coef);
 }
 
@@ -336,7 +336,7 @@ void ImplicitBarrierEnergy<Scalar>::GradientHessian(Scalar* grad, const SolverDa
 {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    ImplicitBarrier::gradHessianKern << <numBlocks, threadsPerBlock >> > (grad, hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.numVerts,
+    ImplicitBarrier::gradHessianKern << <numBlocks, threadsPerBlock >> > (grad, this->hessianVal, this->hessianRowIdx, this->hessianColIdx, solverData.X, solverData.numVerts,
         solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes, solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, solverData.pFixedBodies->dev_spheres, solverData.pFixedBodies->numSpheres, solverParams.dhat, solverData.contact_area, coef);
 }
 

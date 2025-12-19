@@ -3,7 +3,7 @@
 #include <collision/aabb.h>
 #include <simulationContext.h>
 #include <context.h>
-#include <softbody.h>
+#include <softBody.h>
 #include <preview.h>
 #include <utilities.h>
 #include <imgui.h>

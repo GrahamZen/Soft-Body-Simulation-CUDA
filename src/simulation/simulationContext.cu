@@ -168,6 +168,8 @@ bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos, bool up
             hit_v = ms.select_v;
         }
         else {
+            if (impl.data.numTris <= 0 || impl.data.Tri == nullptr || impl.data.X == nullptr) 
+                return false;
             hit_v = raySimCtxIntersection(ray, impl.data.numTris, impl.data.Tri, impl.data.X);
             if (updateV) ms.select_v = hit_v;
         }

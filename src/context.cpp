@@ -1,7 +1,7 @@
 #include <sceneStructs.h>
 #include <surfaceshader.h>
 #include <context.h>
-#include <Mesh.h>
+#include <mesh.h>
 #include <collision/aabb.h>
 #include <simulation/simulationContext.h>
 #include <utilities.h>

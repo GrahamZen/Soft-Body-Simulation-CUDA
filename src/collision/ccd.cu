@@ -210,9 +210,10 @@ SingleQueryDisplay& CollisionDetection<Scalar>::GetSQDisplay(int i, const glm::t
         cudaMemcpy(&v0Pos, pos + 1, sizeof(glm::vec3), cudaMemcpyDeviceToHost);
         cudaMemcpy(&v1Pos, pos + 2, sizeof(glm::vec3), cudaMemcpyDeviceToHost);
 
-        cudaMemcpy(&pos[4], &((v0Pos + v1Pos) / 2.f), sizeof(glm::vec3), cudaMemcpyHostToDevice);
+        glm::vec3 midPoint = (v0Pos + v1Pos) / 2.f;
+        cudaMemcpy(&pos[4], &midPoint, sizeof(glm::vec3), cudaMemcpyHostToDevice);
         // the third line point from the middle of v0 and v1 towards the normal direction
-        glm::vec3 normalPoint = (v0Pos + v1Pos) / 2.f + glm::vec3(q.normal) * 10.f;
+        glm::vec3 normalPoint = (v0Pos + v1Pos) / 2.f + glm::vec3(q.normal.x, q.normal.y, q.normal.z) * 10.f;
         cudaMemcpy(&pos[5], &normalPoint, sizeof(glm::vec3), cudaMemcpyHostToDevice);
         mSqDisplay.UnMapDevicePtr(&pos, nullptr, nullptr);
     }
@@ -228,7 +229,7 @@ SingleQueryDisplay& CollisionDetection<Scalar>::GetSQDisplay(int i, const glm::t
         thrust::transform(dev_ptr_X + q.v3, dev_ptr_X + q.v3 + 1, dev_triPos + 2, HighPtoFloatP<Scalar>());
         glm::vec3 v0Pos;
         cudaMemcpy(&v0Pos, vertPos, sizeof(glm::vec3), cudaMemcpyDeviceToHost);
-        glm::vec3 normalPoint = v0Pos + glm::vec3(q.normal) * 10.f;
+        glm::vec3 normalPoint = v0Pos + glm::vec3(q.normal.x, q.normal.y, q.normal.z) * 10.f;
         cudaMemcpy(&pos[0], &v0Pos, sizeof(glm::vec3), cudaMemcpyHostToDevice);
         cudaMemcpy(&pos[1], &normalPoint, sizeof(glm::vec3), cudaMemcpyHostToDevice);
         mSqDisplay.UnMapDevicePtr(&pos, &vertPos, &triPos);

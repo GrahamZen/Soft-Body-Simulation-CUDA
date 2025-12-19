@@ -58,7 +58,12 @@ enum class QueryType {
     VF,
     EE
 };
-
+struct Vec3d {
+    double x, y, z;
+    Vec3d operator-() const {
+        return Vec3d{-x, -y, -z};
+    }
+};
 class Query {
 public:
     QueryType type = QueryType::UNKNOWN;
@@ -69,5 +74,5 @@ public:
     indexType v3;
     double d;
     double toi = 0.f;
-    glm::dvec3 normal = glm::dvec3(0.f);
+    Vec3d normal = Vec3d{0.0, 0.0, 0.0};
 };

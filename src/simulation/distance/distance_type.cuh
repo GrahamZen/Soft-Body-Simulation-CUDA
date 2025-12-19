@@ -4,6 +4,13 @@
 
 using namespace ipc;
 
+template<typename Scalar>
+__host__ __device__ DistanceType edge_edge_parallel_distance_type(
+    const glm::tvec3<Scalar>& ea0,
+    const glm::tvec3<Scalar>& ea1,
+    const glm::tvec3<Scalar>& eb0,
+    const glm::tvec3<Scalar>& eb1);
+
 #ifdef __CUDACC__
 template <typename Scalar>
 __global__ void GetDistanceType(const glm::tvec3<Scalar>* Xs, Query* queries, int numQueries) {

@@ -14,6 +14,12 @@ public:
     virtual ~CholeskySpLinearSolver() override;
     virtual void Solve(int N, T* d_b, T* d_x, T* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, T* d_guess = nullptr) override;
 private:
+    using LinearSolver<T>::d_A;
+    using LinearSolver<T>::d_rowIdx;
+    using LinearSolver<T>::d_colIdx;
+    using LinearSolver<T>::d_rowPtrA;
+    using LinearSolver<T>::capacity;
+
     void ComputeAMD(cusolverSpHandle_t handle, int rowsA, int nnzA, int* dev_csrRowPtrA, int* dev_csrColIndA, T* dev_csrValA);
     cusolverSpHandle_t cusolverHandle;
     cusparseMatDescr_t descrA;
@@ -31,6 +37,8 @@ public:
     virtual ~CholeskyDnLinearSolver() override;
     virtual void Solve(int N, T* d_b, T* d_x, T* d_A = nullptr, int nz = 0, int* d_rowIdx = nullptr, int* d_colIdx = nullptr, T* d_guess = nullptr) override;
 private:
+    using LinearSolver<T>::dType;
+
     cusolverDnParams_t params;
     int* d_info = nullptr;    /* error info */
     cusolverDnHandle_t cusolverHandle;

@@ -3,6 +3,7 @@
 #include <glm/glm.hpp>
 #include <cuda_runtime.h>
 
+
 template<typename Func>
 float measureExecutionTime(const Func& func, bool print = false) {
     if (!print) {

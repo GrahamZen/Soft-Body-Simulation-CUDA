@@ -30,14 +30,14 @@ __forceinline__ __host__ __device__ Matrix12<Scalar> barrierSquareFuncHess(Scala
 double dhat = 0.05;
 double kappa = 100;
 std::vector<Query> queries = {
-Query{QueryType::EE,DistanceType::EA_EB,1,2,4,7,0.00187279,1,glm::dvec3(0.000000, 0.000000, 0.000000)},
-Query{QueryType::EE,DistanceType::EA_EB,4,7,1,2,0.00187279,1,glm::dvec3(0.000000, 0.000000, 0.000000)},
-Query{QueryType::EE,DistanceType::EA_EB,1,2,4,5,0.0021027,1,glm::dvec3(0.000000, 0.000000, 0.000000)},
-Query{QueryType::EE,DistanceType::EA_EB,4,5,1,2,0.0021027,1,glm::dvec3(0.000000, 0.000000, 0.000000)},
-Query{QueryType::VF,DistanceType::P_E0,4,1,2,3,0.00265943,1,glm::dvec3(0.000000, 0.000000, 0.000000)},
-Query{QueryType::VF,DistanceType::P_E1,4,0,1,2,0.00265943,1,glm::dvec3(0.000000, 0.000000, 0.000000)},
-Query{QueryType::EE,DistanceType::EA_EB0,1,2,4,6,0.00265943,1,glm::dvec3(0.000000, 0.000000, 0.000000)},
-Query{QueryType::EE,DistanceType::EA0_EB,4,6,1,2,0.00265943,1,glm::dvec3(0.000000, 0.000000, 0.000000)},
+Query{QueryType::EE,DistanceType::EA_EB,1,2,4,7,0.00187279,1,Vec3d{0.000000, 0.000000, 0.000000}},
+Query{QueryType::EE,DistanceType::EA_EB,4,7,1,2,0.00187279,1,Vec3d{0.000000, 0.000000, 0.000000}},
+Query{QueryType::EE,DistanceType::EA_EB,1,2,4,5,0.0021027,1,Vec3d{0.000000, 0.000000, 0.000000}},
+Query{QueryType::EE,DistanceType::EA_EB,4,5,1,2,0.0021027,1,Vec3d{0.000000, 0.000000, 0.000000}},
+Query{QueryType::VF,DistanceType::P_E0,4,1,2,3,0.00265943,1,Vec3d{0.000000, 0.000000, 0.000000}},
+Query{QueryType::VF,DistanceType::P_E1,4,0,1,2,0.00265943,1,Vec3d{0.000000, 0.000000, 0.000000}},
+Query{QueryType::EE,DistanceType::EA_EB0,1,2,4,6,0.00265943,1,Vec3d{0.000000, 0.000000, 0.000000}},
+Query{QueryType::EE,DistanceType::EA0_EB,4,6,1,2,0.00265943,1,Vec3d{0.000000, 0.000000, 0.000000}},
 };
 std::vector<glm::dvec3> points = {
 glm::dvec3(0.436417, 59.751547, 0.282352),

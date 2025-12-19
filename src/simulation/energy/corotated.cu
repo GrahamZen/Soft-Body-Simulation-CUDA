@@ -5,6 +5,7 @@
 #include <thrust/transform_reduce.h>
 #include <svd.cuh>
 
+
 namespace Corotated {
     template <typename Scalar>
     __global__ void GradientKern(Scalar* grad, const glm::tvec3<Scalar>* X, const indexType* Tet, const glm::tmat3x3<Scalar>* DmInvs,
@@ -231,7 +232,7 @@ template <typename Scalar>
 void CorotatedEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    Corotated::HessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx,
+    Corotated::HessianKern << <numBlocks, threadsPerBlock >> > (this->hessianVal, this->hessianRowIdx, this->hessianColIdx,
         solverData.X, solverData.Tet, solverData.DmInv, solverData.V0, solverData.mu, solverData.lambda, solverData.numTets, coef);
 }
 
@@ -239,7 +240,7 @@ template <typename Scalar>
 void CorotatedEnergy<Scalar>::GradientHessian(Scalar* grad, const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    Corotated::GradHessianKern << <numBlocks, threadsPerBlock >> > (grad, hessianVal, hessianRowIdx, hessianColIdx,
+    Corotated::GradHessianKern << <numBlocks, threadsPerBlock >> > (grad, this->hessianVal, this->hessianRowIdx, this->hessianColIdx,
         solverData.X, solverData.Tet, solverData.DmInv, solverData.V0, solverData.mu, solverData.lambda, solverData.numTets, coef);
 }
 

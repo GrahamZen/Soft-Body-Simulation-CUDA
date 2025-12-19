@@ -98,7 +98,7 @@ void InertiaEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, const 
 {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    Inertia::hessianKern << <numBlocks, threadsPerBlock >> > (solverData.mass, hessianVal, hessianRowIdx, hessianColIdx, solverData.numVerts);
+    Inertia::hessianKern << <numBlocks, threadsPerBlock >> > (solverData.mass, this->hessianVal, this->hessianRowIdx, this->hessianColIdx, solverData.numVerts);
 }
 
 template <typename Scalar>
@@ -106,7 +106,7 @@ void InertiaEnergy<Scalar>::GradientHessian(Scalar* grad, const SolverData<Scala
 {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    Inertia::gradHessianKern << <numBlocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.mass, grad, hessianVal, hessianRowIdx, hessianColIdx, solverData.numVerts);
+    Inertia::gradHessianKern << <numBlocks, threadsPerBlock >> > (solverData.X, solverData.XTilde, solverData.mass, grad, this->hessianVal, this->hessianRowIdx, this->hessianColIdx, solverData.numVerts);
 }
 
 template class InertiaEnergy<float>;

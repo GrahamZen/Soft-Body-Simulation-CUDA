@@ -2,6 +2,7 @@
 #include <linear/cuUtils.cuh>
 #include <stdexcept>
 
+
 template<typename T>
 __global__ void FillMatrixA(int* AIdx, T* AVal, T* d_A, int n, int ASize) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -207,5 +208,7 @@ void CholeskySpLinearSolver<T>::Solve(int N, T* d_b, T* d_x, T* d_A, int nz, int
     permuteVectorInv << <blocks, threadsPerBlock >> > (dev_x_permuted, d_x, d_p, N);
 }
 
-template CholeskySpLinearSolver<double>;
-template CholeskySpLinearSolver<float>;
+template class CholeskySpLinearSolver<double>;
+template class CholeskySpLinearSolver<float>;
+template class CholeskyDnLinearSolver<double>;
+template class CholeskyDnLinearSolver<float>;
