@@ -17,13 +17,15 @@ struct AbsOp {
     }
 };
 
-IPEnergy::IPEnergy(const SolverData<double>& solverData) :inertia(solverData, nnz, solverData.numVerts, solverData.mass),
+IPEnergy::IPEnergy(const SolverData<double>& solverData) : inertia(solverData, nnz, solverData.numVerts, solverData.mass),
 elastic(new CorotatedEnergy<double>(solverData, nnz)), implicitBarrier(solverData, nnz), barrier(solverData, nnz)
 {
+    hessianCapacity = nnz;
     cudaMalloc((void**)&gradient, sizeof(double) * solverData.numVerts * 3);
-    cudaMalloc((void**)&hessianVal, sizeof(double) * nnz);
-    cudaMalloc((void**)&hessianRowIdx, sizeof(int) * nnz);
-    cudaMalloc((void**)&hessianColIdx, sizeof(int) * nnz);
+    cudaMalloc((void**)&hessianVal, sizeof(double) * hessianCapacity);
+    cudaMalloc((void**)&hessianRowIdx, sizeof(int) * hessianCapacity);
+    cudaMalloc((void**)&hessianColIdx, sizeof(int) * hessianCapacity);
+
     inertia.SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
     implicitBarrier.SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
     elastic->SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
@@ -36,6 +38,7 @@ IPEnergy::~IPEnergy()
     cudaFree(hessianVal);
     cudaFree(hessianRowIdx);
     cudaFree(hessianColIdx);
+    if (elastic) delete elastic;
 }
 
 double IPEnergy::Val(const glm::dvec3* Xs, const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const
@@ -43,12 +46,29 @@ double IPEnergy::Val(const glm::dvec3* Xs, const SolverData<double>& solverData,
     return inertia.Val(Xs, solverData, solverParams) + h2 * (gravity.Val(Xs, solverData, solverParams) + elastic->Val(Xs, solverData, solverParams) + implicitBarrier.Val(Xs, solverData, solverParams) + barrier.Val(Xs, solverData, solverParams));
 }
 
-void IPEnergy::GradientHessian(const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2) const
+void IPEnergy::GradientHessian(const SolverData<double>& solverData, const SolverParams<double>& solverParams, double h2)
 {
+    int currentNNZ = NNZ(solverData);
+    if (currentNNZ > hessianCapacity) {
+        cudaFree(hessianVal);
+        cudaFree(hessianRowIdx);
+        cudaFree(hessianColIdx);
+        hessianCapacity = static_cast<int>(currentNNZ * 1.5);
+
+        cudaMalloc((void**)&hessianVal, sizeof(double) * hessianCapacity);
+        cudaMalloc((void**)&hessianRowIdx, sizeof(int) * hessianCapacity);
+        cudaMalloc((void**)&hessianColIdx, sizeof(int) * hessianCapacity);
+
+        inertia.SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
+        implicitBarrier.SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
+        elastic->SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
+        barrier.SetHessianPtr(hessianVal, hessianRowIdx, hessianColIdx);
+    }
+
     cudaMemset(gradient, 0, sizeof(double) * solverData.numVerts * 3);
-    cudaMemset(hessianVal, 0, sizeof(double) * NNZ(solverData));
-    cudaMemset(hessianRowIdx, 0, sizeof(int) * NNZ(solverData));
-    cudaMemset(hessianColIdx, 0, sizeof(int) * NNZ(solverData));
+    cudaMemset(hessianVal, 0, sizeof(double) * currentNNZ);
+    cudaMemset(hessianRowIdx, 0, sizeof(int) * currentNNZ);
+    cudaMemset(hessianColIdx, 0, sizeof(int) * currentNNZ);
     inertia.GradientHessian(gradient, solverData, solverParams, 1);
     gravity.Gradient(gradient, solverData, solverParams, h2);
     elastic->GradientHessian(gradient, solverData, solverParams, h2);
