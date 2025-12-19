@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
     context->LoadShaders();
     context->LoadFlatShaders();
     // Initialize ImGui Data
-    InitImguiData(context->guiData);
+    InitImguiData(context->guiData.get());
     context->InitDataContainer();
     GLenum err;
     while ((err = glGetError()) != GL_NO_ERROR) {

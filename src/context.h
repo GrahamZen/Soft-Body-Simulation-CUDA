@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include <optional>
+#include <memory>
 
 class SoftBody;
 class Camera;
@@ -102,7 +103,7 @@ public:
     int GetIteration() const { return iteration; }
     const std::vector<int>& GetDOFs() const { return DOFs; }
     const std::vector<int>& GetEles() const { return Eles; }
-    Camera* mpCamera = nullptr;
+    std::unique_ptr<Camera> mpCamera;
     const int width = 1024;
     const int height = 1024;
     bool panelModified = false;
@@ -110,9 +111,9 @@ public:
     int bvhBuildType = 1;
     float zoom, theta, phi;
     glm::vec3 cameraPosition;
-    GuiDataContainer* guiData;
+    std::unique_ptr<GuiDataContainer> guiData;
     SimulationCUDAContext* mcrpSimContext = nullptr;
-    std::vector<SimulationCUDAContext*> mpSimContexts;
+    std::vector<std::unique_ptr<SimulationCUDAContext>> mpSimContexts;
     MouseState mouseState;
 
 private:
@@ -122,18 +123,18 @@ private:
     std::string filename = "context.json";
     SimulationCUDAContext* LoadSimContext();
     glm::vec3 ogLookAt; // for recentering the camera
-    SurfaceShader* mpProgHighLight = nullptr;
-    SurfaceShader* mpProgLambert = nullptr;
-    SurfaceShader* mpProgPhong = nullptr;
-    SurfaceShader* mpProgFlat = nullptr;
-    SurfaceShader* mpProgSkybox = nullptr;
-    Mesh* mpEnvMapCube = nullptr;
+    std::unique_ptr<SurfaceShader> mpProgHighLight;
+    std::unique_ptr<SurfaceShader> mpProgLambert;
+    std::unique_ptr<SurfaceShader> mpProgPhong;
+    std::unique_ptr<SurfaceShader> mpProgFlat;
+    std::unique_ptr<SurfaceShader> mpProgSkybox;
+    std::unique_ptr<Mesh> mpEnvMapCube;
     size_t iteration = 0;
     bool pause = false;
     bool logEnabled = false;
     std::vector<int> DOFs;
     std::vector<int> Eles;
-    TextureCubemap* envMap = nullptr;
-    Sphere* mpSelectSPhere = nullptr;
+    std::unique_ptr<TextureCubemap> envMap;
+    std::unique_ptr<Sphere> mpSelectSPhere;
     glm::vec3 spherePos;
 };

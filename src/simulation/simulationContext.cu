@@ -40,7 +40,7 @@ void SimulationCUDAContext::Impl<Scalar>::Init(Context* ctx, nlohmann::json& jso
     maxThreads = _maxThreads;
     numIterations = _numIterations;
 
-    auto guiData = ctx->guiData;
+    auto guiData = ctx->guiData.get();
     DataLoader<Scalar> dataLoader(threadsPerBlock);
     std::vector<const char*> namesSoftBodies;
     data.pCollisionDetection = new CollisionDetection<Scalar>{ ctx, _threadsPerBlockBVH, 1 << 16 };
