@@ -35,7 +35,7 @@ private:
     glm::dvec3* xTmp = nullptr;
     glm::dvec3* x_n = nullptr;
     IPEnergy energy;
-    std::array<std::unique_ptr<LinearSolver<double>>, 3> linearSolver = { nullptr, nullptr, nullptr };
+    std::array<std::unique_ptr<LinearSolver<double>>, 4> linearSolver = { nullptr, nullptr, nullptr, nullptr };
     LinearSolver<double>* currLinearSolver = nullptr;
     SolverType solverType = SolverType::CuSolverCholesky;
 };
