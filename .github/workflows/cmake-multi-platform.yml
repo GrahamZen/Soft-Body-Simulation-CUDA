@@ -25,18 +25,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 安装 CUDA Toolkit（包含 cuSolver）
-      - name: Install CUDA Toolkit
-        uses: Jimver/cuda-toolkit@v0.2.16
-        with:
-          # 选一个你项目支持的版本；也可以固定到你本地用的版本
-          cuda: "12.4.1"
+      - name: Install CUDA Toolkit (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg
+          wget https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb
+          sudo dpkg -i cuda-keyring_1.1-1_all.deb
+          sudo apt-get update
+          sudo apt-get install -y cuda-toolkit-12-4
 
       - name: Set reusable strings
         id: strings
         shell: bash
         run: |
           echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
+      - name: Set CUDA env
+        if: runner.os == 'Linux'
+        run: |
+          echo "/usr/local/cuda/bin" >> $GITHUB_PATH
+          echo "CUDA_HOME=/usr/local/cuda" >> $GITHUB_ENV
 
       - name: Configure CMake
         shell: bash
