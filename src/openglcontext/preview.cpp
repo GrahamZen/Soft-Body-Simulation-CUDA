@@ -49,6 +49,8 @@ bool initOpenGL() {
         return false;
     }
     glfwMakeContextCurrent(window);
+    // Disable vsync so we can cap the frame rate manually (otherwise it sticks to monitor refresh e.g. 60Hz)
+    glfwSwapInterval(0);
     glfwSetKeyCallback(window, keyCallback);
     glfwSetCursorPosCallback(window, mousePositionCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);

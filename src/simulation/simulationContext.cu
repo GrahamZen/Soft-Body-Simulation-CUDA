@@ -139,10 +139,8 @@ SimulationCUDAContext::Impl<Scalar>::~Impl()
     cudaFree(data.Tri);         
     cudaFree(data.DBCIdx);      
     cudaFree(data.contact_area);
-    if(data.V0)
-        cudaFree(data.V0);
-    if (data.DmInv)
-        cudaFree(data.DmInv);
+    cudaFree(data.V0);
+    cudaFree(data.DmInv);
 
     cudaFree(data.DBC);
     cudaFree(data.mass);
