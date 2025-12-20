@@ -35,6 +35,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cuda-toolkit-12-4
 
+      - name: Install OpenGL & GLFW deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglfw3-dev \
+            libglew-dev \
+            libglm-dev \
+            libx11-dev \
+            libxrandr-dev \
+            libxinerama-dev \
+            libxcursor-dev \
+            libxi-dev
+
+
       - name: Set CUDA env
         run: |
           echo "/usr/local/cuda/bin" >> $GITHUB_PATH
