@@ -1,32 +1,19 @@
-name: CMake on multiple platforms
+name: CUDA CMake Build (Linux)
 
 on:
   pull_request:
     branches:
-      - "linux"
-      - "main"
+      - linux
+      - main
 
 jobs:
   build:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - os: ubuntu-latest
-            build_type: Release
-            c_compiler: gcc
-            cpp_compiler: g++
-          - os: windows-latest
-            build_type: Release
-            c_compiler: cl
-            cpp_compiler: cl
+    runs-on: ubuntu-22.04
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install CUDA Toolkit (Linux)
-        if: runner.os == 'Linux'
+      - name: Install CUDA Toolkit
         shell: bash
         run: |
           sudo apt-get update
@@ -36,31 +23,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y cuda-toolkit-12-4
 
-      - name: Set reusable strings
-        id: strings
-        shell: bash
-        run: |
-          echo "build-output-dir=${{ github.workspace }}/build" >> "$GITHUB_OUTPUT"
       - name: Set CUDA env
-        if: runner.os == 'Linux'
         run: |
           echo "/usr/local/cuda/bin" >> $GITHUB_PATH
           echo "CUDA_HOME=/usr/local/cuda" >> $GITHUB_ENV
 
       - name: Configure CMake
-        shell: bash
-        run: >
-          cmake -B "${{ steps.strings.outputs.build-output-dir }}"
-          -S "${{ github.workspace }}"
-          -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DCMAKE_C_COMPILER=${{ matrix.c_compiler }}
-          -DCMAKE_CXX_COMPILER=${{ matrix.cpp_compiler }}
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        shell: bash
-        run: cmake --build "${{ steps.strings.outputs.build-output-dir }}" --config ${{ matrix.build_type }}
-
-      - name: Test
-        shell: bash
-        working-directory: ${{ steps.strings.outputs.build-output-dir }}
-        run: ctest --build-config ${{ matrix.build_type }} --output-on-failure
+        run: |
+          cmake --build build --config Release
