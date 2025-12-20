@@ -39,9 +39,15 @@ find_package(OpenGL REQUIRED)
 set(EXTERNAL "${PROJECT_SOURCE_DIR}/external")
 
 if(UNIX)
+    find_package(OpenGL REQUIRED)
     find_package(glfw3 REQUIRED)
     find_package(GLEW REQUIRED)
-    set(LIBRARIES glfw ${GLEW_LIBRARIES} ${OPENGL_gl_LIBRARY} ${OPENGL_glx_LIBRARY})
+
+    set(LIBRARIES
+        glfw
+        ${GLEW_LIBRARIES}
+        OpenGL::GL
+    )
 else()
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
     set(GLFW_ROOT_DIR ${EXTERNAL})
