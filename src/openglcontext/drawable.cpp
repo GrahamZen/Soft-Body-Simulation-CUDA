@@ -5,6 +5,7 @@ Drawable::Drawable()
     idxBound(false), posBound(false), norBound(false), uvBound(false)
 {}
 
+Drawable::~Drawable() = default;
 
 void Drawable::destroy()
 {

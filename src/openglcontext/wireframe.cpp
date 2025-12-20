@@ -8,7 +8,10 @@ Wireframe::Wireframe()
 Wireframe::~Wireframe()
 {
     // unregister this buffer object with CUDA
-    cudaGLUnregisterBufferObject(bufPos);
+    if (cuda_bufPos_resource) {
+        cudaGraphicsUnregisterResource(cuda_bufPos_resource);
+        cuda_bufPos_resource = nullptr;
+    }
 }
 
 GLenum Wireframe::drawMode()

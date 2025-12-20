@@ -10,8 +10,14 @@ QueryDisplay::QueryDisplay()
 QueryDisplay::~QueryDisplay()
 {
     // unregister this buffer object with CUDA
-    cudaGLUnregisterBufferObject(bufPos);
-    cudaGLUnregisterBufferObject(bufCol);
+    if (cuda_bufPos_resource) {
+        cudaGraphicsUnregisterResource(cuda_bufPos_resource);
+        cuda_bufPos_resource = nullptr;
+    }
+    if (cuda_bufCol_resource) {
+        cudaGraphicsUnregisterResource(cuda_bufCol_resource);
+        cuda_bufCol_resource = nullptr;
+    }
 }
 
 GLenum QueryDisplay::drawMode()

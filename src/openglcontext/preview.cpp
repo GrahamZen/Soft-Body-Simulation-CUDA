@@ -337,7 +337,9 @@ void mainLoop() {
 
         glfwSwapBuffers(window);
     }
+}
 
+void cleanupOpenGL() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

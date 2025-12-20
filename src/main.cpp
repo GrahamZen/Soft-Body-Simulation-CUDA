@@ -49,9 +49,13 @@ int main(int argc, char** argv) {
     }
     // GLFW main loop
     mainLoop();
+    if (context) {
+        delete context;
+        context = nullptr;
+    }
+    cleanupOpenGL();
     cudaDeviceReset();
 
-    delete context;
     return 0;
 }
 

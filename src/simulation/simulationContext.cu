@@ -125,6 +125,7 @@ void SimulationCUDAContext::Impl<Scalar>::Init(Context* ctx, nlohmann::json& jso
 template<class Scalar>
 SimulationCUDAContext::Impl<Scalar>::~Impl()
 {
+
     cudaFree(data.X);
     cudaFree(data.Tet);
     cudaFree(data.V);
@@ -132,6 +133,13 @@ SimulationCUDAContext::Impl<Scalar>::~Impl()
     cudaFree(data.X0);
     cudaFree(data.XTilde);
     cudaFree(data.ExtForce);
+    cudaFree(data.OffsetX);     
+    cudaFree(data.moreDBC);     
+    cudaFree(data.DBCX);        
+    cudaFree(data.Tri);         
+    cudaFree(data.DBCIdx);      
+    cudaFree(data.contact_area);
+
     cudaFree(data.DBC);
     cudaFree(data.mass);
     cudaFree(data.mu);
@@ -145,6 +153,11 @@ SimulationCUDAContext::Impl<Scalar>::~Impl()
         delete softbody;
     }
     delete data.pCollisionDetection;
+
+    if (data.pFixedBodies) {
+        delete data.pFixedBodies; 
+        data.pFixedBodies = nullptr;
+    }
 }
 
 void SimulationCUDAContext::UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr)

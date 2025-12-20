@@ -27,15 +27,26 @@ PdSolver::PdSolver(int threadsPerBlock, const SolverData<float>& solverData) : F
 }
 
 PdSolver::~PdSolver() {
-    cudaFree(sn);
-    cudaFree(sn_old);
-    cudaFree(b);
-    cudaFree(massDt_2s);
-    free(bHost);
+if (sn) cudaFree(sn);
+    if (sn_old) cudaFree(sn_old);
+    if (b) cudaFree(b);
+    if (massDt_2s) cudaFree(massDt_2s);
+    if (bHost) free(bHost);
+    if (next_x) cudaFree(next_x);
+    if (prev_x) cudaFree(prev_x);
+    if (matrix_diag) cudaFree(matrix_diag);
 }
 
 void PdSolver::SolverPrepare(SolverData<float>& solverData, const SolverParams<float>& solverParams)
 {
+    if (sn) cudaFree(sn);
+    if (sn_old) cudaFree(sn_old);
+    if (next_x) cudaFree(next_x);
+    if (prev_x) cudaFree(prev_x);
+    if (b) cudaFree(b);
+    if (massDt_2s) cudaFree(massDt_2s);
+    if (matrix_diag) cudaFree(matrix_diag);
+    if (bHost) free(bHost);
     int vertBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     int tetBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
     float dt = solverParams.dt;

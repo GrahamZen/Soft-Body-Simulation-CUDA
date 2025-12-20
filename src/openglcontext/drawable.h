@@ -21,7 +21,7 @@ protected:
 
 public:
     Drawable();
-
+    virtual ~Drawable();
     virtual void create() = 0; // To be implemented by subclasses. Populates the VBOs of the Drawable.
     void destroy(); // Frees the VBOs of the Drawable.
 
