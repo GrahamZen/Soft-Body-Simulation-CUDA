@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        build_type: [Debug, Release]
 
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +29,6 @@ jobs:
             libxi-dev
 
       - name: Install CUDA Toolkit
-        shell: bash
         run: |
           sudo apt-get update
           sudo apt-get install -y wget gnupg
@@ -48,7 +50,6 @@ jobs:
             libxcursor-dev \
             libxi-dev
 
-
       - name: Set CUDA env
         run: |
           echo "/usr/local/cuda/bin" >> $GITHUB_PATH
@@ -56,8 +57,13 @@ jobs:
 
       - name: Configure CMake
         run: |
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build-${{ matrix.build_type }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
 
       - name: Build
         run: |
-          cmake --build build --config Release
+          cmake --build build-${{ matrix.build_type }} --config ${{ matrix.build_type }}
+
+      - name: Run tests
+        run: |
+          cd build-${{ matrix.build_type }}
+          ctest --output-on-failure

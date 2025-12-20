@@ -1,5 +1,6 @@
 CUDA-Accelerated Soft Body Simulation
-================
+
+![CUDA CMake Build (Linux)](https://github.com/GrahamZen/Soft-Body-Simulation-CUDA/actions/workflows/cuda-cmake-build-linux.yml/badge.svg)
 
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture, Final Project**
 
