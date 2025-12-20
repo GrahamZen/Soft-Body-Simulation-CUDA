@@ -14,11 +14,13 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/recipes/")
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/find/")
 
 if(CMAKE_CUDA_COMPILER)
-  set(CMAKE_CUDA_ARCHITECTURES native)
-endif()
-
-if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES OR CMAKE_CUDA_ARCHITECTURES STREQUAL "native")
-  set(CMAKE_CUDA_ARCHITECTURES 70;75;80;86;90)
+    if(DEFINED ENV{CI})
+        message(STATUS "CI environment detected. Setting CUDA architecture to 75.")
+        set(CMAKE_CUDA_ARCHITECTURES 75)
+    else()
+        message(STATUS "Local environment detected. Setting CUDA architecture to native.")
+        set(CMAKE_CUDA_ARCHITECTURES native)
+    endif()
 endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
