@@ -18,7 +18,7 @@ __global__ void ExtractInverseDiagonalKernel(int N, const T* A, const int* rowPt
         }
 
         // Avoid division by zero
-        if (abs(diagVal) < 1e-12) diagVal = 1.0;
+        if (abs(diagVal) < 1e-9) diagVal = 1.0;
         invDiag[idx] = 1.0 / diagVal;
     }
 }
@@ -96,10 +96,8 @@ void PCGJacobiSolver<T>::Solve(int N, T* d_b, T* d_x, T* A, int nz, int* rowIdx,
 
     if (dvec_x) CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_x));
     if (dvec_b) CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_b));
-    if (dvec_r) CHECK_CUSPARSE(cusparseDestroyDnVec(dvec_r));
     CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_x, N, d_x, dType));
     CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_b, N, d_b, dType));
-    CHECK_CUSPARSE(cusparseCreateDnVec(&dvec_r, N, d_r, dType));
 
     size_t bufferSize = 0;
     CHECK_CUSPARSE(cusparseSpMV_bufferSize(cusHandle, CUSPARSE_OPERATION_NON_TRANSPOSE, &one, d_matA,

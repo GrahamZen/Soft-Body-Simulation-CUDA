@@ -1,4 +1,4 @@
-#include <simulation/solver/femsolver.h>
+#include <simulation/solver/femSolver.h>
 #include <thrust/transform.h>
 #include <thrust/device_vector.h>
 #include <solver/solverUtil.cuh>

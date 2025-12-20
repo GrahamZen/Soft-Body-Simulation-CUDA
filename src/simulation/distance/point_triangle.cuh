@@ -1,8 +1,10 @@
+#pragma once
+
 #include "point_triangle.h"
 
-#include <distance/point_line.h>
-#include <distance/point_plane.h>
-#include <distance/point_point.h>
+#include <distance/point_line.cuh>
+#include <distance/point_plane.cuh>
+#include <distance/point_point.cuh>
 #include <cuda_runtime.h>
 
 namespace ipc {

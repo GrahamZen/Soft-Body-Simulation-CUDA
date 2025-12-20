@@ -1,3 +1,5 @@
+#pragma once
+
 #include "point_point.h"
 #include <glm/gtx/norm.hpp> 
 #include <cuda_runtime.h>

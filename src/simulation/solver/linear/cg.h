@@ -11,6 +11,13 @@ public:
     virtual ~CGSolver() override;
     virtual void Solve(int N, T* d_b, T* d_x, T* d_A, int nz, int* d_rowIdx, int* d_colIdx, T* d_guess = nullptr) override;
 private:
+    using LinearSolver<T>::dType;
+    using LinearSolver<T>::d_A;
+    using LinearSolver<T>::d_rowIdx;
+    using LinearSolver<T>::d_colIdx;
+    using LinearSolver<T>::d_rowPtrA;
+    using LinearSolver<T>::capacity;
+
     cublasHandle_t cubHandle = nullptr;
     cusparseHandle_t cusHandle = nullptr;
     csric02Info_t ic02info = nullptr;

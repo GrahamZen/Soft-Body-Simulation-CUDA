@@ -16,6 +16,13 @@ namespace ImplicitBarrier {
         if (idx >= numVerts)
             return;
         glm::tvec3<Scalar> x = X[idx];
+        for (int k = 0; k < 3; k++) {
+            for (int l = 0; l < 3; l++) {
+                int index = idx * 9 + k * 3 + l;
+                hessianRowIdx[index] = idx * 3 + k;
+                hessianColIdx[index] = idx * 3 + l;
+            }
+        }
         for (int j = 0; j < numPlanes; j++) {
             const Plane& plane = planes[j];
             glm::tvec3<Scalar> floorPos = glm::tvec3<Scalar>(plane.m_model[3]);
@@ -33,8 +40,6 @@ namespace ImplicitBarrier {
                         int colIdx = idx * 3 + l;
                         int index = idx * 9 + k * 3 + l;
                         hessianVal[index] += hess[k][l];
-                        hessianRowIdx[index] = rowIdx;
-                        hessianColIdx[index] = colIdx;
                     }
                 }
             }
@@ -60,8 +65,6 @@ namespace ImplicitBarrier {
                         int colIdx = idx * 3 + l;
                         int index = idx * 9 + k * 3 + l;
                         hessianVal[index] += hess[k][l];
-                        hessianRowIdx[index] = rowIdx;
-                        hessianColIdx[index] = colIdx;
                     }
                 }
             }
@@ -85,8 +88,6 @@ namespace ImplicitBarrier {
                         int colIdx = idx * 3 + l;
                         int index = idx * 9 + k * 3 + l;
                         hessianVal[index] += hess[k][l];
-                        hessianRowIdx[index] = rowIdx;
-                        hessianColIdx[index] = colIdx;
                     }
                 }
             }
@@ -153,6 +154,13 @@ namespace ImplicitBarrier {
         int idx = blockIdx.x * blockDim.x + threadIdx.x;
         if (idx >= numVerts)
             return;
+        for (int k = 0; k < 3; k++) {
+            for (int l = 0; l < 3; l++) {
+                int index = idx * 9 + k * 3 + l;
+                hessianRowIdx[index] = idx * 3 + k;
+                hessianColIdx[index] = idx * 3 + l;
+            }
+        }
         const glm::tvec3<Scalar> x = X[idx];
         for (int j = 0; j < numPlanes; j++) {
             const Plane& plane = planes[j];
@@ -175,8 +183,6 @@ namespace ImplicitBarrier {
                         int colIdx = idx * 3 + l;
                         int index = idx * 9 + k * 3 + l;
                         hessianVal[index] += hess[k][l];
-                        hessianRowIdx[index] = rowIdx;
-                        hessianColIdx[index] = colIdx;
                     }
                 }
             }
@@ -206,8 +212,6 @@ namespace ImplicitBarrier {
                         int colIdx = idx * 3 + l;
                         int index = idx * 9 + k * 3 + l;
                         hessianVal[index] += hess[k][l];
-                        hessianRowIdx[index] = rowIdx;
-                        hessianColIdx[index] = colIdx;
                     }
                 }
             }
@@ -235,8 +239,6 @@ namespace ImplicitBarrier {
                         int colIdx = idx * 3 + l;
                         int index = idx * 9 + k * 3 + l;
                         hessianVal[index] += hess[k][l];
-                        hessianRowIdx[index] = rowIdx;
-                        hessianColIdx[index] = colIdx;
                     }
                 }
             }
@@ -327,7 +329,7 @@ void ImplicitBarrierEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData
 {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    ImplicitBarrier::hessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.numVerts,
+    ImplicitBarrier::hessianKern << <numBlocks, threadsPerBlock >> > (this->hessianVal, this->hessianRowIdx, this->hessianColIdx, solverData.X, solverData.numVerts,
         solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes, solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, solverData.pFixedBodies->dev_spheres, solverData.pFixedBodies->numSpheres, solverParams.dhat, solverData.contact_area, coef);
 }
 
@@ -336,7 +338,7 @@ void ImplicitBarrierEnergy<Scalar>::GradientHessian(Scalar* grad, const SolverDa
 {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
-    ImplicitBarrier::gradHessianKern << <numBlocks, threadsPerBlock >> > (grad, hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.numVerts,
+    ImplicitBarrier::gradHessianKern << <numBlocks, threadsPerBlock >> > (grad, this->hessianVal, this->hessianRowIdx, this->hessianColIdx, solverData.X, solverData.numVerts,
         solverData.pFixedBodies->dev_planes, solverData.pFixedBodies->numPlanes, solverData.pFixedBodies->dev_cylinders, solverData.pFixedBodies->numCylinders, solverData.pFixedBodies->dev_spheres, solverData.pFixedBodies->numSpheres, solverParams.dhat, solverData.contact_area, coef);
 }
 

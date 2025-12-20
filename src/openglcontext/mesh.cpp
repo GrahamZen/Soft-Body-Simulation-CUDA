@@ -12,8 +12,14 @@ Mesh::Mesh()
 Mesh::~Mesh()
 {
     // unregister this buffer object with CUDA
-    cudaGLUnregisterBufferObject(bufPos);
-    cudaGLUnregisterBufferObject(bufNor);
+    if (cuda_bufPos_resource) {
+        cudaGraphicsUnregisterResource(cuda_bufPos_resource);
+        cuda_bufPos_resource = nullptr;
+    }
+    if (cuda_bufNor_resource) {
+        cudaGraphicsUnregisterResource(cuda_bufNor_resource);
+        cuda_bufNor_resource = nullptr;
+    }
 }
 
 void Mesh::createTetrahedron()

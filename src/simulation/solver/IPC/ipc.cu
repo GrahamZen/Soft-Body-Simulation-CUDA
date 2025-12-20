@@ -139,7 +139,6 @@ void IPCSolver::SolverPrepare(SolverData<double>& solverData, const SolverParams
     }
 }
 
-
 bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<double>& solverParams)
 {
     SolverPrepare(solverData, solverParams);
@@ -148,6 +147,9 @@ bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
     double h2 = h * h;
     int blocks = (solverData.numVerts + threadsPerBlock - 1) / threadsPerBlock;
     double E_last = 0;
+
+    bool stepSuccess = true;
+
     performanceData[0].second +=
         measureExecutionTime([&]() {
         cudaMemcpy(x_n, solverData.X, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
@@ -155,21 +157,28 @@ bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
         solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers, solverParams.dhat);
         energy.UpdateKappa(solverData, const_cast<SolverParams<double>&>(solverParams), h2);
         E_last = energy.Val(solverData.X, solverData, solverParams, h2);
+
         if (isnan(E_last) || isinf(E_last)) {
             std::cout << "FATAL: Energy is NaN/Inf before Line Search!" << std::endl;
-            return false;
+            stepSuccess = false;
+            return;
         }
-        if (!SearchDirection(solverData, solverParams, h2))
-            return false;
+        if (!SearchDirection(solverData, solverParams, h2)) {
+            stepSuccess = false;
+            return;
+        }
         solverData.pCollisionDetection->UpdateDirection(p);
         solverData.pCollisionDetection->UpdateX(solverData.X);
             }, perf);
+    if (!stepSuccess) return false;
+
     int maxIter = solverParams.maxIterations;
     int iter = 0;
     while (!EndCondition(h, solverParams.tol)) {
         if (++iter > maxIter) {
             return false;
         }
+        stepSuccess = true;
         performanceData[1].second +=
             measureExecutionTime([&]() {
             IPC::computeXMinusAP << <blocks, threadsPerBlock >> > (xTmp, solverData.X, p, 1, solverData.numVerts);
@@ -180,7 +189,8 @@ bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
                 double E = energy.Val(xTmp, solverData, solverParams, h2);
                 if (isnan(E) || isinf(E)) {
                     std::cout << "FATAL: Energy is NaN/Inf during Line Search! Alpha: " << alpha << std::endl;
-                    return false;
+                    stepSuccess = false;
+                    return;
                 }
                 if (E > E_last)
                     alpha /= 2;
@@ -193,21 +203,28 @@ bool IPCSolver::SolverStep(SolverData<double>& solverData, const SolverParams<do
             }
             cudaMemcpy(solverData.X, xTmp, sizeof(glm::dvec3) * solverData.numVerts, cudaMemcpyDeviceToDevice);
                 }, perf);
+        if (!stepSuccess) return false;
         performanceData[2].second +=
             measureExecutionTime([&]() {
             solverData.pCollisionDetection->UpdateQueries(solverData.numVerts, solverData.numTris, solverData.Tri, solverData.X, solverData.dev_TriFathers, solverParams.dhat);
                 }, perf);
+        stepSuccess = true;
         performanceData[3].second +=
             measureExecutionTime([&]() {
             E_last = energy.Val(solverData.X, solverData, solverParams, h2);
             if (isnan(E_last) || isinf(E_last)) {
                 std::cout << "FATAL: Energy is NaN/Inf after Line Search!" << std::endl;
-                return false;
+                stepSuccess = false;
+                return;
             }
 
-            if (!SearchDirection(solverData, solverParams, h2))
-                return false;
+            if (!SearchDirection(solverData, solverParams, h2)) {
+                stepSuccess = false;
+                return;
+            }
                 }, perf);
+
+        if (!stepSuccess) return false;
     }
     IPC::updateVel << <blocks, threadsPerBlock >> > (solverData.X, x_n, solverData.V, 1.0 / h, solverData.numVerts);
     return true;

@@ -3,7 +3,7 @@
 #include <collision/aabb.h>
 #include <simulationContext.h>
 #include <context.h>
-#include <softbody.h>
+#include <softBody.h>
 #include <preview.h>
 #include <utilities.h>
 #include <imgui.h>
@@ -49,6 +49,8 @@ bool initOpenGL() {
         return false;
     }
     glfwMakeContextCurrent(window);
+    // Disable vsync so we can cap the frame rate manually (otherwise it sticks to monitor refresh e.g. 60Hz)
+    glfwSwapInterval(0);
     glfwSetKeyCallback(window, keyCallback);
     glfwSetCursorPosCallback(window, mousePositionCallback);
     glfwSetMouseButtonCallback(window, mouseButtonCallback);
@@ -85,7 +87,7 @@ void InitImguiData(GuiDataContainer* guiData)
 void RenderHierarchy(bool& contextChanged) {
     ImGui::Begin("Scene Hierarchy", nullptr);
     for (size_t i = 0; i < context->mpSimContexts.size(); i++) {
-        auto simCtx = context->mpSimContexts[i];
+        auto* simCtx = context->mpSimContexts[i].get();
         if (ImGui::TreeNode(simCtx->GetName().c_str())) {
             ImGui::SameLine();
             if (ImGui::Button("Activate")) {
@@ -102,7 +104,7 @@ void RenderHierarchy(bool& contextChanged) {
                         if (ImGui::Button("Highlight")) {
                             imguiData->HighLightObjId = uniqueId;
                         }
-                        ImGui::Text("#DBC: %d", softBody->GetAttributes().numDBC);
+                        ImGui::Text("#DBC: %zu", softBody->GetAttributes().numDBC);
                         ImGui::Text("#Triangle: %d", softBody->GetNumTris());
                         imguiData->softBodyAttr.mu = ImGui::DragFloat("mu", &softBody->GetAttributes().mu, 100.f, 0.0f, 100000.0f, "%.2f");
                         imguiData->softBodyAttr.lambda = ImGui::DragFloat("lambda", &softBody->GetAttributes().lambda, 100.f, 0.0f, 100000.0f, "%.2f");
@@ -337,7 +339,9 @@ void mainLoop() {
 
         glfwSwapBuffers(window);
     }
+}
 
+void cleanupOpenGL() {
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();

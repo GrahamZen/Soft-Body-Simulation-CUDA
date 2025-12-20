@@ -67,7 +67,7 @@ __global__ void detectCollisionNarrow(int numQueries, Query* queries, const glm:
         glm::tvec3<Scalar> normal;
         Query& q = queries[index];
         q.toi = ccdCollisionTest(q, Xs, XTildes, normal);
-        q.normal = normal;
+        q.normal = Vec3d{normal.x, normal.y, normal.z};
     }
 }
 
@@ -92,8 +92,8 @@ __global__ void storeTi(int numQueries, const Query* queries, Scalar* tI, glm::v
                 tI[q.v1] = 0.5f;
                 //tI[q.v2] = 0.5f;
                 //tI[q.v3] = 0.5f;
-                nors[q.v1] = q.normal;
-                nors[q.v0] = q.normal;
+                nors[q.v1] = glm::vec3(q.normal.x, q.normal.y, q.normal.z);
+                nors[q.v0] = glm::vec3(q.normal.x, q.normal.y, q.normal.z);
             }
         }
         if (q.type == QueryType::VF)
@@ -104,17 +104,17 @@ __global__ void storeTi(int numQueries, const Query* queries, Scalar* tI, glm::v
                 tI[q.v1] = 0.5f;
                 tI[q.v2] = 0.5f;
                 tI[q.v3] = 0.5f;
-                nors[q.v0] = q.normal;
-                nors[q.v1] = -q.normal;
-                nors[q.v2] = -q.normal;
-                nors[q.v3] = -q.normal;
+                nors[q.v0] = glm::vec3(q.normal.x, q.normal.y, q.normal.z);
+                nors[q.v1] = -glm::vec3(q.normal.x, q.normal.y, q.normal.z);
+                nors[q.v2] = -glm::vec3(q.normal.x, q.normal.y, q.normal.z);
+                nors[q.v3] = -glm::vec3(q.normal.x, q.normal.y, q.normal.z);
             }
         }
         /*
         if (q.type == QueryType::VF)
         {
             tI[q.v0] = q.toi;
-            nors[q.v0] = q.normal;
+            nors[q.v0] = glm::vec3(q.normal.x, q.normal.y, q.normal.z);
         }*/
     }
 }

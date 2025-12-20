@@ -1,5 +1,6 @@
-CUDA-Accelerated Soft Body Simulation
-================
+# CUDA-Accelerated Soft Body Simulation
+
+![CUDA CMake Build (Linux)](https://github.com/GrahamZen/Soft-Body-Simulation-CUDA/actions/workflows/cuda-cmake-build-linux.yml/badge.svg)
 
 **University of Pennsylvania, CIS 565: GPU Programming and Architecture, Final Project**
 
@@ -8,14 +9,17 @@ Hanting Xu
 
 ## Click [here](https://github.com/GrahamZen/Soft-Body-Simulation-CUDA/tree/CIS5650-Final) for documentation (CIS5650 Final Project version)
 
-## Requirements
+## Overview
 
-- CUDA >= 12.0 (cublas, cusolver)
-- CMake >= 3.18
+This project is a CUDA-accelerated soft body simulation framework originally developed as a final project for **CIS 5650: GPU Programming and Architecture** at Upenn.
 
-## Description
+The goal of this project is to explore GPU-based physics simulation by building a **lightweight, extensible simulation framework** with minimal external dependencies. The system is designed to support rapid experimentation with different:
 
-This project is originally a final project for CIS5650 at UPenn. The goal of this toy project is to provide a CUDA-accelerated physical simulation framework with minimal dependencies. The framework is designed to be easily extensible, allowing new simulation algorithms, physical models, linear solvers, and collision detection methods to be added with minimal effort. The currently implemented features are listed below.
+* physical models,
+* numerical solvers,
+* GPU-accelerated linear algebra pipelines.
+
+---
 
 ## Features
 
@@ -25,6 +29,8 @@ This project is originally a final project for CIS5650 at UPenn. The goal of thi
     * [x] Jacobi Solver (Naive)
     * [x] Cholesky Decomposition
     * [x] Preconditioned Conjugate Gradient
+      * [x] Incomplete Cholesky Preconditioner
+      * [x] Jacobi Preconditioner
 
 * FEM
     * [x] Projective Dynamics
@@ -41,39 +47,78 @@ This project is originally a final project for CIS5650 at UPenn. The goal of thi
          * [x] Neo-Hookean
 
 * Collision Detection
-    * [x] Real-Time Bvh
-    * [x] Ccd
-    * [ ] Robust Collision Handling
+    * [x] Real-Time BVH Construction
+    * [x] Continuous Collision Detection (CCD)
 
 ## Dependencies
 
-* [CUDA](https://developer.nvidia.com/cuda-downloads)
-* [CMake](https://cmake.org/download/)
+### System Requirements
 
-Below are included in the project:
+* **Operating System**
+
+  * Windows
+  * Linux
+* **CUDA Toolkit** ≥ 12.0
+  (cublas, cusolver required)
+* **CMake** ≥ 3.18
+* **OpenGL**
+
+### Third-Party Libraries
+
+The following libraries are included directly in the project:
 
 * OpenGL
 * ImGui
-* spdlog
+* GLFW
 * Eigen
-* glfw
-* catch2
+* spdlog
+* Catch2
 
-## Note on Configuration
+External tools:
 
-The complete environment configuration is specified in context.json.
+* [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads)
+* [CMake](https://cmake.org/download/)
 
-### Scene
+---
 
-The framework supports configuration of predefined soft bodies, rigid bodies, and camera parameters. Multiple contexts (scenes) can be loaded simultaneously, where each context may contain different combinations of soft and rigid objects, as well as distinct camera settings.
+## Configuration
 
-Each context can be configured independently with physical parameters such as time step size, gravity, damping coefficients, and friction coefficients, and supports real-time switching between contexts.
+### Environment Configuration
 
-### Solver
+The full runtime configuration is specified in `context.json`. This file defines simulation contexts, solver settings, and physical parameters.
 
-The behavior of the solver can be adjusted by modifying parameters in each context. Currently, solvers supporting two floating-point precisions are available. When defining a context, setting the precision parameter to float uses the projective dynamics solver, while setting it to double uses the IPC solver. Only the parameters relevant to the active solver take effect.
+---
 
-The PD solver supports interactive object dragging within the scene. The IPC solver is significantly slower and consumes more GPU memory; therefore, it is not recommended for scenes involving objects with a large number of degrees of freedom. Different solvers expose different global solver and linear solver options in the ImGui combo box, which can be switched in real time. However, since solvers consume a substantial amount of GPU memory, frequent switching may lead to performance degradation. It is recommended to select the desired solver before starting the simulation and avoid switching after the simulation has begun.
+### Scene Configuration
+
+The framework supports multiple **simulation contexts**, each representing an independent scene. A context may contain:
+
+* one or more soft bodies,
+* rigid bodies,
+
+Each context can be configured independently with physical parameters such as time step size, gravity, damping coefficients. Contexts can be switched **at runtime**.
+
+---
+
+### Solver Configuration
+
+Solver behavior is controlled on a per-context basis.
+
+* **Single-precision (`float`)**
+
+  * Uses the **Projective Dynamics (PD)** solver
+* **Double-precision (`double`)**
+
+  * Uses the **Incremental Potential Contact (IPC)** solver
+
+Only parameters relevant to the active solver are applied.
+
+#### Notes on Solver Usage
+
+* The PD solver supports **interactive object dragging**.
+* IPC is **not recommended** for scenes with a large number of degrees of freedom; for large vertex counts, careful parameter tuning is required, otherwise the simulation may fail to converge and pause.
+* For large-scale systems, **Cholesky-based solvers can become prohibitively slow**; **PCG with a Jacobi preconditioner** is recommended instead.
+* Linear solvers can be switched via ImGui **before simulation starts**.
 
 ## Screenshots
 

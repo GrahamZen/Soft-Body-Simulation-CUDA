@@ -24,7 +24,7 @@ __device__ void buildBBox(BVHNode<Scalar>& curr, const BVHNode<Scalar>& left, co
 }
 
 template<typename Scalar>
-__global__ void buildBBoxesSerial(int leafCount, BVHNode<Scalar>* nodes, BVH<Scalar>::ReadyFlagType* ready) {
+__global__ void buildBBoxesSerial(int leafCount, BVHNode<Scalar>* nodes, typename BVH<Scalar>::ReadyFlagType* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (ind >= leafCount - 1)return;
@@ -41,7 +41,7 @@ __global__ void buildBBoxesSerial(int leafCount, BVHNode<Scalar>* nodes, BVH<Sca
 namespace cg = cooperative_groups;
 
 template<typename Scalar>
-__global__ void buildBBoxesCG(int leafCount, BVHNode<Scalar>* nodes, BVH<Scalar>::ReadyFlagType* ready) {
+__global__ void buildBBoxesCG(int leafCount, BVHNode<Scalar>* nodes, typename BVH<Scalar>::ReadyFlagType* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
     cg::grid_group grid = cg::this_grid();
 
@@ -62,7 +62,7 @@ __global__ void buildBBoxesCG(int leafCount, BVHNode<Scalar>* nodes, BVH<Scalar>
 }
 
 template<typename Scalar>
-__global__ void buildBBoxesAtomic(int leafCount, BVHNode<Scalar>* nodes, BVH<Scalar>::ReadyFlagType* ready) {
+__global__ void buildBBoxesAtomic(int leafCount, BVHNode<Scalar>* nodes, typename BVH<Scalar>::ReadyFlagType* ready) {
     int ind = blockIdx.x * blockDim.x + threadIdx.x;
 
     if (ind >= leafCount - 1) return;
@@ -136,7 +136,7 @@ void BVH<Scalar>::BuildBBoxes(BuildType buildType) {
 }
 
 template<typename Scalar>
-BVH<Scalar>::BVH<Scalar>(const int _threadsPerBlock) :
+BVH<Scalar>::BVH(const int _threadsPerBlock) :
     threadsPerBlock(_threadsPerBlock) {}
 
 template<typename Scalar>

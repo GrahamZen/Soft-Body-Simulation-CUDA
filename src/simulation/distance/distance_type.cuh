@@ -4,6 +4,14 @@
 
 using namespace ipc;
 
+template<typename Scalar>
+__host__ __device__ DistanceType edge_edge_parallel_distance_type(
+    const glm::tvec3<Scalar>& ea0,
+    const glm::tvec3<Scalar>& ea1,
+    const glm::tvec3<Scalar>& eb0,
+    const glm::tvec3<Scalar>& eb1);
+
+#ifdef __CUDACC__
 template <typename Scalar>
 __global__ void GetDistanceType(const glm::tvec3<Scalar>* Xs, Query* queries, int numQueries) {
     int qIdx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -37,6 +45,7 @@ __global__ void ComputeDistance(const glm::tvec3<Scalar>* Xs, Query* queries, in
 
 template __global__ void ComputeDistance<float>(const glm::tvec3<float>* Xs, Query* queries, int numQueries);
 template __global__ void ComputeDistance<double>(const glm::tvec3<double>* Xs, Query* queries, int numQueries);
+#endif
 
 /// @brief Solve the least square problem: min ||A * x - b||^2
 /// @note A = [t1 - t0, glm::cross(t1 - t0, normal)], b = p - t0

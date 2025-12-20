@@ -15,6 +15,7 @@
 #include <fstream>
 #include <filesystem>
 #include <bitset>
+#include <iterator>
 #include <type_traits>
 
 template<typename T, typename = void>
@@ -214,7 +215,7 @@ void utilityCore::inspectHost(const Query* query, int size) {
 
         std::cout << "DistanceType::" << distanceTypeString[static_cast<int>(query[i].dType)] << ",";
         std::cout << query[i].v0 << "," << query[i].v1 << "," << query[i].v2 << "," << query[i].v3 << "," << query[i].toi << "," << query[i].d << ","
-            << glm::to_string(query[i].normal) << "}," << std::endl;
+           << std::endl;
     }
     std::cout << "------------------------inspectHost--END------------------------------" << std::endl;
 }

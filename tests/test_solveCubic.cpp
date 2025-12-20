@@ -126,12 +126,12 @@
 TEST_CASE("Tet collision test", "[Tet]")
 {
     std::vector<Query> queries = {
-Query{QueryType::VF,DistanceType::P_T0,0,4,5,9,1,0,glm::dvec3(0.000000, 0.000000, 0.000000)},
-Query{QueryType::VF,DistanceType::P_T0,1,4,5,9,1,0,glm::dvec3(0.000000, 0.000000, 0.000000)},
-Query{QueryType::VF,DistanceType::P_T0,2,4,5,9,1,0,glm::dvec3(0.000000, 0.000000, 0.000000)},
-Query{QueryType::VF,DistanceType::EA1_EB0,3,4,7,10,0.994723,100,glm::dvec3(0.000010, 1.000000, 0.000010)},
-Query{QueryType::VF,DistanceType::P_T0,4,0,1,3,1,0,glm::dvec3(0.000000, 0.000000, 0.000000)},
-};
+Query{QueryType::VF,DistanceType::P_T0,0,4,5,9,1,0,Vec3d{0.000000, 0.000000, 0.000000}},
+Query{QueryType::VF,DistanceType::P_T0,1,4,5,9,1,0,Vec3d{0.000000, 0.000000, 0.000000}},
+Query{QueryType::VF,DistanceType::P_T0,2,4,5,9,1,0,Vec3d{0.000000, 0.000000, 0.000000}},
+Query{QueryType::VF,DistanceType::EA1_EB0,3,4,7,10,0.994723,100,Vec3d{0.000010, 1.000000, 0.000010}},
+Query{QueryType::VF,DistanceType::P_T0,4,0,1,3,1,0,Vec3d{0.000000, 0.000000, 0.000000}},
+    };
     std::vector<glm::dvec3> Xs{
 glm::dvec3(2.001631, 67.999075, 0.533407),
 glm::dvec3(-6.001968, 61.071146, -3.459837),

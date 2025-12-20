@@ -8,6 +8,7 @@
 #include <glm/gtx/intersect.hpp>
 #include <thrust/transform_reduce.h>
 #include <thrust/iterator/counting_iterator.h>
+#include <thrust/execution_policy.h>
 
 /**
  * Handy-dandy hash function that provides seeds for random number generation.
@@ -32,6 +33,12 @@ template<typename Scalar>
 __host__ __device__ glm::tvec3<Scalar> multiplyMV(glm::tmat4x4<Scalar> m, glm::tvec4<Scalar> v) {
     return glm::tvec3<Scalar>(m * v);
 }
+
+template<typename T>
+__host__ __device__ int solveQuadratic(T a, T b, T c, T* x);
+
+template<typename T>
+__host__ __device__ T newtonsMethod(T a, T b, T c, T d, T x0, int init_dir);
 
 template<typename T>
 __host__ __device__ int solveCubic(T a, T b, T c, T d, T* x) {
@@ -353,7 +360,8 @@ __host__ __device__ Intersection rayTriangleIntersection(Ray r, glm::vec3 v0, gl
 
 template<typename Scalar>
 indexType raySimCtxIntersection(Ray r, int numTris, const indexType* Tri, const glm::tvec3<Scalar>* X) {
-    Intersection intersection = thrust::transform_reduce(thrust::counting_iterator<indexType>(0),
+    Intersection intersection = thrust::transform_reduce(thrust::device, 
+        thrust::counting_iterator<indexType>(0),
         thrust::counting_iterator<indexType>(numTris),
         [Tri, X, r]__host__ __device__(indexType idx) {
         glm::tvec3<Scalar> v0 = X[Tri[3 * idx]];

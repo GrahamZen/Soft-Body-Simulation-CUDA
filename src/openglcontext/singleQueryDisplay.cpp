@@ -12,9 +12,18 @@ SingleQueryDisplay::SingleQueryDisplay()
 SingleQueryDisplay::~SingleQueryDisplay()
 {
     // unregister this buffer object with CUDA
-    cudaGLUnregisterBufferObject(bufPos);
-    cudaGLUnregisterBufferObject(bufVertPos);
-    cudaGLUnregisterBufferObject(bufTriPos);
+    if (cuda_bufPos_resource) {
+        cudaGraphicsUnregisterResource(cuda_bufPos_resource);
+        cuda_bufPos_resource = nullptr;
+    }
+    if (cuda_bufVertPos_resource) {
+        cudaGraphicsUnregisterResource(cuda_bufVertPos_resource);
+        cuda_bufVertPos_resource = nullptr;
+    }
+    if (cuda_bufTriPos_resource) {
+        cudaGraphicsUnregisterResource(cuda_bufTriPos_resource);
+        cuda_bufTriPos_resource = nullptr;
+    }
 }
 
 GLenum SingleQueryDisplay::drawMode()

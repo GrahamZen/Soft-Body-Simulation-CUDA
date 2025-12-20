@@ -1,8 +1,10 @@
+#pragma once
+
 #include "edge_edge.h"
 
-#include <distance/point_point.h>
-#include <distance/point_line.h>
-#include <distance/line_line.h>
+#include <distance/point_point.cuh>
+#include <distance/point_line.cuh>
+#include <distance/line_line.cuh>
 
 namespace ipc {
 

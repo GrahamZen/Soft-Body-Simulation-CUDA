@@ -1,7 +1,7 @@
 #include <sceneStructs.h>
 #include <surfaceshader.h>
 #include <context.h>
-#include <Mesh.h>
+#include <mesh.h>
 #include <collision/aabb.h>
 #include <simulation/simulationContext.h>
 #include <utilities.h>
@@ -84,10 +84,20 @@ Ray Camera::RayPick(glm::ivec2 pixel)
     return Ray{ position, glm::normalize(rayWorldXYZ - position) };
 }
 
-Context::Context(const std::string& _filename) :shaderType(ShaderType::PHONG), filename(_filename), mpCamera(new Camera(_filename)), mpProgLambert(new SurfaceShader()),
-mpProgPhong(new SurfaceShader()), mpProgHighLight(new SurfaceShader()), mpProgFlat(new SurfaceShader()), mpProgSkybox(new SurfaceShader()),
-width(mpCamera->resolution.x), height(mpCamera->resolution.y), ogLookAt(mpCamera->lookAt), guiData(new GuiDataContainer()),
-mpSelectSPhere(new Sphere(utilityCore::modelMatrix(glm::vec3(0), glm::vec3(0), glm::vec3(5, 5, 5)), 5, 10))
+Context::Context(const std::string& _filename)
+    : shaderType(ShaderType::PHONG),
+    filename(_filename),
+    mpCamera(std::make_unique<Camera>(_filename)),
+    mpProgLambert(std::make_unique<SurfaceShader>()),
+    mpProgPhong(std::make_unique<SurfaceShader>()),
+    mpProgHighLight(std::make_unique<SurfaceShader>()),
+    mpProgFlat(std::make_unique<SurfaceShader>()),
+    mpProgSkybox(std::make_unique<SurfaceShader>()),
+    width(mpCamera->resolution.x),
+    height(mpCamera->resolution.y),
+    ogLookAt(mpCamera->lookAt),
+    guiData(std::make_unique<GuiDataContainer>()),
+    mpSelectSPhere(std::make_unique<Sphere>(utilityCore::modelMatrix(glm::vec3(0), glm::vec3(0), glm::vec3(5, 5, 5)), 5, 10))
 {
     glm::vec3 view = mpCamera->view;
     glm::vec3 up = mpCamera->up;
@@ -105,18 +115,7 @@ mpSelectSPhere(new Sphere(utilityCore::modelMatrix(glm::vec3(0), glm::vec3(0), g
     zoom = glm::length(mpCamera->position - ogLookAt);
 }
 
-Context::~Context()
-{
-    delete mpProgHighLight;
-    delete mpProgLambert;
-    delete mpProgPhong;
-    delete mpProgFlat;
-    delete mpProgSkybox;
-    delete mcrpSimContext;
-    delete guiData;
-    delete mpCamera;
-    delete mpEnvMapCube;
-}
+Context::~Context() = default;
 
 int Context::GetMaxCGThreads()
 {
@@ -187,7 +186,7 @@ void Context::LoadShaders(const std::string& vertShaderFilename, const std::stri
             mpProgSkybox->create("../src/shaders/envMap.vert.glsl", "../src/shaders/envMap.frag.glsl");
             mpProgSkybox->setViewProjMatrix(mpCamera->getView(), mpCamera->getProj());
             mpProgSkybox->addUniform("u_EnvironmentMap");
-            mpEnvMapCube = new Mesh();
+            mpEnvMapCube = std::make_unique<Mesh>();
             mpEnvMapCube->createCube();
         }
     }
@@ -376,20 +375,20 @@ SimulationCUDAContext* Context::LoadSimContext() {
             if (contextJson.contains("fixedBodies")) {
                 fixBodies = ReadFixedBodies(contextJson["fixedBodies"], fixedBodyDefs);
             }
-            mpSimContexts.push_back(new SimulationCUDAContext(this, baseName, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
+            mpSimContexts.push_back(std::make_unique<SimulationCUDAContext>(this, baseName, contextJson, softBodyDefs, fixBodies, threadsPerBlock, threadsPerBlockBVH, maxThreads, numIterations));
             DOFs.push_back(mpSimContexts.back()->GetVertCnt() * 3);
             Eles.push_back(mpSimContexts.back()->GetTetCnt());
             if (logEnabled)
                 spdlog::info("{} #dof: {}, #ele: {}", "[" + baseName + "]", DOFs.back(), Eles.back());
         }
-        mcrpSimContext = mpSimContexts[0];
+        mcrpSimContext = mpSimContexts[0].get();
     }
     return mcrpSimContext;
 }
 
 void Context::LoadEnvCubemap(const std::string& filename) {
     {
-        envMap = new TextureCubemap();
+        envMap = std::make_unique<TextureCubemap>();
         envMap->create(filename.c_str(), false);
     }
 }
@@ -442,10 +441,10 @@ void Context::Draw() {
     switch (shaderType)
     {
     case Context::ShaderType::LAMBERT:
-        mcrpSimContext->Draw(mpProgHighLight, mpProgLambert, mpProgFlat, guiData->HighLightObjId);
+        mcrpSimContext->Draw(mpProgHighLight.get(), mpProgLambert.get(), mpProgFlat.get(), guiData->HighLightObjId);
         break;
     case Context::ShaderType::PHONG:
-        mcrpSimContext->Draw(mpProgHighLight, mpProgPhong, mpProgFlat, guiData->HighLightObjId);
+        mcrpSimContext->Draw(mpProgHighLight.get(), mpProgPhong.get(), mpProgFlat.get(), guiData->HighLightObjId);
         break;
     default:
         break;
@@ -488,7 +487,7 @@ void Context::Update() {
     PollEvents();
     if (panelModified) {
         if (guiData->currSimContextId != -1) {
-            mcrpSimContext = mpSimContexts[guiData->currSimContextId];
+            mcrpSimContext = mpSimContexts[guiData->currSimContextId].get();
             guiData->solverParams = mcrpSimContext->GetSolverParamsUI();
         }
         mcrpSimContext->SetGlobalSolver(guiData->solverType);

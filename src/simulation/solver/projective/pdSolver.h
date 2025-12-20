@@ -4,6 +4,7 @@
 #include <Eigen/SparseCore>
 #include <simulation/solver/femSolver.h>
 #include <Eigen/Dense>
+#include <memory>
 
 template<typename T>
 class LinearSolver;
@@ -23,21 +24,21 @@ protected:
     virtual void SolverPrepare(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
     virtual bool SolverStep(SolverData<float>& solverData, const SolverParams<float>& solverParams) override;
 private:
-    LinearSolver<float>* ls = nullptr;
-    LinearSolver<float>* jacobiSolver = nullptr;
+    std::unique_ptr<LinearSolver<float>> ls;
+    std::unique_ptr<LinearSolver<float>> jacobiSolver;
     SolverType solverType;
 
     const float positional_weight = 1e6;
-    float* massDt_2s;
-    float* sn;
-    float* sn_old;
-    float* b;
-    float* bHost;
-    float* matrix_diag;
+    float* massDt_2s = nullptr;
+    float* sn = nullptr;
+    float* sn_old = nullptr;
+    float* b = nullptr;
+    float* bHost = nullptr;
+    float* matrix_diag = nullptr;
     Eigen::SimplicialCholesky<Eigen::SparseMatrix<float>> cholesky_decomposition_;
 
     //Jacobi
     float omega;
-    float* next_x;
-    float* prev_x;
+    float* next_x = nullptr;
+    float* prev_x = nullptr;
 };

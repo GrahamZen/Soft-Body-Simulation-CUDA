@@ -16,7 +16,6 @@ inline JacobiSolver<T>::JacobiSolver(int N, int maxIter) : maxIter(maxIter)
 template<typename T>
 JacobiSolver<T>::~JacobiSolver()
 {
-    cudaFree(d_rowPtrA);
     cudaFree(x_prime);
     CHECK_CUSPARSE(cusparseDestroy(cusHandle));
 }

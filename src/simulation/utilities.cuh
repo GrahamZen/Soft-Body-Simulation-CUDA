@@ -26,6 +26,20 @@ void inspectGLM(const T* dev_ptr, int size, const char* str = "") {
     utilityCore::inspectHost(host_ptr.data(), size, str);
 }
 
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 600
+__device__ inline double atomicAdd(double* address, double val) {
+    unsigned long long int* address_as_ull = reinterpret_cast<unsigned long long int*>(address);
+    unsigned long long int old = *address_as_ull, assumed;
+    do {
+        assumed = old;
+        old = atomicCAS(address_as_ull, assumed,
+            __double_as_longlong(val + __longlong_as_double(assumed)));
+    } while (assumed != old);
+    return __longlong_as_double(old);
+}
+#endif
+
+
 template <typename T>
 void inspectSparseMatrix(T* dev_val, int* dev_rowIdx, int* dev_colIdx, int begin, int nnz, int size);
 void inspectMortonCodes(const int* dev_mortonCodes, int numTris);

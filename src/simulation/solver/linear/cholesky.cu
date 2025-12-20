@@ -2,6 +2,7 @@
 #include <linear/cuUtils.cuh>
 #include <stdexcept>
 
+
 template<typename T>
 __global__ void FillMatrixA(int* AIdx, T* AVal, T* d_A, int n, int ASize) {
     int idx = blockIdx.x * blockDim.x + threadIdx.x;
@@ -19,14 +20,6 @@ __global__ void initAMatrix(int* idx, int* row, int* col, int rowLen, int totalN
         row[index] = idx[index] / rowLen;
         col[index] = idx[index] % rowLen;
     }
-}
-
-template<typename T>
-CholeskyDnLinearSolver<T>::~CholeskyDnLinearSolver()
-{
-    cudaFree(d_info);
-    cudaFree(d_predecomposedA);
-    cudaFree(d_work);
 }
 
 template<typename T>
@@ -75,16 +68,6 @@ CholeskyDnLinearSolver<T>::CholeskyDnLinearSolver(int threadsPerBlock, int* AIdx
     free(h_work);
 }
 
-template<typename T>
-CholeskySpLinearSolver<T>::~CholeskySpLinearSolver()
-{
-    cusolverSpDestroyCsrcholInfo(d_info);
-    cusparseDestroyMatDescr(descrA);
-    cusolverSpDestroy(cusolverHandle);
-    cudaFree(buffer_gpu);
-    cudaFree(dev_x_permuted);
-    cudaFree(dev_b_permuted);
-}
 
 template<typename T>
 void CholeskySpLinearSolver<T>::ComputeAMD(cusolverSpHandle_t handle, int rowsA, int nnzA, int* dev_csrRowPtrA, int* dev_csrColIndA, T* dev_csrValA) {
@@ -155,6 +138,7 @@ CholeskySpLinearSolver<T>::CholeskySpLinearSolver(int threadsPerBlock, int* rowI
     cusparseHandle_t handle;
     cusparseCreate(&handle);
     cusparseXcoo2csr(handle, d_rowIdx, nnz, ASize, d_rowPtrA, CUSPARSE_INDEX_BASE_ZERO);
+    cusparseDestroy(handle);
 
     cusolverSpCreate(&cusolverHandle);
     cusparseCreateMatDescr(&descrA);
@@ -207,5 +191,7 @@ void CholeskySpLinearSolver<T>::Solve(int N, T* d_b, T* d_x, T* d_A, int nz, int
     permuteVectorInv << <blocks, threadsPerBlock >> > (dev_x_permuted, d_x, d_p, N);
 }
 
-template CholeskySpLinearSolver<double>;
-template CholeskySpLinearSolver<float>;
+template class CholeskySpLinearSolver<double>;
+template class CholeskySpLinearSolver<float>;
+template class CholeskyDnLinearSolver<double>;
+template class CholeskyDnLinearSolver<float>;

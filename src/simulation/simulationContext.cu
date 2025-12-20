@@ -40,7 +40,7 @@ void SimulationCUDAContext::Impl<Scalar>::Init(Context* ctx, nlohmann::json& jso
     maxThreads = _maxThreads;
     numIterations = _numIterations;
 
-    auto guiData = ctx->guiData;
+    auto guiData = ctx->guiData.get();
     DataLoader<Scalar> dataLoader(threadsPerBlock);
     std::vector<const char*> namesSoftBodies;
     data.pCollisionDetection = new CollisionDetection<Scalar>{ ctx, _threadsPerBlockBVH, 1 << 16 };
@@ -125,6 +125,7 @@ void SimulationCUDAContext::Impl<Scalar>::Init(Context* ctx, nlohmann::json& jso
 template<class Scalar>
 SimulationCUDAContext::Impl<Scalar>::~Impl()
 {
+
     cudaFree(data.X);
     cudaFree(data.Tet);
     cudaFree(data.V);
@@ -132,6 +133,15 @@ SimulationCUDAContext::Impl<Scalar>::~Impl()
     cudaFree(data.X0);
     cudaFree(data.XTilde);
     cudaFree(data.ExtForce);
+    cudaFree(data.OffsetX);     
+    cudaFree(data.moreDBC);     
+    cudaFree(data.DBCX);        
+    cudaFree(data.Tri);         
+    cudaFree(data.DBCIdx);      
+    cudaFree(data.contact_area);
+    cudaFree(data.V0);
+    cudaFree(data.DmInv);
+
     cudaFree(data.DBC);
     cudaFree(data.mass);
     cudaFree(data.mu);
@@ -145,6 +155,11 @@ SimulationCUDAContext::Impl<Scalar>::~Impl()
         delete softbody;
     }
     delete data.pCollisionDetection;
+
+    if (data.pFixedBodies) {
+        delete data.pFixedBodies; 
+        data.pFixedBodies = nullptr;
+    }
 }
 
 void SimulationCUDAContext::UpdateSoftBodyAttr(int index, SoftBodyAttr* pSoftBodyAttr)
@@ -168,6 +183,8 @@ bool SimulationCUDAContext::RayIntersect(const Ray& ray, glm::vec3* pos, bool up
             hit_v = ms.select_v;
         }
         else {
+            if (impl.data.numTris <= 0 || impl.data.Tri == nullptr || impl.data.X == nullptr) 
+                return false;
             hit_v = raySimCtxIntersection(ray, impl.data.numTris, impl.data.Tri, impl.data.X);
             if (updateV) ms.select_v = hit_v;
         }

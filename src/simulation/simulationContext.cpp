@@ -52,7 +52,7 @@ static void CopyParamsToUI(const SolverParams<Scalar>& p, SolverParamsUI& ui) {
 
 SimulationCUDAContext::SimulationCUDAContext(Context* ctx, const std::string& _name, nlohmann::json& json,
     const std::map<std::string, nlohmann::json>& softBodyDefs, std::vector<FixedBody*>& fixedBodies, int threadsPerBlock, int threadsPerBlockBVH, int maxThreads, int numIterations)
-    : threadsPerBlock_(threadsPerBlock), contextGuiData(ctx->guiData), name(_name) {
+    : threadsPerBlock_(threadsPerBlock), contextGuiData(ctx->guiData.get()), name(_name) {
     std::string prec = "double";
     if (json.contains("precision")) {
         prec = json["precision"].get<std::string>();

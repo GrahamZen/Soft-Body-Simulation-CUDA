@@ -2,9 +2,10 @@
 #include <collision/bvh.h>
 #include <solverUtil.cuh>
 #include <matrix.h>
-#include <distance/distance_type.h>
+#include <distance/distance_type.cuh>
 #include <thrust/transform_reduce.h>
 #include <thrust/iterator/counting_iterator.h>
+
 
 namespace Barrier {
     template <typename Scalar>
@@ -207,7 +208,7 @@ void BarrierEnergy<Scalar>::Hessian(const SolverData<Scalar>& solverData, const 
     if (numQueries == 0)return;
     int threadsPerBlock = 256;
     int numBlocks = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    Barrier::hessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverData.kappa, coef);
+    Barrier::hessianKern << <numBlocks, threadsPerBlock >> > (this->hessianVal, this->hessianRowIdx, this->hessianColIdx, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverData.kappa, coef);
 }
 
 template <typename Scalar>
@@ -217,7 +218,7 @@ void BarrierEnergy<Scalar>::GradientHessian(Scalar* grad, const SolverData<Scala
     if (numQueries == 0)return;
     int threadsPerBlock = 256;
     int numBlocks = (numQueries + threadsPerBlock - 1) / threadsPerBlock;
-    Barrier::gradHessianKern << <numBlocks, threadsPerBlock >> > (grad, hessianVal, hessianRowIdx, hessianColIdx, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverData.kappa, coef);
+    Barrier::gradHessianKern << <numBlocks, threadsPerBlock >> > (grad, this->hessianVal, this->hessianRowIdx, this->hessianColIdx, solverData.X, solverData.queries(), numQueries, solverParams.dhat, solverData.kappa, coef);
 }
 
 template<typename Scalar>

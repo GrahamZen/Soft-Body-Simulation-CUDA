@@ -13,7 +13,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/recipes/")
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/find/")
 
-set(CMAKE_CUDA_ARCHITECTURES native)
+if(CMAKE_CUDA_COMPILER)
+    if(DEFINED ENV{CI})
+        message(STATUS "CI environment detected. Setting CUDA architecture to 75.")
+        set(CMAKE_CUDA_ARCHITECTURES 75)
+    else()
+        message(STATUS "Local environment detected. Setting CUDA architecture to native.")
+        set(CMAKE_CUDA_ARCHITECTURES native)
+    endif()
+endif()
 
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g")
 set(CUDA_NVCC_FLAGS_DEBUG "${CUDA_NVCC_FLAGS_DEBUG} -G -g")
@@ -36,14 +44,20 @@ find_package(CUDAToolkit REQUIRED)
 
 find_package(OpenGL REQUIRED)
 
+set(EXTERNAL "${PROJECT_SOURCE_DIR}/external")
+
 if(UNIX)
+    find_package(OpenGL REQUIRED)
     find_package(glfw3 REQUIRED)
     find_package(GLEW REQUIRED)
-    set(LIBRARIES glfw ${GLEW_LIBRARIES} ${OPENGL_gl_LIBRARY})
+
+    set(LIBRARIES
+        glfw
+        ${GLEW_LIBRARIES}
+        OpenGL::GL
+    )
 else()
     set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3")
-    set(EXTERNAL "external")
-
     set(GLFW_ROOT_DIR ${EXTERNAL})
     set(GLFW_USE_STATIC_LIBS ON)
     find_package(GLFW REQUIRED)
@@ -57,7 +71,8 @@ else()
     set(LIBRARIES ${GLEW_LIBRARY} ${GLFW_LIBRARY} ${OPENGL_LIBRARY})
 endif()
 
-set(GLM_ROOT_DIR "external")
+set(GLM_ROOT_DIR "${PROJECT_SOURCE_DIR}/external")
+set(GLM_INCLUDE_DIR "${EXTERNAL}/include" CACHE PATH "GLM include dir" FORCE)
 find_package(GLM REQUIRED)
 include_directories(${GLM_INCLUDE_DIRS})
 
@@ -106,6 +121,11 @@ include_directories(
     ${GLEW_INCLUDE_DIR} 
     ${GLFW_INCLUDE_DIR})
 
+if(UNIX)
+    list(APPEND CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES "/usr/include")
+    list(REMOVE_DUPLICATES CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES)
+endif()
+
 ########################################
 # Catch2 Tests
 ########################################
@@ -114,30 +134,35 @@ enable_testing()
 add_subdirectory(tests)
 ########################################
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCE_FILES} ${HEADER_FILES} ${IMGUI_SOURCES})
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui" "${EXTERNAL}/svd3_cuda" ${eigen_SOURCE_DIR})
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE "${EXTERNAL}/ImGui" "${EXTERNAL}/svd3_cuda" "${EXTERNAL}/include")
 target_link_libraries(${CMAKE_PROJECT_NAME}
 ${LIBRARIES}
 CUDA::cudart
 CUDA::cusolver
 OpenMP::OpenMP_CXX
 spdlog::spdlog
+Eigen3::Eigen
 #stream_compaction  # TODO: uncomment if using your stream compaction
 )
 set_target_properties(${CMAKE_PROJECT_NAME} PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
     CUDA_RESOLVE_DEVICE_SYMBOLS ON
 )
+set(CUDA_HOST_WARNING_SUPPRESSIONS "")
+if(MSVC)
+  list(APPEND CUDA_HOST_WARNING_SUPPRESSIONS
+    -Xcompiler=/wd4819
+    -Xcompiler=/wd4068
+    -Xcompiler=/wd4661)
+endif()
+
 target_compile_options(${CMAKE_PROJECT_NAME} PRIVATE
   $<$<COMPILE_LANGUAGE:CUDA>:
     -Xptxas=-v
     --extended-lambda
     --expt-relaxed-constexpr
     -lineinfo
-
-    -Xcompiler=/wd4819
-    -Xcompiler=/wd4068
-    -Xcompiler=/wd4661
-
+    ${CUDA_HOST_WARNING_SUPPRESSIONS}
     -Xcudafe=--display_error_number
     -Xcudafe=--diag_suppress=20012
     -Xcudafe=--diag_suppress=20011

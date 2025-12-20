@@ -5,6 +5,7 @@
 #include <thrust/transform_reduce.h>
 #include <svd.cuh>
 
+
 namespace NeoHookean08 {
     template <typename Scalar>
     __global__ void GradientKern(Scalar* grad, const glm::tvec3<Scalar>* X, const indexType* Tet, const glm::tmat3x3<Scalar>* DmInvs,
@@ -218,7 +219,7 @@ template <typename Scalar>
 void NeoHookean08Energy<Scalar>::Hessian(const SolverData<Scalar>& solverData, const SolverParams<Scalar>& solverParams, Scalar coef) const {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    NeoHookean08::HessianKern << <numBlocks, threadsPerBlock >> > (hessianVal, hessianRowIdx, hessianColIdx,
+    NeoHookean08::HessianKern << <numBlocks, threadsPerBlock >> > (this->hessianVal, this->hessianRowIdx, this->hessianColIdx,
         solverData.X, solverData.Tet, solverData.DmInv, solverData.V0, solverData.mu, solverData.lambda, solverData.numTets, coef);
 }
 
@@ -227,7 +228,7 @@ void NeoHookean08Energy<Scalar>::GradientHessian(Scalar* grad, const SolverData<
 {
     int threadsPerBlock = 256;
     int numBlocks = (solverData.numTets + threadsPerBlock - 1) / threadsPerBlock;
-    NeoHookean08::GradHessianKern << <numBlocks, threadsPerBlock >> > (grad, hessianVal, hessianRowIdx, hessianColIdx,
+    NeoHookean08::GradHessianKern << <numBlocks, threadsPerBlock >> > (grad, this->hessianVal, this->hessianRowIdx, this->hessianColIdx,
         solverData.X, solverData.Tet, solverData.DmInv, solverData.V0, solverData.mu, solverData.lambda, solverData.numTets, coef);
 }
 
